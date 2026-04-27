@@ -153,38 +153,24 @@
           <div class="screen">
             <!--
               Hero Banner · 最近一条待办
-              背景插图资源设计上由 CDN 动态下发，按待办类型匹配（医疗/运动/饮食/出行…）
+              背景插图资源通过 CDN 动态下发，按待办类型匹配（医疗/运动/饮食/出行…）
               用户无感知，产品迭代时逐步丰富插图库
-              当前示意：医疗类 — warm clay + 胶囊插图
+              当前：医疗类 hero-medical.jpg
             -->
-            <div class="rounded-3xl overflow-hidden mb-4 relative" style="height:230px;background:linear-gradient(148deg,#C8956A 0%,#AA7248 55%,#916040 100%);">
+            <div class="rounded-3xl overflow-hidden mb-4 relative" style="height:230px;background-image:url('./assets/hero-medical.jpg');background-size:cover;background-position:center right;">
 
-              <!-- ── 浮动插图（医疗主题）── -->
-              <!-- 大深色胶囊：深棕/奶白拼接，旋转 -22° -->
-              <div class="absolute float" style="left:-2px;top:32px;width:22px;height:62px;border-radius:999px;background:linear-gradient(175deg,#3C1E0C 0%,#3C1E0C 49%,#EDD6B8 51%,#EDD6B8 100%);transform:rotate(-22deg);filter:drop-shadow(2px 5px 10px rgba(0,0,0,0.35));animation-delay:0s"></div>
-              <!-- 橙色小圆点 -->
-              <div class="absolute" style="left:42px;top:28px;width:15px;height:15px;border-radius:50%;background:radial-gradient(circle at 38% 35%,#F0A840,#C87820);filter:drop-shadow(1px 2px 5px rgba(0,0,0,0.2))"></div>
-              <!-- 大圆形药片（中央，有分割线感） -->
-              <div class="absolute float" style="left:50%;top:18px;transform:translateX(-50%);width:60px;height:60px;border-radius:50%;background:radial-gradient(circle at 38% 32%,#FFF5E8,#EDD5B5);border:3px solid rgba(255,255,255,0.55);filter:drop-shadow(3px 8px 14px rgba(0,0,0,0.28));animation-delay:1s">
-                <!-- 药片刻线 -->
-                <div style="position:absolute;top:50%;left:15%;right:15%;height:1.5px;background:rgba(180,130,80,0.5);transform:translateY(-50%);border-radius:2px"></div>
-              </div>
-              <!-- 小白圆片（右侧漂浮） -->
-              <div class="absolute float" style="right:52px;top:42px;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 38% 35%,#FFFFFF,#EDE4D5);filter:drop-shadow(1px 3px 6px rgba(0,0,0,0.22));animation-delay:2s"></div>
-              <!-- 橙色细长胶囊（右上角） -->
-              <div class="absolute float" style="right:12px;top:20px;width:15px;height:46px;border-radius:999px;background:linear-gradient(175deg,#E8922A 0%,#E8922A 49%,#F5C07A 51%,#F5C07A 100%);transform:rotate(18deg);filter:drop-shadow(1px 3px 7px rgba(0,0,0,0.2));animation-delay:1.5s"></div>
-              <!-- 小深棕点（右下角装饰） -->
-              <div class="absolute" style="right:32px;top:76px;width:11px;height:11px;border-radius:50%;background:#6A4020;opacity:0.55"></div>
+              <!-- 左侧文字区渐变遮罩，保证可读性 -->
+              <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(155,95,45,0.62) 0%,rgba(155,95,45,0.30) 52%,transparent 72%)"></div>
 
               <!-- ── 左上：问候文字 ── -->
-              <div class="absolute top-7 left-5">
+              <div class="absolute top-7 left-5" style="z-index:2">
                 <div class="text-white/70 text-[11px] tracking-wide">周一 · 晴</div>
-                <div class="text-white font-serif text-xl font-bold mt-0.5 leading-tight" style="text-shadow:0 1px 6px rgba(0,0,0,0.18)">早，小杨</div>
+                <div class="text-white font-serif text-xl font-bold mt-0.5 leading-tight" style="text-shadow:0 1px 8px rgba(80,40,10,0.30)">早，小杨</div>
                 <div class="text-white/60 text-[10px] mt-1">下一件值得记住的事 ↓</div>
               </div>
 
               <!-- ── 右上：月相太阳进度 + 头像 ── -->
-              <div class="absolute top-5 right-4 flex items-center gap-2">
+              <div class="absolute top-5 right-4 flex items-center gap-2" style="z-index:2">
                 <div title="今日完成 3/5">
                   <svg width="28" height="28" viewBox="0 0 28 28">
                     <defs>
@@ -196,9 +182,8 @@
                     </defs>
                     <circle cx="14" cy="14" r="11.5" fill="rgba(255,180,80,0.18)"/>
                     <circle cx="14" cy="14" r="9" fill="url(#sun-hero-fill)"/>
-                    <!-- shadow: cx = 14 - 18×0.6 = 3.2 -->
-                    <circle cx="3.2" cy="14" r="9" fill="rgba(168,112,72,0.85)" clip-path="url(#sun-hero)"/>
-                    <g stroke="#D96830" stroke-width="1.2" stroke-linecap="round" opacity="0.5">
+                    <circle cx="3.2" cy="14" r="9" fill="rgba(155,95,45,0.80)" clip-path="url(#sun-hero)"/>
+                    <g stroke="#D96830" stroke-width="1.2" stroke-linecap="round" opacity="0.55">
                       <line x1="14" y1="3" x2="14" y2="1"/>
                       <line x1="20.4" y1="5.6" x2="21.8" y2="4.2"/>
                       <line x1="23" y1="14" x2="25" y2="14"/>
@@ -210,12 +195,11 @@
                     </g>
                   </svg>
                 </div>
-                <div class="w-8 h-8 rounded-full border-2 border-white/40 bg-white/20 backdrop-blur flex items-center justify-center text-white font-semibold text-sm">杨</div>
+                <div class="w-8 h-8 rounded-full border-2 border-white/50 bg-white/20 backdrop-blur flex items-center justify-center text-white font-semibold text-sm" style="text-shadow:0 1px 3px rgba(0,0,0,0.2)">杨</div>
               </div>
 
-              <!-- ── 底部：下一条待办卡片（白色浮起） ── -->
-              <div class="absolute bottom-3 left-3 right-3 rounded-2xl bg-white/95 backdrop-blur p-3 flex items-center gap-3 shadow-soft">
-                <!-- 根据待办类型显示不同图标区域，此处：医疗类 -->
+              <!-- ── 底部：下一条待办卡片 ── -->
+              <div class="absolute bottom-3 left-3 right-3 rounded-2xl p-3 flex items-center gap-3" style="background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);box-shadow:0 4px 20px rgba(120,70,20,0.18);z-index:2">
                 <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style="background:linear-gradient(135deg,#F5E0CC,#EDD0B8)">
                   <span class="mi text-coral-700" style="font-size:22px">medication</span>
                 </div>
