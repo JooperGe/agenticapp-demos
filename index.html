@@ -128,40 +128,60 @@
                 <div class="font-serif text-xl font-bold text-ink-900">早，小杨</div>
               </div>
               <div class="flex items-center gap-2">
-                <!-- 今日进度环 28px，完全不打扰 -->
-                <div class="relative w-9 h-9" title="今日 3/5 完成">
-                  <svg width="36" height="36" viewBox="0 0 36 36" style="transform:rotate(-90deg)">
-                    <circle cx="18" cy="18" r="13" fill="none" stroke="#F8EADA" stroke-width="3"/>
-                    <circle cx="18" cy="18" r="13" fill="none" stroke="#E85D47" stroke-width="3"
-                      stroke-dasharray="48.9 32.7" stroke-linecap="round"/>
+                <!-- 太阳月相进度：P=3/5=0.6，shadow cx = 20-26×0.6 = 4.4 -->
+                <div title="今日完成 3/5">
+                  <svg width="40" height="40" viewBox="0 0 40 40">
+                    <defs>
+                      <clipPath id="sun-home">
+                        <circle cx="20" cy="20" r="13"/>
+                      </clipPath>
+                      <radialGradient id="sun-fill" cx="62%" cy="42%">
+                        <stop offset="0%" stop-color="#FFD580"/>
+                        <stop offset="55%" stop-color="#FFAA70"/>
+                        <stop offset="100%" stop-color="#F06040"/>
+                      </radialGradient>
+                    </defs>
+                    <!-- 外晕光 -->
+                    <circle cx="20" cy="20" r="16.5" fill="rgba(255,155,70,0.10)"/>
+                    <!-- 太阳圆盘 -->
+                    <circle cx="20" cy="20" r="13" fill="url(#sun-fill)"/>
+                    <!-- 阴影遮罩（月相原理：阴影圆向左移动 = 更多太阳被照亮） -->
+                    <circle cx="4.4" cy="20" r="13" fill="#FFFDFB" clip-path="url(#sun-home)"/>
+                    <!-- 光芒 8根，进度60%时透明度0.4，已有些许生气 -->
+                    <g stroke="#D96830" stroke-width="1.5" stroke-linecap="round" opacity="0.38">
+                      <line x1="20" y1="5"    x2="20" y2="2"/>
+                      <line x1="29.2" y1="7.8"  x2="31.3" y2="5.7"/>
+                      <line x1="35"   y1="20"   x2="38"   y2="20"/>
+                      <line x1="29.2" y1="32.2" x2="31.3" y2="34.3"/>
+                      <line x1="20"   y1="35"   x2="20"   y2="38"/>
+                      <line x1="10.8" y1="32.2" x2="8.7"  y2="34.3"/>
+                      <line x1="5"    y1="20"   x2="2"    y2="20"/>
+                      <line x1="10.8" y1="7.8"  x2="8.7"  y2="5.7"/>
+                    </g>
                   </svg>
-                  <div class="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-coral-700 leading-none">3/5</div>
                 </div>
                 <div class="w-10 h-10 rounded-full bg-gradient-to-br from-coral-300 to-coral-500 ring-soft flex items-center justify-center text-white font-semibold">杨</div>
               </div>
             </div>
 
-            <div class="rounded-2xl bg-gradient-to-br from-coral-50 to-cream-100 p-4 border hairline mb-4">
+            <!-- 进度边框卡片：conic-gradient border 绕行 60% 周长，从顶部顺时针淡入淡出 -->
+            <div class="rounded-2xl p-4 mb-4" style="
+              background:
+                linear-gradient(135deg,#FFF2EC,#FDF5ED) padding-box,
+                conic-gradient(
+                  from -90deg,
+                  #E85D47   0%,
+                  #FF9068  48%,
+                  rgba(232,93,71,0.18) 60%,
+                  rgba(43,33,64,0.06) 63%
+                ) border-box;
+              border: 1.5px solid transparent;">
               <div class="text-[11px] text-coral-700 font-medium tracking-wider">今天被惦记着 3 件事</div>
               <div class="mt-2 flex items-center gap-2">
                 <div class="avatar" style="background:#E85D47">妈</div>
                 <div class="avatar -ml-2" style="background:#5FB3A1">爸</div>
                 <div class="avatar -ml-2" style="background:#7CA8CC">姐</div>
                 <div class="text-xs text-ink-500 ml-1">都在等你的小进展</div>
-              </div>
-              <!-- 周 + 月进度 micro strip，紧凑不占高度 -->
-              <div class="mt-3 pt-2 border-t hairline flex items-center justify-between">
-                <div class="flex items-center gap-1">
-                  <span class="text-[9px] text-ink-400 mr-0.5">周</span>
-                  <span class="w-2 h-2 rounded-full bg-sage-500" title="周一 全完成"></span>
-                  <span class="w-2 h-2 rounded-full bg-sage-500" title="周二 全完成"></span>
-                  <span class="w-2 h-2 rounded-full bg-sage-300" title="周三 部分完成"></span>
-                  <span class="w-2 h-2 rounded-full border-[2px] border-coral-500 bg-coral-100" title="今天 进行中"></span>
-                  <span class="w-2 h-2 rounded-full bg-ink-200" title="周五 未开始"></span>
-                  <span class="w-2 h-2 rounded-full bg-ink-100" title="周六"></span>
-                  <span class="w-2 h-2 rounded-full bg-ink-100" title="周日"></span>
-                </div>
-                <span class="text-[9px] bg-white/80 text-ink-500 px-1.5 py-0.5 rounded-full border hairline">本月 68%</span>
               </div>
             </div>
 
