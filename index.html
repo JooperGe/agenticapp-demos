@@ -95,11 +95,12 @@
 
   <div class="mt-10 max-w-3xl">
     <h1 class="font-serif text-4xl md:text-5xl font-bold text-ink-900 leading-tight">
-      不是冰冷的清单，<br/>而是<span class="text-coral-600">被人惦记</span>的一天。
+      说一句话，<br/>就把<span class="text-coral-600">一整段牵挂</span>交给对方。
     </h1>
     <p class="mt-4 text-ink-500 leading-relaxed">
-      Nudge 是一款面向亲近关系的轻提醒 App。创建待办时，你只需自然地说出「帮妈妈预约体检」，
-      它就知道该通知谁；它不会追问「是否提前提醒」，而是在合适的时机，用一句轻声的话问你。
+      Nudge 以 <b class="text-ink-800">语音为主、文字为辅</b>。你像平时说话一样告诉它
+      「老公，下午把外面的衣服收回来，打扫一下家，我们 7 点到家，准备个粥就行」——
+      它会自动拆成三件小事、标好时间，同时<b class="text-ink-800">保留你的原话</b>发给对方，既省力，也不会误解。
     </p>
   </div>
 </header>
@@ -110,8 +111,8 @@
   <!-- Flow 1 : 首页 + 创建 + 智能联系人 -->
   <section class="mt-6">
     <div class="flex items-baseline gap-3 mb-6">
-      <span class="label">Flow 01</span>
-      <h2 class="font-serif text-2xl font-bold text-ink-800">今日一览 · 无感地选择联系人</h2>
+      <span class="label">Flow 01 · Secondary</span>
+      <h2 class="font-serif text-2xl font-bold text-ink-800">今日一览 · 文字输入作为次要方式</h2>
     </div>
 
     <div class="grid md:grid-cols-3 gap-10 place-items-center">
@@ -169,13 +170,21 @@
               </div>
             </div>
 
-            <!-- bottom bar -->
-            <div class="mt-3 rounded-full bg-ink-900 text-white px-2 py-2 flex items-center justify-between shadow-soft">
-              <button class="p-2 opacity-90"><span class="mi">today</span></button>
-              <button class="p-2 opacity-50"><span class="mi">inbox</span></button>
-              <button class="-my-5 w-12 h-12 rounded-full bg-gradient-to-br from-coral-400 to-coral-600 flex items-center justify-center shadow-chip"><span class="mi">add</span></button>
-              <button class="p-2 opacity-50"><span class="mi">people_alt</span></button>
-              <button class="p-2 opacity-50"><span class="mi">person_outline</span></button>
+            <!-- bottom bar : voice-first -->
+            <div class="mt-3 relative">
+              <div class="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-coral-700 font-medium whitespace-nowrap flex items-center gap-1 animate__animated animate__pulse animate__infinite animate__slower">
+                <span class="mi" style="font-size:12px">graphic_eq</span> 按住说一句，就能记下一整件事
+              </div>
+              <div class="rounded-full bg-ink-900 text-white px-2 py-2 flex items-center justify-between shadow-soft">
+                <button class="p-2 opacity-90"><span class="mi">today</span></button>
+                <button class="p-2 opacity-50"><span class="mi">inbox</span></button>
+                <button class="-my-6 w-16 h-16 rounded-full bg-gradient-to-br from-coral-400 to-coral-600 flex items-center justify-center shadow-chip ring-4 ring-coral-100 relative">
+                  <span class="absolute inset-0 rounded-full bg-coral-400/40 animate-ping"></span>
+                  <span class="mi text-white relative" style="font-size:28px">mic</span>
+                </button>
+                <button class="p-2 opacity-50"><span class="mi">edit_note</span></button>
+                <button class="p-2 opacity-50"><span class="mi">person_outline</span></button>
+              </div>
             </div>
           </div>
         </div>
@@ -331,10 +340,335 @@
     </div>
   </section>
 
-  <!-- Flow 2 : 联系人绑定 + 双端同步 -->
+  <!-- Flow 2 : 语音主路径 -->
   <section class="mt-28">
     <div class="flex items-baseline gap-3 mb-6">
-      <span class="label">Flow 02</span>
+      <span class="label">Flow 02 · Primary</span>
+      <h2 class="font-serif text-2xl font-bold text-ink-800">说一句话 · 一整段牵挂被拆成小事</h2>
+    </div>
+    <p class="text-sm text-ink-500 max-w-2xl mb-8 leading-relaxed">
+      语音是 Nudge 的主入口。你不需要像写清单那样一条一条敲 —— 就像平时对家人说话那样念一遍，
+      它会自动识别「对方」「每一件事」以及<b class="text-ink-800">三种时间：提醒 · 开工 · 到点</b>，
+      并把<b class="text-ink-800">你的原话以语音气泡的形式</b>一并发过去，既省力，也不会误解。
+    </p>
+
+    <div class="grid md:grid-cols-3 gap-10 place-items-center">
+
+      <!-- A : Recording in progress -->
+      <div>
+        <div class="phone shadow-phone">
+          <div class="statusbar"><span>18:42</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+          <div class="screen" style="background: radial-gradient(120% 70% at 50% 0%, #FFE2D4 0%, #FFFDFB 55%);">
+            <div class="flex items-center justify-between mb-2">
+              <button class="text-ink-500"><span class="mi">chevron_left</span></button>
+              <div class="text-xs text-ink-500">正在说…</div>
+              <button class="text-ink-500"><span class="mi">keyboard</span></button>
+            </div>
+            <div class="text-center text-[11px] text-coral-700 tracking-widest">REC · 00:18</div>
+
+            <!-- pulsing mic -->
+            <div class="relative flex items-center justify-center mt-6">
+              <span class="absolute w-40 h-40 rounded-full bg-coral-200/40 animate-ping"></span>
+              <span class="absolute w-28 h-28 rounded-full bg-coral-300/50"></span>
+              <span class="relative w-20 h-20 rounded-full bg-gradient-to-br from-coral-400 to-coral-600 flex items-center justify-center shadow-chip">
+                <span class="mi text-white" style="font-size:32px">mic</span>
+              </span>
+            </div>
+
+            <!-- live waveform -->
+            <div class="mt-6 flex items-end justify-center gap-[3px] h-10">
+              <span class="w-[3px] bg-coral-500 rounded-full" style="height:30%"></span>
+              <span class="w-[3px] bg-coral-500 rounded-full" style="height:55%"></span>
+              <span class="w-[3px] bg-coral-500 rounded-full" style="height:80%"></span>
+              <span class="w-[3px] bg-coral-500 rounded-full" style="height:40%"></span>
+              <span class="w-[3px] bg-coral-500 rounded-full" style="height:90%"></span>
+              <span class="w-[3px] bg-coral-500 rounded-full" style="height:60%"></span>
+              <span class="w-[3px] bg-coral-500 rounded-full" style="height:35%"></span>
+              <span class="w-[3px] bg-coral-500 rounded-full" style="height:75%"></span>
+              <span class="w-[3px] bg-coral-500 rounded-full" style="height:50%"></span>
+              <span class="w-[3px] bg-coral-500 rounded-full" style="height:85%"></span>
+              <span class="w-[3px] bg-coral-500 rounded-full" style="height:45%"></span>
+              <span class="w-[3px] bg-coral-500 rounded-full" style="height:65%"></span>
+              <span class="w-[3px] bg-coral-500 rounded-full" style="height:30%"></span>
+              <span class="w-[3px] bg-coral-500 rounded-full" style="height:55%"></span>
+              <span class="w-[3px] bg-coral-500 rounded-full" style="height:80%"></span>
+              <span class="w-[3px] bg-coral-500 rounded-full" style="height:40%"></span>
+              <span class="w-[3px] bg-coral-300 rounded-full" style="height:30%"></span>
+              <span class="w-[3px] bg-coral-300 rounded-full" style="height:20%"></span>
+              <span class="w-[3px] bg-coral-300 rounded-full" style="height:15%"></span>
+            </div>
+
+            <!-- live transcript -->
+            <div class="mt-6 rounded-3xl bg-white/80 border hairline p-4 shadow-soft">
+              <div class="text-[10px] text-ink-300 tracking-widest mb-1">实时识别</div>
+              <div class="text-[15px] leading-relaxed text-ink-800 font-serif">
+                老公，下午别忘了把在外面晾晒的衣服收回来，然后把家里打扫一下，我们大概7点到家，晚餐简单些给我们准备个粥吧<span class="caret"></span>
+              </div>
+            </div>
+
+            <div class="mt-auto">
+              <div class="text-center text-[11px] text-ink-500 mb-2">松开发送 · 上滑取消</div>
+              <div class="flex items-center justify-center gap-10">
+                <button class="w-12 h-12 rounded-full bg-white border hairline flex items-center justify-center shadow-soft"><span class="mi text-ink-500">close</span></button>
+                <button class="w-14 h-14 rounded-full bg-ink-900 text-white flex items-center justify-center shadow-soft"><span class="mi">stop</span></button>
+                <button class="w-12 h-12 rounded-full bg-white border hairline flex items-center justify-center shadow-soft"><span class="mi text-coral-600">send</span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">① 按住麦克风说话：实时转写 + 波形反馈，像发一条语音消息那样轻松。</p>
+      </div>
+
+      <!-- B : AI parsed result -->
+      <div>
+        <div class="phone shadow-phone">
+          <div class="statusbar"><span>18:42</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+          <div class="screen">
+            <div class="flex items-center justify-between mb-3">
+              <button class="text-ink-500 text-sm">重录</button>
+              <div class="text-xs text-ink-500">帮你整理好了</div>
+              <button class="text-ink-500"><span class="mi">more_horiz</span></button>
+            </div>
+
+            <!-- original quote (kept) -->
+            <div class="rounded-3xl bg-gradient-to-br from-coral-50 to-cream-50 p-4 border hairline">
+              <div class="flex items-center gap-2 mb-2">
+                <div class="avatar" style="background:#F47052;width:26px;height:26px;font-size:11px">我</div>
+                <div class="text-[11px] text-ink-500">你的原话 · 00:18</div>
+                <button class="ml-auto w-7 h-7 rounded-full bg-white border hairline flex items-center justify-center shadow-soft"><span class="mi text-coral-600" style="font-size:14px">play_arrow</span></button>
+              </div>
+              <!-- mini waveform -->
+              <div class="flex items-end gap-[2px] h-5 mb-2 opacity-80">
+                <span class="w-[2px] bg-coral-400 rounded" style="height:40%"></span>
+                <span class="w-[2px] bg-coral-400 rounded" style="height:70%"></span>
+                <span class="w-[2px] bg-coral-400 rounded" style="height:55%"></span>
+                <span class="w-[2px] bg-coral-400 rounded" style="height:85%"></span>
+                <span class="w-[2px] bg-coral-400 rounded" style="height:35%"></span>
+                <span class="w-[2px] bg-coral-400 rounded" style="height:65%"></span>
+                <span class="w-[2px] bg-coral-400 rounded" style="height:50%"></span>
+                <span class="w-[2px] bg-coral-400 rounded" style="height:80%"></span>
+                <span class="w-[2px] bg-coral-400 rounded" style="height:45%"></span>
+                <span class="w-[2px] bg-coral-400 rounded" style="height:70%"></span>
+                <span class="w-[2px] bg-coral-400 rounded" style="height:30%"></span>
+                <span class="w-[2px] bg-coral-400 rounded" style="height:60%"></span>
+                <span class="w-[2px] bg-coral-400 rounded" style="height:75%"></span>
+                <span class="w-[2px] bg-coral-400 rounded" style="height:40%"></span>
+                <span class="w-[2px] bg-coral-400 rounded" style="height:55%"></span>
+                <span class="w-[2px] bg-coral-400 rounded" style="height:85%"></span>
+                <span class="w-[2px] bg-coral-400 rounded" style="height:35%"></span>
+                <span class="w-[2px] bg-coral-400 rounded" style="height:50%"></span>
+              </div>
+              <div class="text-[12px] leading-relaxed text-ink-700">
+                「<span class="font-medium">老公</span>，下午别忘了把在外面晾晒的衣服收回来，然后把家里打扫一下，我们大概<span class="bg-coral-200/70 px-0.5 rounded">7 点</span>到家，晚餐简单些给我们准备个粥吧。」
+              </div>
+            </div>
+
+            <div class="mt-4 flex items-center justify-between">
+              <div class="label">识别为 3 件小事 · 发送给</div>
+              <div class="flex items-center gap-1.5">
+                <div class="avatar" style="background:#5FB3A1;width:22px;height:22px;font-size:10px">公</div>
+                <span class="text-[12px] text-ink-800 font-medium">老公</span>
+                <span class="mi text-ink-300" style="font-size:16px">edit</span>
+              </div>
+            </div>
+
+            <!-- parsed events -->
+            <div class="mt-3 space-y-2 flex-1">
+              <!-- legend -->
+              <div class="flex items-center gap-3 text-[10px] text-ink-500 px-1">
+                <span class="flex items-center gap-1"><span class="mi text-coral-600" style="font-size:12px">notifications_active</span>提醒</span>
+                <span class="flex items-center gap-1"><span class="mi text-sage-700" style="font-size:12px">play_arrow</span>开工</span>
+                <span class="flex items-center gap-1"><span class="mi text-ink-700" style="font-size:12px">flag</span>到点</span>
+              </div>
+
+              <!-- 收衣服：提醒=开工，到点即可 -->
+              <div class="rounded-2xl bg-white border hairline p-3 flex items-start gap-3">
+                <div class="w-9 h-9 rounded-xl bg-coral-100 flex items-center justify-center shrink-0"><span class="mi text-coral-600" style="font-size:18px">dry_cleaning</span></div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-ink-800">收阳台上的衣服</div>
+                  <!-- time track -->
+                  <div class="mt-1.5 flex items-center gap-1 text-[10px]">
+                    <span class="chip bg-coral-50 text-coral-700 px-1.5 py-0.5 gap-0.5"><span class="mi" style="font-size:10px">notifications_active</span>17:30</span>
+                    <span class="text-ink-300">—</span>
+                    <span class="chip bg-ink-50 text-ink-700 px-1.5 py-0.5 gap-0.5"><span class="mi" style="font-size:10px">flag</span>天黑前</span>
+                  </div>
+                </div>
+                <span class="mi text-ink-300" style="font-size:18px">tune</span>
+              </div>
+
+              <!-- 打扫：开工和到点之间有个窗口 -->
+              <div class="rounded-2xl bg-white border hairline p-3 flex items-start gap-3">
+                <div class="w-9 h-9 rounded-xl bg-sage-300/50 flex items-center justify-center shrink-0"><span class="mi text-sage-700" style="font-size:18px">cleaning_services</span></div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-ink-800">简单打扫一下家</div>
+                  <div class="mt-1.5 flex items-center gap-1 text-[10px]">
+                    <span class="chip bg-coral-50 text-coral-700 px-1.5 py-0.5 gap-0.5"><span class="mi" style="font-size:10px">notifications_active</span>18:00</span>
+                    <span class="text-ink-300">—</span>
+                    <span class="chip bg-sage-300/40 text-sage-700 px-1.5 py-0.5 gap-0.5"><span class="mi" style="font-size:10px">play_arrow</span>18:00</span>
+                    <span class="text-ink-300">—</span>
+                    <span class="chip bg-ink-50 text-ink-700 px-1.5 py-0.5 gap-0.5"><span class="mi" style="font-size:10px">flag</span>19:00</span>
+                  </div>
+                </div>
+                <span class="mi text-ink-300" style="font-size:18px">tune</span>
+              </div>
+
+              <!-- 煮粥：三段时间明显分离，下方一行 AI 说明 -->
+              <div class="rounded-2xl bg-gradient-to-br from-coral-50 to-cream-50 border-2 border-coral-200 p-3 flex items-start gap-3 relative">
+                <span class="absolute -top-2 right-3 text-[9px] bg-coral-600 text-white px-1.5 py-0.5 rounded-full tracking-wider shadow-chip">AI 反推了开工时间</span>
+                <div class="w-9 h-9 rounded-xl bg-cream-200 flex items-center justify-center shrink-0"><span class="mi text-coral-700" style="font-size:18px">soup_kitchen</span></div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-ink-800">准备一锅粥作晚餐</div>
+                  <div class="mt-1.5 flex items-center gap-1 text-[10px] flex-wrap">
+                    <span class="chip bg-coral-100 text-coral-700 px-1.5 py-0.5 gap-0.5"><span class="mi" style="font-size:10px">notifications_active</span>18:10</span>
+                    <span class="text-ink-300">→</span>
+                    <span class="chip bg-sage-300/60 text-sage-700 px-1.5 py-0.5 gap-0.5"><span class="mi" style="font-size:10px">play_arrow</span>18:15</span>
+                    <span class="text-ink-300">→</span>
+                    <span class="chip bg-ink-50 text-ink-700 px-1.5 py-0.5 gap-0.5"><span class="mi" style="font-size:10px">flag</span>19:00 到家</span>
+                  </div>
+                  <div class="mt-2 text-[11px] text-ink-500 flex items-center gap-1 leading-relaxed">
+                    <span class="mi text-coral-500" style="font-size:12px">auto_awesome</span>
+                    <span>白粥约需 <b class="text-ink-700">40 分钟</b>，提前 5 分钟叫你开火，刚好 7 点端上桌。</span>
+                  </div>
+                </div>
+                <span class="mi text-ink-300" style="font-size:18px">tune</span>
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <button class="w-full rounded-2xl py-3 bg-gradient-to-r from-coral-400 to-coral-600 text-white font-medium shadow-chip flex items-center justify-center gap-2">
+                <span class="mi" style="font-size:18px">send</span> 连同原话一起发给老公
+              </button>
+              <div class="text-center text-[11px] text-ink-300 mt-2">未保留原话会被标注，避免误解</div>
+            </div>
+          </div>
+        </div>
+        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">② AI 拆成 3 件小事，每件都带<b class="text-ink-800">「提醒 → 开工 → 到点」</b>三段时间；煮粥自动反推出开工点。</p>
+      </div>
+
+      <!-- C : Received with quote -->
+      <div>
+        <div class="phone shadow-phone">
+          <div class="statusbar"><span>18:43</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+          <div class="screen" style="background: linear-gradient(180deg,#FFFDFB 0%, #FDEBD2 100%);">
+            <div class="flex items-center justify-between mb-3">
+              <button class="text-ink-500"><span class="mi">chevron_left</span></button>
+              <div class="text-xs text-ink-500">来自 老婆</div>
+              <button class="text-ink-500"><span class="mi">notifications_none</span></button>
+            </div>
+
+            <!-- header of sender -->
+            <div class="flex items-center gap-3 mb-3">
+              <div class="avatar ring-soft" style="background:#E85D47;width:40px;height:40px;font-size:14px">婆</div>
+              <div class="flex-1">
+                <div class="text-sm font-medium text-ink-800">老婆给你发了 3 件小事</div>
+                <div class="text-[11px] text-ink-500">刚刚 · 轻点语音可以听她原话</div>
+              </div>
+            </div>
+
+            <!-- original voice bubble -->
+            <div class="rounded-3xl rounded-tl-md bg-white p-3 border hairline shadow-soft">
+              <div class="flex items-center gap-2">
+                <button class="w-9 h-9 rounded-full bg-coral-600 text-white flex items-center justify-center shadow-chip shrink-0"><span class="mi" style="font-size:18px">play_arrow</span></button>
+                <div class="flex-1">
+                  <div class="flex items-end gap-[2px] h-6">
+                    <span class="w-[2px] bg-coral-400 rounded" style="height:40%"></span>
+                    <span class="w-[2px] bg-coral-400 rounded" style="height:70%"></span>
+                    <span class="w-[2px] bg-coral-400 rounded" style="height:55%"></span>
+                    <span class="w-[2px] bg-coral-400 rounded" style="height:85%"></span>
+                    <span class="w-[2px] bg-coral-400 rounded" style="height:35%"></span>
+                    <span class="w-[2px] bg-coral-400 rounded" style="height:65%"></span>
+                    <span class="w-[2px] bg-coral-400 rounded" style="height:50%"></span>
+                    <span class="w-[2px] bg-coral-400 rounded" style="height:80%"></span>
+                    <span class="w-[2px] bg-coral-400 rounded" style="height:45%"></span>
+                    <span class="w-[2px] bg-coral-400 rounded" style="height:70%"></span>
+                    <span class="w-[2px] bg-coral-400 rounded" style="height:30%"></span>
+                    <span class="w-[2px] bg-coral-400 rounded" style="height:60%"></span>
+                    <span class="w-[2px] bg-coral-400 rounded" style="height:75%"></span>
+                    <span class="w-[2px] bg-coral-400 rounded" style="height:40%"></span>
+                    <span class="w-[2px] bg-coral-400 rounded" style="height:55%"></span>
+                    <span class="w-[2px] bg-coral-400 rounded" style="height:85%"></span>
+                    <span class="w-[2px] bg-coral-400 rounded" style="height:35%"></span>
+                    <span class="w-[2px] bg-coral-400 rounded" style="height:50%"></span>
+                  </div>
+                </div>
+                <span class="text-[11px] text-ink-500">00:18″</span>
+              </div>
+              <div class="mt-2 text-[12px] text-ink-700 leading-relaxed border-t hairline pt-2">
+                <span class="text-[10px] text-ink-300">转写：</span>
+                「老公，下午别忘了把在外面晾晒的衣服收回来，然后把家里打扫一下，我们大概 7 点到家，晚餐简单些给我们准备个粥吧。」
+              </div>
+            </div>
+
+            <!-- structured tasks -->
+            <div class="mt-4 flex items-center justify-between">
+              <span class="label">她希望你做的事</span>
+              <span class="text-[10px] text-ink-500 flex items-center gap-1"><span class="mi text-coral-600" style="font-size:11px">notifications_active</span>会在开工前轻声提醒你</span>
+            </div>
+            <div class="mt-2 space-y-2 flex-1">
+              <div class="rounded-2xl bg-white/90 border hairline p-3 flex items-start gap-3">
+                <div class="mt-1 w-5 h-5 rounded-full border-2 border-coral-400"></div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm text-ink-800">收阳台的衣服</div>
+                  <div class="mt-1 flex items-center gap-1 text-[10px]">
+                    <span class="chip bg-coral-50 text-coral-700 px-1.5 py-0.5 gap-0.5"><span class="mi" style="font-size:10px">notifications_active</span>17:30</span>
+                    <span class="text-ink-300">—</span>
+                    <span class="chip bg-ink-50 text-ink-700 px-1.5 py-0.5 gap-0.5"><span class="mi" style="font-size:10px">flag</span>天黑前</span>
+                  </div>
+                </div>
+                <span class="mi text-ink-300" style="font-size:18px">graphic_eq</span>
+              </div>
+              <div class="rounded-2xl bg-white/90 border hairline p-3 flex items-start gap-3">
+                <div class="mt-1 w-5 h-5 rounded-full border-2 border-coral-400"></div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm text-ink-800">打扫一下家</div>
+                  <div class="mt-1 flex items-center gap-1 text-[10px]">
+                    <span class="chip bg-coral-50 text-coral-700 px-1.5 py-0.5 gap-0.5"><span class="mi" style="font-size:10px">notifications_active</span>18:00</span>
+                    <span class="text-ink-300">—</span>
+                    <span class="chip bg-ink-50 text-ink-700 px-1.5 py-0.5 gap-0.5"><span class="mi" style="font-size:10px">flag</span>19:00 前</span>
+                  </div>
+                </div>
+                <span class="mi text-ink-300" style="font-size:18px">graphic_eq</span>
+              </div>
+              <div class="rounded-2xl bg-white/90 border-2 border-coral-200 p-3 flex items-start gap-3 shadow-soft">
+                <div class="mt-1 w-5 h-5 rounded-full border-2 border-coral-400"></div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-1.5">
+                    <div class="text-sm text-ink-800">准备一锅粥</div>
+                    <span class="text-[9px] bg-coral-600 text-white px-1 py-0.5 rounded-full">需提前动手</span>
+                  </div>
+                  <div class="mt-1 flex items-center gap-1 text-[10px] flex-wrap">
+                    <span class="chip bg-coral-100 text-coral-700 px-1.5 py-0.5 gap-0.5"><span class="mi" style="font-size:10px">notifications_active</span>18:10</span>
+                    <span class="text-ink-300">→</span>
+                    <span class="chip bg-sage-300/60 text-sage-700 px-1.5 py-0.5 gap-0.5"><span class="mi" style="font-size:10px">play_arrow</span>18:15 开火</span>
+                    <span class="text-ink-300">→</span>
+                    <span class="chip bg-ink-50 text-ink-700 px-1.5 py-0.5 gap-0.5"><span class="mi" style="font-size:10px">flag</span>19:00</span>
+                  </div>
+                  <div class="mt-1 text-[10px] text-ink-500">煮粥 40 分钟 · 到家正好能喝上</div>
+                </div>
+                <span class="mi text-ink-300" style="font-size:18px">graphic_eq</span>
+              </div>
+            </div>
+
+            <div class="mt-3 grid grid-cols-2 gap-2">
+              <button class="rounded-2xl py-2.5 bg-white border hairline text-[12px] text-ink-700 flex items-center justify-center gap-1">
+                <span class="mi" style="font-size:14px">mic</span>语音回一句
+              </button>
+              <button class="rounded-2xl py-2.5 bg-coral-600 text-white text-[12px] font-medium flex items-center justify-center gap-1 shadow-chip">
+                <span class="mi" style="font-size:14px">check</span>收到，都搞定
+              </button>
+            </div>
+          </div>
+        </div>
+        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">③ 对方收到：上方是你的<b class="text-ink-800">原话语音</b>（可播放 + 转写），下方是结构化任务。</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Flow 3 : 联系人绑定 + 双端同步 -->
+  <section class="mt-28">
+    <div class="flex items-baseline gap-3 mb-6">
+      <span class="label">Flow 03</span>
       <h2 class="font-serif text-2xl font-bold text-ink-800">绑定关系 · 待办在双方之间流动</h2>
     </div>
 
