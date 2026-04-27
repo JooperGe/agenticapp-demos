@@ -169,34 +169,6 @@
                 <div class="text-white/60 text-[10px] mt-1">下一件值得记住的事 ↓</div>
               </div>
 
-              <!-- ── 右上：月相太阳进度 + 头像 ── -->
-              <div class="absolute top-5 right-4 flex items-center gap-2" style="z-index:2">
-                <div title="今日完成 3/5">
-                  <svg width="28" height="28" viewBox="0 0 28 28">
-                    <defs>
-                      <clipPath id="sun-hero"><circle cx="14" cy="14" r="9"/></clipPath>
-                      <radialGradient id="sun-hero-fill" cx="62%" cy="42%">
-                        <stop offset="0%" stop-color="#FFD580"/>
-                        <stop offset="100%" stop-color="#F06040"/>
-                      </radialGradient>
-                    </defs>
-                    <circle cx="14" cy="14" r="11.5" fill="rgba(255,180,80,0.18)"/>
-                    <circle cx="14" cy="14" r="9" fill="url(#sun-hero-fill)"/>
-                    <circle cx="3.2" cy="14" r="9" fill="rgba(155,95,45,0.80)" clip-path="url(#sun-hero)"/>
-                    <g stroke="#D96830" stroke-width="1.2" stroke-linecap="round" opacity="0.55">
-                      <line x1="14" y1="3" x2="14" y2="1"/>
-                      <line x1="20.4" y1="5.6" x2="21.8" y2="4.2"/>
-                      <line x1="23" y1="14" x2="25" y2="14"/>
-                      <line x1="20.4" y1="22.4" x2="21.8" y2="23.8"/>
-                      <line x1="14" y1="25" x2="14" y2="27"/>
-                      <line x1="7.6" y1="22.4" x2="6.2" y2="23.8"/>
-                      <line x1="5" y1="14" x2="3" y2="14"/>
-                      <line x1="7.6" y1="5.6" x2="6.2" y2="4.2"/>
-                    </g>
-                  </svg>
-                </div>
-                <div class="w-8 h-8 rounded-full border-2 border-white/50 bg-white/20 backdrop-blur flex items-center justify-center text-white font-semibold text-sm" style="text-shadow:0 1px 3px rgba(0,0,0,0.2)">杨</div>
-              </div>
 
               <!-- ── 底部：下一条待办卡片 ── -->
               <div class="absolute bottom-3 left-3 right-3 rounded-2xl p-3 flex items-center gap-3" style="background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);box-shadow:0 4px 20px rgba(120,70,20,0.18);z-index:2">
@@ -605,6 +577,20 @@
                   </div>
                 </div>
                 <span class="mi text-ink-300" style="font-size:18px">tune</span>
+              </div>
+            </div>
+
+            <!-- 备注区域：可选，折叠展开 -->
+            <div class="mt-3 rounded-2xl bg-white border hairline overflow-hidden">
+              <button onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('.mi').textContent=this.nextElementSibling.classList.contains('hidden')?'add':'remove'" class="w-full flex items-center justify-between px-3 py-2.5">
+                <span class="flex items-center gap-1.5 text-[12px] text-ink-500">
+                  <span class="mi" style="font-size:15px">notes</span>添加备注
+                  <span class="text-[10px] text-ink-300">（可选）</span>
+                </span>
+                <span class="mi text-ink-300" style="font-size:16px">add</span>
+              </button>
+              <div class="hidden px-3 pb-3">
+                <textarea rows="3" placeholder="补充说明、注意事项、位置地址…" class="w-full text-[12px] text-ink-700 placeholder-ink-300 bg-cream-50 border hairline rounded-xl px-3 py-2 resize-none outline-none leading-relaxed focus:border-coral-300" style="font-family:inherit"></textarea>
               </div>
             </div>
 
