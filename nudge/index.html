@@ -146,96 +146,92 @@
 
     <div class="grid md:grid-cols-3 gap-10 place-items-center">
 
-      <!-- Screen: Today · "Golden Morning" warm redesign -->
+      <!-- Screen: Today -->
       <div>
-        <div class="phone shadow-phone animate__animated animate__fadeInUp" style="background:linear-gradient(170deg,#FFFAF2 0%,#FFF3E0 55%,#FFE9CC 100%);border-color:rgba(180,90,30,0.08);box-shadow:0 40px 80px -30px rgba(160,70,20,0.28),0 18px 40px -18px rgba(200,100,40,0.20)">
-          <div class="statusbar" style="color:rgba(44,21,8,0.60)"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+        <div class="phone shadow-phone animate__animated animate__fadeInUp">
+          <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+          <div class="screen">
+            <!--
+              Hero Banner · 最近一条待办
+              背景插图资源通过 CDN 动态下发，按待办类型匹配（医疗/运动/饮食/出行…）
+              用户无感知，产品迭代时逐步丰富插图库
+              当前：医疗类 hero-medical.jpg
+            -->
+            <div class="rounded-3xl overflow-hidden mb-4 relative" style="height:230px;background-image:url('./assets/hero-medical.jpg');background-size:cover;background-position:center right;">
 
-          <div class="screen" style="background:transparent">
+              <!-- 左侧文字区渐变遮罩，保证可读性 -->
+              <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(155,95,45,0.62) 0%,rgba(155,95,45,0.30) 52%,transparent 72%)"></div>
 
-            <!-- ── Header ── -->
-            <div class="flex items-end justify-between mb-5">
-              <div>
-                <div style="color:rgba(44,21,8,0.32);font-size:10px;letter-spacing:.09em;text-transform:uppercase">周一 · 晴</div>
-                <div style="color:#2C1508;font-family:'Noto Serif SC',serif;font-size:23px;font-weight:700;line-height:1.12;margin-top:3px">早，小杨</div>
+              <!-- ── 左上：问候文字 ── -->
+              <div class="absolute top-7 left-5" style="z-index:2">
+                <div class="text-white/70 text-[11px] tracking-wide">周一 · 晴</div>
+                <div class="text-white font-serif text-xl font-bold mt-0.5 leading-tight" style="text-shadow:0 1px 8px rgba(80,40,10,0.30)">早，小杨</div>
+                <div class="text-white/60 text-[10px] mt-1">下一件值得记住的事 ↓</div>
               </div>
-              <!-- Warm count badge -->
-              <div style="background:#2C1508;border-radius:16px;padding:7px 13px;text-align:center">
-                <div style="color:rgba(255,215,140,0.92);font-size:20px;font-weight:700;line-height:1">2</div>
-                <div style="color:rgba(255,195,90,0.45);font-size:9px;margin-top:1px;letter-spacing:.03em">/ 5 完成</div>
-              </div>
-            </div>
 
-            <!-- ── Main Focus Card ── -->
-            <div style="background:#FFFFFF;border-radius:26px;box-shadow:0 14px 40px rgba(160,60,20,0.13),0 4px 14px rgba(160,60,20,0.07);margin-bottom:11px;overflow:hidden">
-              <!-- Terracotta gradient top bar -->
-              <div style="height:4px;background:linear-gradient(90deg,#D4622E 0%,#E8962A 100%)"></div>
-              <div style="padding:17px 17px 16px">
-                <!-- Top: label + avatar -->
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px">
-                  <span style="background:#FFF0E8;color:#C0501E;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;letter-spacing:.05em">下一件要做的事</span>
-                  <div class="avatar" style="width:44px;height:44px;box-shadow:0 4px 14px rgba(160,60,20,0.22)">妈</div>
+
+              <!-- ── 底部：下一条待办卡片 ── -->
+              <div class="absolute bottom-3 left-3 right-3 rounded-2xl p-3 flex items-center gap-3" style="background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);box-shadow:0 4px 20px rgba(120,70,20,0.18);z-index:2">
+                <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style="background:linear-gradient(135deg,#F5E0CC,#EDD0B8)">
+                  <span class="mi text-coral-700" style="font-size:22px">medication</span>
                 </div>
-                <!-- Task name - large serif -->
-                <div style="color:#2C1508;font-family:'Noto Serif SC',serif;font-size:21px;font-weight:700;line-height:1.28;margin-bottom:11px">陪妈妈去复诊</div>
-                <!-- Time & location row -->
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:13px">
-                  <span style="display:inline-flex;align-items:center;gap:4px;color:rgba(44,21,8,0.55);font-size:12px">
-                    <span class="mi" style="font-size:14px;color:#D4622E">schedule</span>今天 10:30
-                  </span>
-                  <span style="color:rgba(44,21,8,0.18);font-size:14px">·</span>
-                  <span style="display:inline-flex;align-items:center;gap:4px;color:rgba(44,21,8,0.55);font-size:12px">
-                    <span class="mi" style="font-size:14px;color:#D4622E">place</span>市中心医院
-                  </span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-semibold text-ink-900 truncate">陪妈妈去复诊</div>
+                  <div class="text-[11px] text-ink-500 mt-0.5">今天 10:30 · 市中心医院</div>
                 </div>
-                <!-- Live sync status -->
-                <div style="background:#F4FBF6;border-radius:12px;padding:8px 11px;display:flex;align-items:center;gap:7px">
-                  <span style="width:7px;height:7px;border-radius:50%;background:#4BAE75;flex-shrink:0;box-shadow:0 0 7px rgba(75,174,117,0.55)"></span>
-                  <span style="color:#3A9060;font-size:11px;font-weight:500">妈妈已查看 · 10 分钟前</span>
+                <div class="flex flex-col items-end gap-1 shrink-0">
+                  <span class="text-[10px] bg-coral-100 text-coral-700 px-1.5 py-0.5 rounded-full font-medium">即将</span>
+                  <span class="mi text-ink-300" style="font-size:16px">chevron_right</span>
                 </div>
               </div>
+            </div><!-- /hero banner -->
+
+            <div class="label mb-2">上午</div>
+            <div class="space-y-2 flex-1">
+              <!-- todo card -->
+              <div class="rounded-2xl bg-white/80 border hairline p-3 flex gap-3 items-start">
+                <div class="mt-1 w-5 h-5 rounded-full border-2 border-coral-400"></div>
+                <div class="flex-1">
+                  <div class="text-sm font-medium text-ink-800">陪妈妈去复诊</div>
+                  <div class="text-[11px] text-ink-500 mt-0.5">10:30 · 市中心医院 · 提前一晚提醒</div>
+                  <div class="mt-2 flex items-center gap-1.5">
+                    <div class="avatar" style="width:20px;height:20px;font-size:10px;background:#E85D47">妈</div>
+                    <span class="text-[11px] text-sage-700 flex items-center gap-1"><span class="dot bg-sage-500"></span>妈妈已查看 · 10分钟前</span>
+                  </div>
+                </div>
+              </div>
+              <div class="rounded-2xl bg-white/80 border hairline p-3 flex gap-3 items-start">
+                <div class="mt-1 w-5 h-5 rounded-full bg-sage-500 flex items-center justify-center"><span class="mi text-white" style="font-size:14px">check</span></div>
+                <div class="flex-1 opacity-70">
+                  <div class="text-sm font-medium text-ink-800 line-through">给爸爸买降压药</div>
+                  <div class="text-[11px] text-ink-500 mt-0.5">爸爸 · 刚刚标记完成</div>
+                </div>
+              </div>
+              <div class="rounded-2xl bg-white/80 border hairline p-3 flex gap-3 items-start">
+                <div class="mt-1 w-5 h-5 rounded-full border-2 border-ink-100"></div>
+                <div class="flex-1">
+                  <div class="text-sm font-medium text-ink-800">把周末的照片发给姐姐</div>
+                  <div class="text-[11px] text-ink-500 mt-0.5">今晚 · 仅自己</div>
+                </div>
+              </div>
             </div>
 
-            <!-- ── Pending task card ── -->
-            <div style="background:rgba(255,248,236,0.95);border:1px solid rgba(180,90,30,0.09);border-radius:20px;padding:12px 14px;display:flex;align-items:center;gap:10px;margin-bottom:8px">
-              <div style="width:21px;height:21px;border-radius:50%;border:2px solid rgba(212,98,46,0.38);flex-shrink:0"></div>
-              <div style="flex:1;min-width:0">
-                <div style="color:#2C1508;font-size:13px;font-weight:500">把照片发给姐姐</div>
-                <div style="color:rgba(44,21,8,0.36);font-size:10px;margin-top:2px">今晚 · 仅自己</div>
+            <!-- bottom bar : voice-first -->
+            <div class="mt-3 relative">
+              <div class="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-coral-700 font-medium whitespace-nowrap flex items-center gap-1 animate__animated animate__pulse animate__infinite animate__slower">
+                <span class="mi" style="font-size:12px">graphic_eq</span> 按住说一句，就能记下一整件事
               </div>
-              <div class="avatar" style="width:26px;height:26px"></div>
-            </div>
-
-            <!-- ── Completed task card ── -->
-            <div style="background:rgba(242,250,245,0.80);border:1px solid rgba(75,174,117,0.10);border-radius:20px;padding:12px 14px;display:flex;align-items:center;gap:10px">
-              <div style="width:21px;height:21px;border-radius:50%;background:#4BAE75;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                <span class="mi" style="color:white;font-size:13px">check</span>
-              </div>
-              <div style="flex:1;min-width:0">
-                <div style="color:rgba(44,21,8,0.30);font-size:13px;text-decoration:line-through">给爸爸买降压药</div>
-                <div style="color:rgba(44,21,8,0.22);font-size:10px;margin-top:2px">爸爸 · 刚刚完成</div>
-              </div>
-              <div class="avatar" style="width:26px;height:26px;opacity:0.45">爸</div>
-            </div>
-
-            <!-- ── Bottom nav ── -->
-            <div style="margin-top:auto;padding-top:13px;position:relative">
-              <div style="position:absolute;top:-3px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:10px;color:#C4521E;font-weight:500;display:flex;align-items:center;gap:4px">
-                <span class="mi" style="font-size:12px">graphic_eq</span>按住说一句，就能记下一整件事
-              </div>
-              <div style="background:#2C1508;border-radius:999px;padding:8px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 10px 28px rgba(44,21,8,0.22)">
-                <button style="padding:8px"><span class="mi" style="color:rgba(255,215,140,0.90)">today</span></button>
-                <button style="padding:8px"><span class="mi" style="color:rgba(255,215,140,0.32)">inbox</span></button>
-                <!-- Mic FAB -->
-                <button style="width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,#F47052,#D93020);display:flex;align-items:center;justify-content:center;margin:-14px 0;position:relative;box-shadow:0 6px 24px rgba(210,90,30,0.52)">
-                  <span class="absolute inset-0 rounded-full bg-coral-400/30 animate-ping"></span>
-                  <span class="mi" style="color:white;font-size:26px;position:relative">mic</span>
+              <div class="rounded-full bg-ink-900 text-white px-2 py-2 flex items-center justify-between shadow-soft">
+                <button class="p-2 opacity-90"><span class="mi">today</span></button>
+                <button class="p-2 opacity-50"><span class="mi">inbox</span></button>
+                <button class="-my-6 w-16 h-16 rounded-full bg-gradient-to-br from-coral-400 to-coral-600 flex items-center justify-center shadow-chip ring-4 ring-coral-100 relative">
+                  <span class="absolute inset-0 rounded-full bg-coral-400/40 animate-ping"></span>
+                  <span class="mi text-white relative" style="font-size:28px">mic</span>
                 </button>
-                <button style="padding:8px"><span class="mi" style="color:rgba(255,215,140,0.32)">edit_note</span></button>
-                <button style="padding:8px"><span class="mi" style="color:rgba(255,215,140,0.32)">person_outline</span></button>
+                <button class="p-2 opacity-50"><span class="mi">edit_note</span></button>
+                <button class="p-2 opacity-50"><span class="mi">person_outline</span></button>
               </div>
             </div>
-
           </div>
         </div>
         <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">① 今日首页：每个待办都有「人」的温度，状态在双方之间实时流动。</p>
