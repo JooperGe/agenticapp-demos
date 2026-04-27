@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nudge · 温柔的提醒</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@500;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream:  { 50:'#FFFBF6', 100:'#FDF5ED', 200:'#F8EADA', 300:'#EFD9C0' },
+            coral:  { 50:'#FFF2EC', 100:'#FFE2D4', 200:'#FFC6AC', 300:'#FFA684', 400:'#FF8A65', 500:'#F47052', 600:'#E85D47', 700:'#C54632', 800:'#9A3524', 900:'#6E2418' },
+            ink:    { 50:'#F5F3F7', 100:'#E8E5EC', 300:'#A8A1B5', 500:'#6B6377', 700:'#3D3550', 800:'#2B2140', 900:'#1A1330' },
+            sage:   { 300:'#9ED6C8', 500:'#5FB3A1', 700:'#3B8A79' },
+            sky:    { 300:'#BBD4EA', 500:'#7CA8CC' }
+          },
+          fontFamily: {
+            sans: ['Inter','PingFang SC','system-ui','sans-serif'],
+            serif: ['"Noto Serif SC"','serif']
+          },
+          boxShadow: {
+            soft:  '0 10px 30px -12px rgba(232,93,71,.18), 0 4px 12px -4px rgba(43,33,64,.06)',
+            phone: '0 40px 80px -30px rgba(43,33,64,.35), 0 18px 40px -18px rgba(232,93,71,.25)',
+            chip:  '0 6px 16px -6px rgba(232,93,71,.35)'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html,body{ background:#FBF6EE; color:#2B2140; }
+    body{
+      background-image:
+        radial-gradient(1200px 600px at 10% -10%, #FFE2D4 0%, transparent 60%),
+        radial-gradient(900px 500px at 110% 10%, #FDEBD2 0%, transparent 55%),
+        radial-gradient(800px 500px at 50% 110%, #F5EAD8 0%, transparent 60%);
+    }
+    .phone{
+      width: 340px; height: 700px; border-radius: 44px;
+      background: linear-gradient(180deg,#FFFDFB 0%, #FFF6EC 100%);
+      border: 1px solid rgba(43,33,64,.06);
+      position: relative; overflow: hidden;
+    }
+    .phone::before{
+      content:""; position:absolute; top:14px; left:50%; transform:translateX(-50%);
+      width:110px; height:26px; border-radius:999px; background:#1A1330; z-index:40;
+    }
+    .screen{ position:absolute; inset:0; padding: 54px 18px 20px; display:flex; flex-direction:column; }
+    .statusbar{ position:absolute; top:20px; left:28px; right:28px; display:flex; justify-content:space-between; font-size:12px; color:#2B2140; font-weight:600; z-index:30; }
+    .caption{ letter-spacing:.02em; }
+    .hairline{ border-color: rgba(43,33,64,.06); }
+    .mi{ font-family:'Material Icons Round'; font-weight: normal; font-style: normal; font-size:20px; line-height:1; letter-spacing:normal; text-transform:none; display:inline-block; white-space:nowrap; word-wrap:normal; direction:ltr; -webkit-font-feature-settings:'liga'; -webkit-font-smoothing:antialiased; }
+    .avatar{ width:32px; height:32px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; color:white; font-size:12px; font-weight:600; box-shadow: 0 2px 6px rgba(43,33,64,.15); }
+    .chip{ display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:500; }
+    .dot{ width:6px; height:6px; border-radius:999px; display:inline-block; }
+    .caret{ width:2px; height:18px; background:#E85D47; display:inline-block; vertical-align:middle; animation: blink 1s steps(1) infinite; margin-left:2px; border-radius:2px; }
+    @keyframes blink{ 50%{ opacity:0 } }
+    .ring-soft{ box-shadow: 0 0 0 3px #FFE2D4; }
+    .scroll-fade{
+      mask-image: linear-gradient(180deg, transparent 0%, #000 6%, #000 94%, transparent 100%);
+    }
+    .float{ animation: float 6s ease-in-out infinite; }
+    @keyframes float{ 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(-8px) } }
+    .swipe-hint{
+      background: repeating-linear-gradient(90deg, rgba(232,93,71,.0) 0, rgba(232,93,71,.0) 6px, rgba(232,93,71,.4) 6px, rgba(232,93,71,.4) 10px);
+      height:2px; border-radius:2px;
+    }
+    .label{ font-size:11px; color:#6B6377; letter-spacing:.08em; text-transform:uppercase; }
+  </style>
+</head>
+<body class="font-sans antialiased">
+
+<!-- ================= Header ================= -->
+<header class="max-w-7xl mx-auto px-8 pt-14 pb-6">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-coral-400 to-coral-600 shadow-chip flex items-center justify-center">
+        <span class="mi text-white" style="font-size:22px">favorite_border</span>
+      </div>
+      <div>
+        <div class="font-serif text-2xl font-bold text-ink-800 leading-tight">Nudge</div>
+        <div class="text-xs text-ink-500 caption">温柔的提醒 · 让待办在人与人之间流动</div>
+      </div>
+    </div>
+    <div class="hidden md:flex items-center gap-2 text-xs text-ink-500">
+      <span class="chip bg-cream-100 text-ink-700"><span class="dot bg-sage-500"></span> Design Preview</span>
+      <span class="chip bg-cream-100 text-ink-700">v0.1 · Mobile H5</span>
+    </div>
+  </div>
+
+  <div class="mt-10 max-w-3xl">
+    <h1 class="font-serif text-4xl md:text-5xl font-bold text-ink-900 leading-tight">
+      不是冰冷的清单，<br/>而是<span class="text-coral-600">被人惦记</span>的一天。
+    </h1>
+    <p class="mt-4 text-ink-500 leading-relaxed">
+      Nudge 是一款面向亲近关系的轻提醒 App。创建待办时，你只需自然地说出「帮妈妈预约体检」，
+      它就知道该通知谁；它不会追问「是否提前提醒」，而是在合适的时机，用一句轻声的话问你。
+    </p>
+  </div>
+</header>
+
+<!-- ================= Showcase ================= -->
+<main class="max-w-7xl mx-auto px-8 pb-24">
+
+  <!-- Flow 1 : 首页 + 创建 + 智能联系人 -->
+  <section class="mt-6">
+    <div class="flex items-baseline gap-3 mb-6">
+      <span class="label">Flow 01</span>
+      <h2 class="font-serif text-2xl font-bold text-ink-800">今日一览 · 无感地选择联系人</h2>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-10 place-items-center">
+
+      <!-- Screen: Today -->
+      <div>
+        <div class="phone shadow-phone animate__animated animate__fadeInUp">
+          <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+          <div class="screen">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <div class="text-xs text-ink-500">周一 · 晴</div>
+                <div class="font-serif text-xl font-bold text-ink-900">早，小杨</div>
+              </div>
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-coral-300 to-coral-500 ring-soft flex items-center justify-center text-white font-semibold">杨</div>
+            </div>
+
+            <div class="rounded-2xl bg-gradient-to-br from-coral-50 to-cream-100 p-4 border hairline mb-4">
+              <div class="text-[11px] text-coral-700 font-medium tracking-wider">今天被惦记着 3 件事</div>
+              <div class="mt-2 flex items-center gap-2">
+                <div class="avatar" style="background:#E85D47">妈</div>
+                <div class="avatar -ml-2" style="background:#5FB3A1">爸</div>
+                <div class="avatar -ml-2" style="background:#7CA8CC">姐</div>
+                <div class="text-xs text-ink-500 ml-1">都在等你的小进展</div>
+              </div>
+            </div>
+
+            <div class="label mb-2">上午</div>
+            <div class="space-y-2 flex-1">
+              <!-- todo card -->
+              <div class="rounded-2xl bg-white/80 border hairline p-3 flex gap-3 items-start">
+                <div class="mt-1 w-5 h-5 rounded-full border-2 border-coral-400"></div>
+                <div class="flex-1">
+                  <div class="text-sm font-medium text-ink-800">陪妈妈去复诊</div>
+                  <div class="text-[11px] text-ink-500 mt-0.5">10:30 · 市中心医院 · 提前一晚提醒</div>
+                  <div class="mt-2 flex items-center gap-1.5">
+                    <div class="avatar" style="width:20px;height:20px;font-size:10px;background:#E85D47">妈</div>
+                    <span class="text-[11px] text-sage-700 flex items-center gap-1"><span class="dot bg-sage-500"></span>妈妈已查看 · 10分钟前</span>
+                  </div>
+                </div>
+              </div>
+              <div class="rounded-2xl bg-white/80 border hairline p-3 flex gap-3 items-start">
+                <div class="mt-1 w-5 h-5 rounded-full bg-sage-500 flex items-center justify-center"><span class="mi text-white" style="font-size:14px">check</span></div>
+                <div class="flex-1 opacity-70">
+                  <div class="text-sm font-medium text-ink-800 line-through">给爸爸买降压药</div>
+                  <div class="text-[11px] text-ink-500 mt-0.5">爸爸 · 刚刚标记完成</div>
+                </div>
+              </div>
+              <div class="rounded-2xl bg-white/80 border hairline p-3 flex gap-3 items-start">
+                <div class="mt-1 w-5 h-5 rounded-full border-2 border-ink-100"></div>
+                <div class="flex-1">
+                  <div class="text-sm font-medium text-ink-800">把周末的照片发给姐姐</div>
+                  <div class="text-[11px] text-ink-500 mt-0.5">今晚 · 仅自己</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- bottom bar -->
+            <div class="mt-3 rounded-full bg-ink-900 text-white px-2 py-2 flex items-center justify-between shadow-soft">
+              <button class="p-2 opacity-90"><span class="mi">today</span></button>
+              <button class="p-2 opacity-50"><span class="mi">inbox</span></button>
+              <button class="-my-5 w-12 h-12 rounded-full bg-gradient-to-br from-coral-400 to-coral-600 flex items-center justify-center shadow-chip"><span class="mi">add</span></button>
+              <button class="p-2 opacity-50"><span class="mi">people_alt</span></button>
+              <button class="p-2 opacity-50"><span class="mi">person_outline</span></button>
+            </div>
+          </div>
+        </div>
+        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">① 今日首页：每个待办都有「人」的温度，状态在双方之间实时流动。</p>
+      </div>
+
+      <!-- Screen: Create - smart @ -->
+      <div>
+        <div class="phone shadow-phone animate__animated animate__fadeInUp" style="animation-delay:.1s">
+          <div class="statusbar"><span>9:42</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+          <div class="screen">
+            <div class="flex items-center justify-between mb-3">
+              <button class="text-ink-500 text-sm">取消</button>
+              <div class="text-xs text-ink-500">新的一件小事</div>
+              <button class="text-coral-600 text-sm font-semibold opacity-40">完成</button>
+            </div>
+
+            <div class="rounded-3xl bg-white p-4 border hairline shadow-soft">
+              <div class="text-[22px] leading-snug font-serif text-ink-900">
+                帮 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-coral-100 text-coral-700 text-[18px] font-medium">@妈妈</span> 预约下周的体检<span class="caret"></span>
+              </div>
+              <div class="mt-3 text-[11px] text-ink-500 flex items-center gap-1.5">
+                <span class="mi text-sage-500" style="font-size:14px">auto_awesome</span>
+                已自动识别「妈妈」为这条的相关人
+              </div>
+            </div>
+
+            <!-- suggestion row, frictionless -->
+            <div class="mt-5">
+              <div class="label mb-2 flex items-center justify-between">
+                <span>最近在一起</span>
+                <span class="text-[10px] text-ink-300 normal-case tracking-normal">轻点头像即可替换</span>
+              </div>
+              <div class="flex items-center gap-3 overflow-x-auto">
+                <div class="flex flex-col items-center gap-1">
+                  <div class="avatar ring-soft" style="background:#E85D47;width:48px;height:48px;font-size:16px">妈</div>
+                  <span class="text-[10px] text-coral-700 font-medium">已选</span>
+                </div>
+                <div class="flex flex-col items-center gap-1">
+                  <div class="avatar" style="background:#5FB3A1;width:48px;height:48px;font-size:16px">爸</div>
+                  <span class="text-[10px] text-ink-500">爸</span>
+                </div>
+                <div class="flex flex-col items-center gap-1">
+                  <div class="avatar" style="background:#7CA8CC;width:48px;height:48px;font-size:16px">姐</div>
+                  <span class="text-[10px] text-ink-500">姐</span>
+                </div>
+                <div class="flex flex-col items-center gap-1">
+                  <div class="avatar" style="background:#C54632;width:48px;height:48px;font-size:16px">林</div>
+                  <span class="text-[10px] text-ink-500">林琛</span>
+                </div>
+                <div class="flex flex-col items-center gap-1">
+                  <div class="avatar bg-cream-200 text-ink-500" style="width:48px;height:48px;font-size:16px"><span class="mi" style="font-size:20px">more_horiz</span></div>
+                  <span class="text-[10px] text-ink-300">更多</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- quick meta -->
+            <div class="mt-6 space-y-2">
+              <div class="rounded-2xl bg-cream-100/70 border hairline p-3 flex items-center gap-3">
+                <span class="mi text-coral-600">schedule</span>
+                <div class="flex-1">
+                  <div class="text-sm text-ink-800">下周四 · 上午</div>
+                  <div class="text-[11px] text-ink-500">由你说出的「下周」自动排期</div>
+                </div>
+                <span class="mi text-ink-300" style="font-size:18px">chevron_right</span>
+              </div>
+              <div class="rounded-2xl bg-cream-100/70 border hairline p-3 flex items-center gap-3">
+                <span class="mi text-coral-600">place</span>
+                <div class="flex-1">
+                  <div class="text-sm text-ink-800">不设置地点</div>
+                </div>
+                <span class="mi text-ink-300" style="font-size:18px">chevron_right</span>
+              </div>
+            </div>
+
+            <div class="mt-auto">
+              <button class="w-full rounded-2xl py-3 bg-gradient-to-r from-coral-400 to-coral-600 text-white font-medium shadow-chip">
+                记下 · 轻轻告诉妈妈
+              </button>
+              <div class="text-center text-[11px] text-ink-300 mt-2">妈妈会看到「来自小杨的一件小事」</div>
+            </div>
+          </div>
+        </div>
+        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">② 创建：自然语言识别相关人 + 常用联系人头像一键替换，<b class="text-ink-800">没有弹窗、没有列表</b>。</p>
+      </div>
+
+      <!-- Screen: Gentle reminder question -->
+      <div>
+        <div class="phone shadow-phone animate__animated animate__fadeInUp" style="animation-delay:.2s">
+          <div class="statusbar"><span>9:43</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+          <div class="screen">
+            <div class="flex items-center justify-between mb-3">
+              <button class="text-ink-500 text-sm">取消</button>
+              <div class="text-xs text-ink-500">新的一件小事</div>
+              <button class="text-coral-600 text-sm font-semibold">完成</button>
+            </div>
+
+            <div class="rounded-3xl bg-white p-4 border hairline shadow-soft">
+              <div class="text-[18px] leading-snug font-serif text-ink-900">
+                帮 <span class="text-coral-700 font-medium">@妈妈</span> 预约下周的体检
+              </div>
+              <div class="mt-2 flex items-center gap-2 text-[11px] text-ink-500">
+                <span class="mi" style="font-size:14px;color:#5FB3A1">schedule</span>
+                下周四 10:00 · 距今 4 天
+              </div>
+            </div>
+
+            <!-- The humanized nudge: appears ONLY because there is a time + distance worth it -->
+            <div class="mt-5 animate__animated animate__fadeIn">
+              <div class="rounded-3xl p-4 border hairline bg-gradient-to-br from-coral-50 to-cream-50 relative overflow-hidden">
+                <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-coral-200/40 float"></div>
+                <div class="absolute -right-2 top-10 w-10 h-10 rounded-full bg-coral-300/40 float" style="animation-delay:1s"></div>
+                <div class="relative">
+                  <div class="flex items-center gap-2 mb-1">
+                    <div class="w-7 h-7 rounded-full bg-white flex items-center justify-center shadow-soft">
+                      <span class="mi text-coral-600" style="font-size:16px">favorite</span>
+                    </div>
+                    <span class="text-[11px] text-coral-700 font-medium">Nudge 小声问一句</span>
+                  </div>
+                  <div class="font-serif text-[18px] text-ink-900 leading-snug">
+                    还有 4 天才到，<br/>要不要<span class="text-coral-700">提前一晚</span>先提醒你？
+                  </div>
+                  <div class="text-[12px] text-ink-500 mt-2 leading-relaxed">
+                    这种和身体有关的事，前一天晚上知道会更安心。你不选，我们就不打扰。
+                  </div>
+                  <div class="mt-4 flex items-center gap-2">
+                    <button class="flex-1 rounded-2xl py-2.5 bg-coral-600 text-white text-sm font-medium shadow-chip flex items-center justify-center gap-1">
+                      <span class="mi" style="font-size:16px">check</span> 好，前一晚 21:00
+                    </button>
+                    <button class="rounded-2xl py-2.5 px-3 border hairline text-ink-500 text-sm">再说</button>
+                  </div>
+                  <button class="mt-2 w-full text-center text-[11px] text-ink-300">不用提前，到点再说</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- why this copy -->
+            <div class="mt-5 rounded-2xl bg-white/60 border hairline p-3">
+              <div class="text-[11px] text-ink-500 leading-relaxed flex gap-2">
+                <span class="mi text-sage-500" style="font-size:14px">lightbulb</span>
+                <span>这个问题只在「时间较远」或「事情较重」时出现一次，永远不会弹第二次。</span>
+              </div>
+            </div>
+
+            <div class="mt-auto text-center text-[11px] text-ink-300">按住屏幕底部向下滑可收起</div>
+            <div class="mx-auto mt-2 w-28 h-1 rounded-full bg-ink-100"></div>
+          </div>
+        </div>
+        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">③ 提前提醒：不是冷冰冰的开关，而是一句<b class="text-ink-800">被情境触发的轻问</b>。</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Flow 2 : 联系人绑定 + 双端同步 -->
+  <section class="mt-28">
+    <div class="flex items-baseline gap-3 mb-6">
+      <span class="label">Flow 02</span>
+      <h2 class="font-serif text-2xl font-bold text-ink-800">绑定关系 · 待办在双方之间流动</h2>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-10 place-items-center">
+
+      <!-- Contacts -->
+      <div>
+        <div class="phone shadow-phone">
+          <div class="statusbar"><span>9:44</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+          <div class="screen">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <div class="text-xs text-ink-500">我的</div>
+                <div class="font-serif text-xl font-bold text-ink-900">被我惦记的人</div>
+              </div>
+              <button class="w-9 h-9 rounded-full bg-cream-200 flex items-center justify-center"><span class="mi text-ink-700" style="font-size:18px">person_add_alt</span></button>
+            </div>
+
+            <div class="rounded-2xl bg-gradient-to-br from-sage-300/40 to-cream-100 p-4 border hairline mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-full bg-white flex items-center justify-center shadow-soft">
+                  <span class="mi text-sage-700">link</span>
+                </div>
+                <div class="flex-1">
+                  <div class="text-sm font-medium text-ink-800">家里 3 个人已经绑定</div>
+                  <div class="text-[11px] text-ink-500">状态会实时同步，互相看得到彼此的小进度</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="label mb-2">家人</div>
+            <div class="space-y-2 flex-1 scroll-fade overflow-hidden">
+              <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-cream-100">
+                <div class="relative">
+                  <div class="avatar" style="background:#E85D47;width:40px;height:40px;font-size:14px">妈</div>
+                  <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-sage-500 border-2 border-white"></span>
+                </div>
+                <div class="flex-1">
+                  <div class="text-sm font-medium text-ink-800">妈妈</div>
+                  <div class="text-[11px] text-ink-500">已绑定 · 刚刚查看了你</div>
+                </div>
+                <span class="chip bg-coral-50 text-coral-700 text-[10px]">3 件待办</span>
+              </div>
+              <div class="flex items-center gap-3 p-2 rounded-xl">
+                <div class="relative">
+                  <div class="avatar" style="background:#5FB3A1;width:40px;height:40px;font-size:14px">爸</div>
+                  <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-sage-500 border-2 border-white"></span>
+                </div>
+                <div class="flex-1">
+                  <div class="text-sm font-medium text-ink-800">爸爸</div>
+                  <div class="text-[11px] text-ink-500">已绑定 · 今天完成了 1 件</div>
+                </div>
+                <span class="chip bg-sage-300/40 text-sage-700 text-[10px]">在一起</span>
+              </div>
+              <div class="flex items-center gap-3 p-2 rounded-xl">
+                <div class="relative">
+                  <div class="avatar" style="background:#7CA8CC;width:40px;height:40px;font-size:14px">姐</div>
+                  <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-ink-300 border-2 border-white"></span>
+                </div>
+                <div class="flex-1">
+                  <div class="text-sm font-medium text-ink-800">姐姐</div>
+                  <div class="text-[11px] text-ink-500">已绑定 · 2 小时前在线</div>
+                </div>
+              </div>
+
+              <div class="label mt-4 mb-1">朋友</div>
+              <div class="flex items-center gap-3 p-2 rounded-xl">
+                <div class="avatar" style="background:#C54632;width:40px;height:40px;font-size:14px">林</div>
+                <div class="flex-1">
+                  <div class="text-sm font-medium text-ink-800">林琛</div>
+                  <div class="text-[11px] text-ink-500">等待对方接受邀请…</div>
+                </div>
+                <button class="chip bg-cream-200 text-ink-700 text-[10px]">重发</button>
+              </div>
+              <div class="flex items-center gap-3 p-2 rounded-xl opacity-70">
+                <div class="avatar bg-cream-200 text-ink-500" style="width:40px;height:40px;font-size:14px"><span class="mi" style="font-size:18px">contacts</span></div>
+                <div class="flex-1">
+                  <div class="text-sm font-medium text-ink-700">从通讯录悄悄邀请</div>
+                  <div class="text-[11px] text-ink-500">不会打扰，只发一条链接</div>
+                </div>
+                <span class="mi text-ink-300">chevron_right</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">④ 联系人：一次绑定，在线状态、互相可见的待办数量都在。</p>
+      </div>
+
+      <!-- Creator view -->
+      <div>
+        <div class="phone shadow-phone">
+          <div class="statusbar"><span>9:45</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+          <div class="screen">
+            <div class="flex items-center justify-between mb-3">
+              <button class="text-ink-500"><span class="mi">chevron_left</span></button>
+              <div class="text-xs text-ink-500">我发出的</div>
+              <button class="text-ink-500"><span class="mi">more_horiz</span></button>
+            </div>
+
+            <div class="rounded-3xl p-4 bg-white border hairline shadow-soft">
+              <div class="text-[11px] text-coral-700 font-medium tracking-wider">发送给</div>
+              <div class="mt-1 flex items-center gap-2">
+                <div class="avatar" style="background:#E85D47">妈</div>
+                <div>
+                  <div class="text-sm font-medium text-ink-800">妈妈</div>
+                  <div class="text-[10px] text-sage-700 flex items-center gap-1"><span class="dot bg-sage-500"></span>在线</div>
+                </div>
+              </div>
+              <div class="mt-3 font-serif text-[18px] text-ink-900 leading-snug">陪妈妈去复诊</div>
+              <div class="mt-1 text-[12px] text-ink-500 flex items-center gap-1"><span class="mi" style="font-size:14px">schedule</span>今天 10:30 · 市中心医院</div>
+            </div>
+
+            <!-- Timeline of sync -->
+            <div class="mt-5 flex-1">
+              <div class="label mb-3">状态一起走</div>
+              <div class="relative pl-6">
+                <span class="absolute left-[9px] top-2 bottom-2 w-px bg-cream-300"></span>
+
+                <div class="relative mb-4">
+                  <span class="absolute -left-[2px] top-1 w-4 h-4 rounded-full bg-sage-500 border-4 border-cream-50"></span>
+                  <div class="text-sm text-ink-800 font-medium">你创建了这件小事</div>
+                  <div class="text-[11px] text-ink-500">09:12 · 小杨</div>
+                </div>
+                <div class="relative mb-4">
+                  <span class="absolute -left-[2px] top-1 w-4 h-4 rounded-full bg-sage-500 border-4 border-cream-50"></span>
+                  <div class="text-sm text-ink-800 font-medium">妈妈收到并查看</div>
+                  <div class="text-[11px] text-ink-500">09:14 · 已读</div>
+                </div>
+                <div class="relative mb-4">
+                  <span class="absolute -left-[2px] top-1 w-4 h-4 rounded-full bg-coral-500 border-4 border-cream-50 ring-soft"></span>
+                  <div class="text-sm text-ink-800 font-medium">妈妈说：在路上了 🚕</div>
+                  <div class="mt-1 inline-block rounded-2xl rounded-tl-sm bg-coral-50 text-ink-800 text-[12px] px-3 py-2 border hairline">带了医保卡和上次的报告，不用担心。</div>
+                  <div class="text-[11px] text-ink-500 mt-1">09:58</div>
+                </div>
+                <div class="relative mb-4 opacity-50">
+                  <span class="absolute -left-[2px] top-1 w-4 h-4 rounded-full border-2 border-ink-300 bg-white"></span>
+                  <div class="text-sm text-ink-500">抵达医院</div>
+                </div>
+                <div class="relative opacity-50">
+                  <span class="absolute -left-[2px] top-1 w-4 h-4 rounded-full border-2 border-ink-300 bg-white"></span>
+                  <div class="text-sm text-ink-500">标记完成</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3 rounded-full bg-white border hairline px-3 py-2 flex items-center gap-2 shadow-soft">
+              <span class="mi text-ink-300">mood</span>
+              <input placeholder="发一句轻轻的话给妈妈…" class="flex-1 bg-transparent outline-none text-sm" />
+              <button class="w-8 h-8 rounded-full bg-coral-600 text-white flex items-center justify-center"><span class="mi" style="font-size:16px">arrow_upward</span></button>
+            </div>
+          </div>
+        </div>
+        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">⑤ 创建者视角：看到的不是「已发送/已送达」，而是<b class="text-ink-800">彼此的进度和心意</b>。</p>
+      </div>
+
+      <!-- Assignee view -->
+      <div>
+        <div class="phone shadow-phone">
+          <div class="statusbar"><span>9:45</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+          <div class="screen" style="background: linear-gradient(180deg,#FFFDFB 0%, #FDEBD2 100%);">
+            <div class="flex items-center justify-between mb-3">
+              <button class="text-ink-500"><span class="mi">chevron_left</span></button>
+              <div class="text-xs text-ink-500">来自 小杨</div>
+              <button class="text-ink-500"><span class="mi">notifications_none</span></button>
+            </div>
+
+            <!-- incoming card -->
+            <div class="rounded-3xl p-5 bg-white border hairline shadow-soft relative overflow-hidden">
+              <div class="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-coral-200/50"></div>
+              <div class="relative">
+                <div class="flex items-center gap-2">
+                  <div class="avatar" style="background:#F47052">杨</div>
+                  <div>
+                    <div class="text-sm text-ink-800 font-medium">小杨想让你记得</div>
+                    <div class="text-[11px] text-ink-500">3 分钟前 · 他在等你的一个小回应</div>
+                  </div>
+                </div>
+                <div class="mt-4 font-serif text-[22px] text-ink-900 leading-snug">陪妈妈去复诊</div>
+                <div class="mt-2 text-[12px] text-ink-500 flex items-center gap-1"><span class="mi" style="font-size:14px">schedule</span>今天 10:30 · 市中心医院</div>
+
+                <!-- swipe accept -->
+                <div class="mt-5">
+                  <div class="label mb-2 flex items-center gap-1"><span class="mi" style="font-size:12px">swipe_right</span> 向右滑一下表示「我看到了」</div>
+                  <div class="h-12 rounded-full bg-cream-100 border hairline relative flex items-center">
+                    <div class="absolute left-1 w-10 h-10 rounded-full bg-gradient-to-br from-coral-400 to-coral-600 flex items-center justify-center shadow-chip">
+                      <span class="mi text-white">arrow_forward</span>
+                    </div>
+                    <div class="absolute left-14 right-4 text-center text-[12px] text-ink-500">我知道了，会去的</div>
+                    <div class="absolute left-14 right-4 swipe-hint top-1/2 -translate-y-1/2 opacity-40"></div>
+                  </div>
+                </div>
+
+                <div class="mt-3 grid grid-cols-2 gap-2">
+                  <button class="rounded-2xl py-2.5 bg-white border hairline text-[12px] text-ink-700 flex items-center justify-center gap-1">
+                    <span class="mi" style="font-size:14px">schedule</span>到点再提醒我
+                  </button>
+                  <button class="rounded-2xl py-2.5 bg-white border hairline text-[12px] text-ink-700 flex items-center justify-center gap-1">
+                    <span class="mi" style="font-size:14px">reply</span>回一句话
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- small hint -->
+            <div class="mt-4 rounded-2xl bg-white/70 border hairline p-3 flex gap-2">
+              <span class="mi text-sage-500" style="font-size:16px">lock</span>
+              <div class="text-[11px] text-ink-500 leading-relaxed">只有绑定过的家人朋友能给你发小事。你随时可以静音或解除绑定。</div>
+            </div>
+
+            <div class="mt-auto text-center text-[11px] text-ink-300">— 一次只让你看见一件 —</div>
+          </div>
+        </div>
+        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">⑥ 执行者视角：一次只出现一件，<b class="text-ink-800">滑一下就能回应</b>，不用打字。</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Design tokens footer -->
+  <section class="mt-28">
+    <div class="flex items-baseline gap-3 mb-6">
+      <span class="label">Design System</span>
+      <h2 class="font-serif text-2xl font-bold text-ink-800">一份克制的设计语言</h2>
+    </div>
+
+    <div class="grid md:grid-cols-4 gap-6">
+      <div class="rounded-3xl bg-white/70 backdrop-blur border hairline p-5 shadow-soft">
+        <div class="text-[11px] text-ink-500 tracking-wider uppercase mb-3">Palette</div>
+        <div class="flex gap-1.5 mb-3">
+          <span class="w-8 h-12 rounded-lg bg-coral-100"></span>
+          <span class="w-8 h-12 rounded-lg bg-coral-300"></span>
+          <span class="w-8 h-12 rounded-lg bg-coral-500"></span>
+          <span class="w-8 h-12 rounded-lg bg-coral-700"></span>
+          <span class="w-8 h-12 rounded-lg bg-sage-500"></span>
+          <span class="w-8 h-12 rounded-lg bg-ink-900"></span>
+        </div>
+        <div class="text-xs text-ink-500 leading-relaxed">珊瑚暖橙为主，鼠尾草绿作「已完成/同步」语义色。故意避免紫色与高饱和蓝。</div>
+      </div>
+      <div class="rounded-3xl bg-white/70 backdrop-blur border hairline p-5 shadow-soft">
+        <div class="text-[11px] text-ink-500 tracking-wider uppercase mb-3">Typography</div>
+        <div class="font-serif text-2xl text-ink-900 leading-tight">被惦记的一天</div>
+        <div class="text-sm text-ink-500 mt-1">Inter · Noto Serif SC</div>
+        <div class="text-xs text-ink-500 mt-3 leading-relaxed">标题使用思源宋体，带一点书信感；正文用 Inter 保持现代清爽。</div>
+      </div>
+      <div class="rounded-3xl bg-white/70 backdrop-blur border hairline p-5 shadow-soft">
+        <div class="text-[11px] text-ink-500 tracking-wider uppercase mb-3">Principles</div>
+        <ul class="text-xs text-ink-700 space-y-2 leading-relaxed">
+          <li class="flex gap-2"><span class="mi text-coral-500" style="font-size:14px">looks_one</span>让人先被看见，再被安排</li>
+          <li class="flex gap-2"><span class="mi text-coral-500" style="font-size:14px">looks_two</span>一次只问一句，不叠加设置</li>
+          <li class="flex gap-2"><span class="mi text-coral-500" style="font-size:14px">looks_3</span>默认安静，必要时才开口</li>
+        </ul>
+      </div>
+      <div class="rounded-3xl bg-gradient-to-br from-coral-500 to-coral-700 text-white p-5 shadow-phone">
+        <div class="text-[11px] opacity-80 tracking-wider uppercase mb-3">One Line</div>
+        <div class="font-serif text-xl leading-snug">
+          「它不是帮你记事的 app，<br/>是帮你被人记得的 app。」
+        </div>
+        <div class="text-xs opacity-75 mt-4">— Nudge 产品一句话</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="mt-20 text-center text-xs text-ink-300">
+    Designed as an H5 prototype · © Nudge Studio
+  </footer>
+
+</main>
+
+</body>
+</html>
