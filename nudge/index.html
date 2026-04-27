@@ -1531,6 +1531,166 @@
 
   <!-- ===================== Ideas Board (moved to right panel) ===================== -->
 
+  <!-- Flow 06 : 剪贴板检测 · 从其他 App 无缝导入 -->
+  <section class="mt-28">
+    <div class="flex items-baseline gap-3 mb-6">
+      <span class="label">Flow 06 · Clipboard</span>
+      <h2 class="font-serif text-2xl font-bold text-ink-800">从微信复制 · 打开即转待办</h2>
+    </div>
+    <p class="text-sm text-ink-500 max-w-2xl mb-8 leading-relaxed">
+      在微信、短信、备忘录等任意 App 里复制一段文字，切换到 Nudge 时自动检测剪贴板，
+      底部弹出确认卡片，一键衔接到 AI 解析流程，无需任何手动粘贴操作。
+    </p>
+
+    <div class="grid md:grid-cols-2 gap-10 place-items-center">
+
+      <!-- A : 检测到剪贴板，底部弹出提示 -->
+      <div>
+        <div class="phone shadow-phone">
+          <div class="statusbar"><span>14:07</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+          <div class="screen" style="padding-bottom:0;overflow:hidden;">
+
+            <!-- 主界面（模糊暗化） -->
+            <div style="flex:1;filter:blur(1.5px) brightness(0.92);pointer-events:none;">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <div class="text-xs text-ink-500">周四</div>
+                  <div class="font-serif text-xl font-bold text-ink-900">今日</div>
+                </div>
+              </div>
+              <div class="space-y-2">
+                <div class="rounded-2xl bg-white/80 border hairline p-3 flex gap-3 items-start">
+                  <div class="mt-1 w-5 h-5 rounded-full border-2 border-coral-400"></div>
+                  <div class="flex-1">
+                    <div class="text-sm font-medium text-ink-800">陪妈妈去复诊</div>
+                    <div class="text-[11px] text-ink-500 mt-0.5">10:30 · 市中心医院</div>
+                  </div>
+                </div>
+                <div class="rounded-2xl bg-white/80 border hairline p-3 flex gap-3 items-start">
+                  <div class="mt-1 w-5 h-5 rounded-full bg-sage-500 flex items-center justify-center"><span class="mi text-white" style="font-size:14px">check</span></div>
+                  <div class="flex-1 opacity-60">
+                    <div class="text-sm font-medium text-ink-800 line-through">给爸爸买降压药</div>
+                    <div class="text-[11px] text-ink-500 mt-0.5">已完成</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 底部遮罩 + 弹窗 -->
+            <div style="position:absolute;inset:0;background:rgba(26,19,48,0.28)"></div>
+            <div class="absolute bottom-0 left-0 right-0 rounded-t-3xl p-4" style="background:rgba(255,252,248,0.98);backdrop-filter:blur(20px);box-shadow:0 -8px 32px rgba(43,33,64,0.18);">
+
+              <!-- 来源 badge -->
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#07C160,#06AE56)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M9.5 4C5.36 4 2 6.91 2 10.5c0 2.02 1.06 3.82 2.73 5.03L4 18l2.5-1.25c.94.26 1.94.4 2.97.4.25 0 .5-.01.75-.03A5.98 5.98 0 0 1 10 15.5c0-3.31 3.13-6 7-6 .17 0 .34 0 .51.01C16.74 6.59 13.4 4 9.5 4zm8.5 7.5c-2.76 0-5 1.79-5 4s2.24 4 5 4c.69 0 1.35-.13 1.95-.36L22 20l-.6-2.04A3.84 3.84 0 0 0 23 15.5c0-2.21-2.24-4-5-4z"/></svg>
+                </div>
+                <div class="flex-1">
+                  <div class="text-[11px] text-ink-500">检测到来自 <span class="font-semibold text-ink-800">微信</span> 的复制内容</div>
+                </div>
+                <button class="text-ink-300"><span class="mi" style="font-size:18px">close</span></button>
+              </div>
+
+              <!-- 复制的原文预览 -->
+              <div class="rounded-2xl bg-cream-100 border hairline p-3 mb-4">
+                <div class="text-[11px] text-ink-400 mb-1.5 tracking-wide">原文</div>
+                <div class="text-[13px] text-ink-800 leading-relaxed font-serif">「周四下午 2 点，记得去银行办理社保卡，带好身份证和户口本」</div>
+              </div>
+
+              <!-- 操作按钮 -->
+              <div class="flex gap-2">
+                <button class="flex-1 rounded-2xl py-3 text-[13px] font-medium text-ink-500 bg-ink-50 border hairline">忽略</button>
+                <button class="flex-[2] rounded-2xl py-3 bg-gradient-to-r from-coral-400 to-coral-600 text-white text-[13px] font-medium shadow-chip flex items-center justify-center gap-1.5">
+                  <span class="mi" style="font-size:16px">auto_awesome</span>转为待办
+                </button>
+              </div>
+              <div class="text-center text-[10px] text-ink-300 mt-2">AI 将自动识别任务与时间</div>
+
+            </div>
+
+          </div>
+        </div>
+        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">① 打开 App 即检测剪贴板，底部弹起确认卡，来源 App 图标一目了然。</p>
+      </div>
+
+      <!-- B : 无缝进入 AI 解析结果 -->
+      <div>
+        <div class="phone shadow-phone">
+          <div class="statusbar"><span>14:07</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+          <div class="screen">
+            <div class="flex items-center justify-between mb-3">
+              <button class="text-ink-500 text-sm">返回</button>
+              <div class="text-xs text-ink-500">帮你整理好了</div>
+              <button class="text-ink-500"><span class="mi">more_horiz</span></button>
+            </div>
+
+            <!-- 原文引用块 -->
+            <div class="rounded-3xl bg-gradient-to-br from-coral-50 to-cream-50 p-4 border hairline">
+              <div class="flex items-center gap-2 mb-2">
+                <!-- 微信来源图标 -->
+                <div class="w-6 h-6 rounded-md flex items-center justify-center shrink-0" style="background:linear-gradient(135deg,#07C160,#06AE56)">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M9.5 4C5.36 4 2 6.91 2 10.5c0 2.02 1.06 3.82 2.73 5.03L4 18l2.5-1.25c.94.26 1.94.4 2.97.4.25 0 .5-.01.75-.03A5.98 5.98 0 0 1 10 15.5c0-3.31 3.13-6 7-6 .17 0 .34 0 .51.01C16.74 6.59 13.4 4 9.5 4zm8.5 7.5c-2.76 0-5 1.79-5 4s2.24 4 5 4c.69 0 1.35-.13 1.95-.36L22 20l-.6-2.04A3.84 3.84 0 0 0 23 15.5c0-2.21-2.24-4-5-4z"/></svg>
+                </div>
+                <div class="text-[11px] text-ink-500">来自微信 · 刚刚复制</div>
+              </div>
+              <div class="text-[12px] leading-relaxed text-ink-700">
+                「周四下午 <span class="bg-coral-200/70 px-0.5 rounded">2 点</span>，记得去银行办理<span class="bg-coral-200/70 px-0.5 rounded">社保卡</span>，带好<span class="bg-ink-100 px-0.5 rounded">身份证和户口本</span>」
+              </div>
+            </div>
+
+            <div class="mt-4 flex items-center justify-between">
+              <div class="label">识别为 1 件小事 · 发送给</div>
+              <div class="flex items-center gap-1.5">
+                <div class="avatar" style="background:#F47052;width:22px;height:22px;font-size:10px">我</div>
+                <span class="text-[12px] text-ink-800 font-medium">仅自己</span>
+                <span class="mi text-ink-300" style="font-size:16px">edit</span>
+              </div>
+            </div>
+
+            <!-- parsed event -->
+            <div class="mt-3 space-y-2 flex-1">
+              <div class="flex items-center gap-3 text-[10px] text-ink-500 px-1">
+                <span class="flex items-center gap-1"><span class="mi text-coral-600" style="font-size:12px">notifications_active</span>提醒</span>
+                <span class="flex items-center gap-1"><span class="mi text-sage-700" style="font-size:12px">play_arrow</span>开工</span>
+                <span class="flex items-center gap-1"><span class="mi text-ink-700" style="font-size:12px">flag</span>到点</span>
+              </div>
+
+              <div class="rounded-2xl bg-gradient-to-br from-coral-50 to-cream-50 border-2 border-coral-200 p-3 flex items-start gap-3 relative">
+                <span class="absolute -top-2 right-3 text-[9px] bg-coral-600 text-white px-1.5 py-0.5 rounded-full tracking-wider shadow-chip">来自剪贴板</span>
+                <div class="w-9 h-9 rounded-xl bg-cream-200 flex items-center justify-center shrink-0"><span class="mi text-coral-700" style="font-size:18px">account_balance</span></div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-ink-800">去银行办理社保卡</div>
+                  <div class="mt-1.5 flex items-center gap-1 text-[10px] flex-wrap">
+                    <span class="chip bg-coral-100 text-coral-700 px-1.5 py-0.5 gap-0.5"><span class="mi" style="font-size:10px">notifications_active</span>13:30</span>
+                    <span class="text-ink-300">→</span>
+                    <span class="chip bg-sage-300/60 text-sage-700 px-1.5 py-0.5 gap-0.5"><span class="mi" style="font-size:10px">play_arrow</span>14:00</span>
+                    <span class="text-ink-300">→</span>
+                    <span class="chip bg-ink-50 text-ink-700 px-1.5 py-0.5 gap-0.5"><span class="mi" style="font-size:10px">flag</span>16:00</span>
+                  </div>
+                  <div class="mt-2 text-[11px] text-ink-500 flex items-start gap-1 leading-relaxed">
+                    <span class="mi text-coral-500 shrink-0" style="font-size:12px">auto_awesome</span>
+                    <span>银行一般 16 点停办业务，提前 30 分钟提醒你出门，并记录随身材料：<b class="text-ink-700">身份证、户口本</b>。</span>
+                  </div>
+                </div>
+                <span class="mi text-ink-300" style="font-size:18px">tune</span>
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <button class="w-full rounded-2xl py-3 bg-gradient-to-r from-coral-400 to-coral-600 text-white font-medium shadow-chip flex items-center justify-center gap-2">
+                <span class="mi" style="font-size:18px">check</span> 加入今日待办
+              </button>
+              <div class="text-center text-[11px] text-ink-300 mt-2">原始文字已存档，可随时回溯</div>
+            </div>
+
+          </div>
+        </div>
+        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">② 无缝衔接 AI 解析：时间、地点、随身物品一并提取，高亮标注原文出处。</p>
+      </div>
+
+    </div>
+  </section>
+
   <!-- Design tokens footer -->
   <section class="mt-28">
     <div class="flex items-baseline gap-3 mb-6">
