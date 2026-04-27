@@ -151,68 +151,84 @@
         <div class="phone shadow-phone animate__animated animate__fadeInUp">
           <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
           <div class="screen">
-            <div class="flex items-center justify-between mb-4">
-              <div>
-                <div class="text-xs text-ink-500">周一 · 晴</div>
-                <div class="font-serif text-xl font-bold text-ink-900">早，小杨</div>
+            <!--
+              Hero Banner · 最近一条待办
+              背景插图资源设计上由 CDN 动态下发，按待办类型匹配（医疗/运动/饮食/出行…）
+              用户无感知，产品迭代时逐步丰富插图库
+              当前示意：医疗类 — warm clay + 胶囊插图
+            -->
+            <div class="rounded-3xl overflow-hidden mb-4 relative" style="height:230px;background:linear-gradient(148deg,#C8956A 0%,#AA7248 55%,#916040 100%);">
+
+              <!-- ── 浮动插图（医疗主题）── -->
+              <!-- 大深色胶囊：深棕/奶白拼接，旋转 -22° -->
+              <div class="absolute float" style="left:-2px;top:32px;width:22px;height:62px;border-radius:999px;background:linear-gradient(175deg,#3C1E0C 0%,#3C1E0C 49%,#EDD6B8 51%,#EDD6B8 100%);transform:rotate(-22deg);filter:drop-shadow(2px 5px 10px rgba(0,0,0,0.35));animation-delay:0s"></div>
+              <!-- 橙色小圆点 -->
+              <div class="absolute" style="left:42px;top:28px;width:15px;height:15px;border-radius:50%;background:radial-gradient(circle at 38% 35%,#F0A840,#C87820);filter:drop-shadow(1px 2px 5px rgba(0,0,0,0.2))"></div>
+              <!-- 大圆形药片（中央，有分割线感） -->
+              <div class="absolute float" style="left:50%;top:18px;transform:translateX(-50%);width:60px;height:60px;border-radius:50%;background:radial-gradient(circle at 38% 32%,#FFF5E8,#EDD5B5);border:3px solid rgba(255,255,255,0.55);filter:drop-shadow(3px 8px 14px rgba(0,0,0,0.28));animation-delay:1s">
+                <!-- 药片刻线 -->
+                <div style="position:absolute;top:50%;left:15%;right:15%;height:1.5px;background:rgba(180,130,80,0.5);transform:translateY(-50%);border-radius:2px"></div>
               </div>
-              <div class="flex items-center gap-2">
-                <!-- 太阳月相进度：P=3/5=0.6，shadow cx = 20-26×0.6 = 4.4 -->
+              <!-- 小白圆片（右侧漂浮） -->
+              <div class="absolute float" style="right:52px;top:42px;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 38% 35%,#FFFFFF,#EDE4D5);filter:drop-shadow(1px 3px 6px rgba(0,0,0,0.22));animation-delay:2s"></div>
+              <!-- 橙色细长胶囊（右上角） -->
+              <div class="absolute float" style="right:12px;top:20px;width:15px;height:46px;border-radius:999px;background:linear-gradient(175deg,#E8922A 0%,#E8922A 49%,#F5C07A 51%,#F5C07A 100%);transform:rotate(18deg);filter:drop-shadow(1px 3px 7px rgba(0,0,0,0.2));animation-delay:1.5s"></div>
+              <!-- 小深棕点（右下角装饰） -->
+              <div class="absolute" style="right:32px;top:76px;width:11px;height:11px;border-radius:50%;background:#6A4020;opacity:0.55"></div>
+
+              <!-- ── 左上：问候文字 ── -->
+              <div class="absolute top-7 left-5">
+                <div class="text-white/70 text-[11px] tracking-wide">周一 · 晴</div>
+                <div class="text-white font-serif text-xl font-bold mt-0.5 leading-tight" style="text-shadow:0 1px 6px rgba(0,0,0,0.18)">早，小杨</div>
+                <div class="text-white/60 text-[10px] mt-1">下一件值得记住的事 ↓</div>
+              </div>
+
+              <!-- ── 右上：月相太阳进度 + 头像 ── -->
+              <div class="absolute top-5 right-4 flex items-center gap-2">
                 <div title="今日完成 3/5">
-                  <svg width="40" height="40" viewBox="0 0 40 40">
+                  <svg width="28" height="28" viewBox="0 0 28 28">
                     <defs>
-                      <clipPath id="sun-home">
-                        <circle cx="20" cy="20" r="13"/>
-                      </clipPath>
-                      <radialGradient id="sun-fill" cx="62%" cy="42%">
+                      <clipPath id="sun-hero"><circle cx="14" cy="14" r="9"/></clipPath>
+                      <radialGradient id="sun-hero-fill" cx="62%" cy="42%">
                         <stop offset="0%" stop-color="#FFD580"/>
-                        <stop offset="55%" stop-color="#FFAA70"/>
                         <stop offset="100%" stop-color="#F06040"/>
                       </radialGradient>
                     </defs>
-                    <!-- 外晕光 -->
-                    <circle cx="20" cy="20" r="16.5" fill="rgba(255,155,70,0.10)"/>
-                    <!-- 太阳圆盘 -->
-                    <circle cx="20" cy="20" r="13" fill="url(#sun-fill)"/>
-                    <!-- 阴影遮罩（月相原理：阴影圆向左移动 = 更多太阳被照亮） -->
-                    <circle cx="4.4" cy="20" r="13" fill="#FFFDFB" clip-path="url(#sun-home)"/>
-                    <!-- 光芒 8根，进度60%时透明度0.4，已有些许生气 -->
-                    <g stroke="#D96830" stroke-width="1.5" stroke-linecap="round" opacity="0.38">
-                      <line x1="20" y1="5"    x2="20" y2="2"/>
-                      <line x1="29.2" y1="7.8"  x2="31.3" y2="5.7"/>
-                      <line x1="35"   y1="20"   x2="38"   y2="20"/>
-                      <line x1="29.2" y1="32.2" x2="31.3" y2="34.3"/>
-                      <line x1="20"   y1="35"   x2="20"   y2="38"/>
-                      <line x1="10.8" y1="32.2" x2="8.7"  y2="34.3"/>
-                      <line x1="5"    y1="20"   x2="2"    y2="20"/>
-                      <line x1="10.8" y1="7.8"  x2="8.7"  y2="5.7"/>
+                    <circle cx="14" cy="14" r="11.5" fill="rgba(255,180,80,0.18)"/>
+                    <circle cx="14" cy="14" r="9" fill="url(#sun-hero-fill)"/>
+                    <!-- shadow: cx = 14 - 18×0.6 = 3.2 -->
+                    <circle cx="3.2" cy="14" r="9" fill="rgba(168,112,72,0.85)" clip-path="url(#sun-hero)"/>
+                    <g stroke="#D96830" stroke-width="1.2" stroke-linecap="round" opacity="0.5">
+                      <line x1="14" y1="3" x2="14" y2="1"/>
+                      <line x1="20.4" y1="5.6" x2="21.8" y2="4.2"/>
+                      <line x1="23" y1="14" x2="25" y2="14"/>
+                      <line x1="20.4" y1="22.4" x2="21.8" y2="23.8"/>
+                      <line x1="14" y1="25" x2="14" y2="27"/>
+                      <line x1="7.6" y1="22.4" x2="6.2" y2="23.8"/>
+                      <line x1="5" y1="14" x2="3" y2="14"/>
+                      <line x1="7.6" y1="5.6" x2="6.2" y2="4.2"/>
                     </g>
                   </svg>
                 </div>
-                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-coral-300 to-coral-500 ring-soft flex items-center justify-center text-white font-semibold">杨</div>
+                <div class="w-8 h-8 rounded-full border-2 border-white/40 bg-white/20 backdrop-blur flex items-center justify-center text-white font-semibold text-sm">杨</div>
               </div>
-            </div>
 
-            <!-- 进度边框卡片：conic-gradient border 绕行 60% 周长，从顶部顺时针淡入淡出 -->
-            <div class="rounded-2xl p-4 mb-4" style="
-              background:
-                linear-gradient(135deg,#FFF2EC,#FDF5ED) padding-box,
-                conic-gradient(
-                  from -90deg,
-                  #E85D47   0%,
-                  #FF9068  48%,
-                  rgba(232,93,71,0.18) 60%,
-                  rgba(43,33,64,0.06) 63%
-                ) border-box;
-              border: 1.5px solid transparent;">
-              <div class="text-[11px] text-coral-700 font-medium tracking-wider">今天被惦记着 3 件事</div>
-              <div class="mt-2 flex items-center gap-2">
-                <div class="avatar" style="background:#E85D47">妈</div>
-                <div class="avatar -ml-2" style="background:#5FB3A1">爸</div>
-                <div class="avatar -ml-2" style="background:#7CA8CC">姐</div>
-                <div class="text-xs text-ink-500 ml-1">都在等你的小进展</div>
+              <!-- ── 底部：下一条待办卡片（白色浮起） ── -->
+              <div class="absolute bottom-3 left-3 right-3 rounded-2xl bg-white/95 backdrop-blur p-3 flex items-center gap-3 shadow-soft">
+                <!-- 根据待办类型显示不同图标区域，此处：医疗类 -->
+                <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style="background:linear-gradient(135deg,#F5E0CC,#EDD0B8)">
+                  <span class="mi text-coral-700" style="font-size:22px">medication</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-semibold text-ink-900 truncate">陪妈妈去复诊</div>
+                  <div class="text-[11px] text-ink-500 mt-0.5">今天 10:30 · 市中心医院</div>
+                </div>
+                <div class="flex flex-col items-end gap-1 shrink-0">
+                  <span class="text-[10px] bg-coral-100 text-coral-700 px-1.5 py-0.5 rounded-full font-medium">即将</span>
+                  <span class="mi text-ink-300" style="font-size:16px">chevron_right</span>
+                </div>
               </div>
-            </div>
+            </div><!-- /hero banner -->
 
             <div class="label mb-2">上午</div>
             <div class="space-y-2 flex-1">
