@@ -411,76 +411,73 @@
     </div>
   </section>
 
-  <!-- Flow 01b : 首页副本 · 长按语音遮罩交互 -->
+  <!-- Flow 01b : 首页副本 · 长按录音（小念绳降 + 捂耳收听） -->
   <section class="mt-28">
     <div class="flex items-baseline gap-3 mb-6">
-      <span class="label">Flow 01b · 首页副本 · 长按语音</span>
-      <h2 class="font-serif text-2xl font-bold text-ink-800">按住底栏麦克风 · 全屏遮罩浮起</h2>
+      <span class="label">Flow 01b · 首页副本 · 长按录音</span>
+      <h2 class="font-serif text-2xl font-bold text-ink-800">长按底栏麦克风 · 小念从顶端滑下</h2>
     </div>
     <p class="text-sm text-ink-500 max-w-2xl mb-8 leading-relaxed">
-      无需跳转独立录音页。在首页<b class="text-ink-800">长按底部麦克风</b>，半透明遮罩覆盖全屏——
-      遮罩下方有弧形安全区，内部提示<b class="text-ink-800">「松手发送」</b>；
-      手指上滑进入弧形外侧取消区后，弧形变为<b class="text-ink-800">半透明红色</b>，松手即丢弃录音。
+      长按底部麦克风，<b class="text-ink-800">无全屏遮罩</b>——小念拽着绳子从屏幕顶端滑入，落至屏幕中央后做
+      <b class="text-ink-800">捂耳收听</b>动作；麦克风上方浮现「滑到此处取消发送」提示条，手指上滑即可取消。
     </p>
 
     <div class="grid md:grid-cols-3 gap-10 place-items-center">
 
-      <!-- Phone A : 首页副本（长按前，触发提示） -->
+      <!-- ① Phone A : 长按触发中（绳子从顶端探出） -->
       <div>
         <div class="phone shadow-phone">
           <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+          <!-- Rope stub: peeking from below notch -->
+          <svg style="position:absolute;left:50%;transform:translateX(-50%);top:46px;z-index:20;pointer-events:none" width="8" height="46" viewBox="0 0 8 46">
+            <path d="M4 0 Q5 16 4 46" stroke="#B08040" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.75"/>
+            <circle cx="4" cy="26" r="2" fill="#8B5E20" opacity="0.5"/>
+          </svg>
           <div class="screen">
-            <div class="rounded-3xl overflow-hidden mb-4 relative" style="height:230px;background-image:url('./assets/hero-medical.jpg');background-size:cover;background-position:center right;">
+            <div class="rounded-3xl overflow-hidden mb-3 relative" style="height:175px;background-image:url('./assets/hero-medical.jpg');background-size:cover;background-position:center right;">
               <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(155,95,45,0.62) 0%,rgba(155,95,45,0.30) 52%,transparent 72%)"></div>
-              <div class="absolute top-7 left-5" style="z-index:2">
+              <div class="absolute top-6 left-5" style="z-index:2">
                 <div class="text-white/70 text-[11px] tracking-wide">周一 · 晴</div>
-                <div class="text-white font-serif text-xl font-bold mt-0.5 leading-tight" style="text-shadow:0 1px 8px rgba(80,40,10,0.30)">早，小杨</div>
+                <div class="text-white font-serif text-xl font-bold mt-0.5 leading-tight">早，小杨</div>
                 <div class="text-white/60 text-[10px] mt-1">下一件值得记住的事 ↓</div>
               </div>
-              <div class="absolute bottom-3 left-3 right-3 rounded-2xl p-3 flex items-center gap-3" style="background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);box-shadow:0 4px 20px rgba(120,70,20,0.18);z-index:2">
-                <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style="background:linear-gradient(135deg,#F5E0CC,#EDD0B8)">
-                  <span class="mi text-coral-700" style="font-size:22px">medication</span>
+              <div class="absolute bottom-3 left-3 right-3 rounded-2xl p-2.5 flex items-center gap-2" style="background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);z-index:2">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style="background:linear-gradient(135deg,#F5E0CC,#EDD0B8)">
+                  <span class="mi text-coral-700" style="font-size:18px">medication</span>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <div class="text-sm font-semibold text-ink-900 truncate">陪妈妈去复诊</div>
-                  <div class="text-[11px] text-ink-500 mt-0.5">今天 10:30 · 市中心医院</div>
+                  <div class="text-xs font-semibold text-ink-900 truncate">陪妈妈去复诊</div>
+                  <div class="text-[10px] text-ink-500 mt-0.5">今天 10:30 · 市中心医院</div>
                 </div>
-                <div class="flex flex-col items-end gap-1 shrink-0">
-                  <span class="text-[10px] bg-coral-100 text-coral-700 px-1.5 py-0.5 rounded-full font-medium">即将</span>
-                  <span class="mi text-ink-300" style="font-size:16px">chevron_right</span>
-                </div>
+                <span class="text-[10px] bg-coral-100 text-coral-700 px-1.5 py-0.5 rounded-full font-medium shrink-0">即将</span>
               </div>
             </div>
             <div class="label mb-2">上午</div>
-            <div class="space-y-2 flex-1">
-              <div class="rounded-2xl bg-white/80 border hairline p-3 flex gap-3 items-start">
-                <div class="mt-1 w-5 h-5 rounded-full border-2 border-coral-400"></div>
-                <div class="flex-1">
-                  <div class="text-sm font-medium text-ink-800">陪妈妈去复诊</div>
-                  <div class="text-[11px] text-ink-500 mt-0.5">10:30 · 市中心医院 · 提前一晚提醒</div>
-                  <div class="mt-2 flex items-center gap-1.5">
-                    <div class="avatar" style="width:20px;height:20px;font-size:10px;background:#E85D47">妈</div>
-                    <span class="text-[11px] text-sage-700 flex items-center gap-1"><span class="dot bg-sage-500"></span>妈妈已查看 · 10分钟前</span>
-                  </div>
+            <div class="space-y-2">
+              <div class="rounded-2xl bg-white/80 border hairline p-2.5 flex gap-2.5 items-start">
+                <div class="mt-0.5 w-4 h-4 rounded-full border-2 border-coral-400 shrink-0"></div>
+                <div>
+                  <div class="text-xs font-medium text-ink-800">陪妈妈去复诊</div>
+                  <div class="text-[10px] text-ink-500 mt-0.5">10:30 · 市中心医院 · 提前一晚提醒</div>
                 </div>
               </div>
-              <div class="rounded-2xl bg-white/80 border hairline p-3 flex gap-3 items-start">
-                <div class="mt-1 w-5 h-5 rounded-full bg-sage-500 flex items-center justify-center"><span class="mi text-white" style="font-size:14px">check</span></div>
-                <div class="flex-1 opacity-70">
-                  <div class="text-sm font-medium text-ink-800 line-through">给爸爸买降压药</div>
-                  <div class="text-[11px] text-ink-500 mt-0.5">爸爸 · 刚刚标记完成</div>
+              <div class="rounded-2xl bg-white/80 border hairline p-2.5 flex gap-2.5 items-start">
+                <div class="mt-0.5 w-4 h-4 rounded-full bg-sage-500 flex items-center justify-center shrink-0"><span class="mi text-white" style="font-size:11px">check</span></div>
+                <div class="opacity-60">
+                  <div class="text-xs font-medium text-ink-800 line-through">给爸爸买降压药</div>
+                  <div class="text-[10px] text-ink-500 mt-0.5">爸爸 · 刚刚标记完成</div>
                 </div>
               </div>
-              <div class="rounded-2xl bg-white/80 border hairline p-3 flex gap-3 items-start">
-                <div class="mt-1 w-5 h-5 rounded-full border-2 border-ink-100"></div>
-                <div class="flex-1">
-                  <div class="text-sm font-medium text-ink-800">把周末的照片发给姐姐</div>
-                  <div class="text-[11px] text-ink-500 mt-0.5">今晚 · 仅自己</div>
+              <div class="rounded-2xl bg-white/80 border hairline p-2.5 flex gap-2.5 items-start">
+                <div class="mt-0.5 w-4 h-4 rounded-full border-2 border-ink-100 shrink-0"></div>
+                <div>
+                  <div class="text-xs font-medium text-ink-800">把周末的照片发给姐姐</div>
+                  <div class="text-[10px] text-ink-500 mt-0.5">今晚 · 仅自己</div>
                 </div>
               </div>
             </div>
-            <!-- bottom bar：麦克风长按涟漪提示 -->
-            <div class="mt-3" style="position:relative;padding-top:18px">
+            <!-- bottom bar: long-press visual (scale + strong glow) -->
+            <div class="mt-auto" style="position:relative;padding-top:18px">
               <div style="background:#FFFFFF;border-radius:26px;padding:6px 0 10px;box-shadow:0 4px 22px rgba(0,0,0,0.09);display:flex;align-items:flex-end;justify-content:space-around;position:relative;overflow:visible">
                 <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
                   <span class="mi" style="font-size:22px;color:#F7622A">home</span>
@@ -490,222 +487,333 @@
                 <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
                   <span class="mi" style="font-size:22px;color:#B0B8C1">calendar_month</span>
                   <span style="font-size:10px;color:#B0B8C1">日历</span>
-                  <span style="width:4px;height:4px;border-radius:50%;background:transparent;margin-top:1px;display:block"></span>
                 </button>
                 <div style="flex:1"></div>
                 <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
                   <span class="mi" style="font-size:22px;color:#B0B8C1">checklist</span>
                   <span style="font-size:10px;color:#B0B8C1">计划</span>
-                  <span style="width:4px;height:4px;border-radius:50%;background:transparent;margin-top:1px;display:block"></span>
                 </button>
                 <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
                   <span class="mi" style="font-size:22px;color:#B0B8C1">person</span>
                   <span style="font-size:10px;color:#B0B8C1">我的</span>
-                  <span style="width:4px;height:4px;border-radius:50%;background:transparent;margin-top:1px;display:block"></span>
                 </button>
-                <!-- Mic：长按涟漪动效（长按触发前提示） -->
+                <!-- Mic: long-pressing visual -->
                 <div style="position:absolute;left:50%;transform:translateX(-50%);top:-22px">
-                  <div style="position:relative;display:flex;align-items:center;justify-content:center">
-                    <span style="position:absolute;width:80px;height:80px;border-radius:50%;background:rgba(249,140,96,0.18);animation:ping 1.6s cubic-bezier(0,0,.2,1) infinite"></span>
-                    <span style="position:absolute;width:66px;height:66px;border-radius:50%;background:rgba(249,140,96,0.12)"></span>
-                    <button style="position:relative;width:58px;height:58px;border-radius:50%;background:linear-gradient(145deg,#F98C60 0%,#E8430A 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 26px rgba(232,67,10,0.45),0 0 0 7px rgba(249,140,96,0.22),inset 0 1px 0 rgba(255,255,255,0.28)">
-                      <span class="mi" style="color:white;font-size:24px">mic</span>
-                    </button>
-                  </div>
+                  <span style="position:absolute;inset:-12px;border-radius:50%;border:2px solid rgba(249,140,96,0.45);animation:ping 1.5s cubic-bezier(0,0,.2,1) infinite"></span>
+                  <button style="width:58px;height:58px;border-radius:50%;background:linear-gradient(145deg,#F98C60 0%,#E8430A 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 32px rgba(232,67,10,0.55),0 0 0 6px rgba(249,140,96,0.24),inset 0 1px 0 rgba(255,255,255,0.30);transform:scale(1.08)">
+                    <span class="mi" style="color:white;font-size:24px">mic</span>
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">① 首页副本：麦克风涟漪提示「长按录音」，无需找其他入口。</p>
+        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">① 长按麦克风——绳子从顶端悄悄探出，按钮光晕增强，小念即将滑入。</p>
       </div>
 
-      <!-- Phone B : 遮罩展开 · 录音中（弧形默认态） -->
+      <!-- ② Phone B : 小念滑下途中（绳子展开，人物悬在半空） -->
       <div>
         <div class="phone shadow-phone">
-          <!-- Homepage ghost -->
-          <div style="position:absolute;inset:0;padding:54px 18px 20px;display:flex;flex-direction:column;opacity:0.55;pointer-events:none">
-            <div style="height:228px;border-radius:24px;background:linear-gradient(135deg,#FFE2D4 0%,#F7C8A0 100%);margin-bottom:12px;flex-shrink:0"></div>
-            <div style="height:10px;border-radius:6px;background:#c8c0d8;margin-bottom:8px;width:28%"></div>
-            <div style="height:52px;border-radius:16px;background:rgba(255,255,255,0.9);margin-bottom:6px"></div>
-            <div style="height:44px;border-radius:16px;background:rgba(255,255,255,0.9);margin-bottom:6px"></div>
-            <div style="height:44px;border-radius:16px;background:rgba(255,255,255,0.9)"></div>
+          <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+          <!-- Rope: fans from top-center down to mascot's two hand grips -->
+          <svg style="position:absolute;left:137px;top:46px;z-index:20;pointer-events:none" width="66" height="178" viewBox="0 0 66 178">
+            <path d="M33 0 Q28 60 16 128 Q8 158 0 178" stroke="#B08040" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.90"/>
+            <path d="M33 0 Q38 60 50 128 Q58 158 66 178" stroke="#B08040" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.90"/>
+            <circle cx="30" cy="44" r="2" fill="#8B5E20" opacity="0.55"/>
+            <circle cx="24" cy="96" r="2" fill="#8B5E20" opacity="0.55"/>
+            <circle cx="14" cy="148" r="2" fill="#8B5E20" opacity="0.55"/>
+            <circle cx="36" cy="44" r="2" fill="#8B5E20" opacity="0.55"/>
+            <circle cx="42" cy="96" r="2" fill="#8B5E20" opacity="0.55"/>
+            <circle cx="52" cy="148" r="2" fill="#8B5E20" opacity="0.55"/>
+          </svg>
+          <!-- Mascot: sliding down, arms raised, excited -->
+          <div style="position:absolute;left:50%;transform:translateX(-50%);top:206px;z-index:20;pointer-events:none">
+            <svg width="110" height="130" viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 8px 20px rgba(183,62,20,0.32))">
+              <defs>
+                <radialGradient id="f1b2s_b" cx="35%" cy="28%" r="68%">
+                  <stop offset="0%" stop-color="#FFC49A"/>
+                  <stop offset="45%" stop-color="#F7622A"/>
+                  <stop offset="100%" stop-color="#B83E14"/>
+                </radialGradient>
+                <radialGradient id="f1b2s_e" cx="40%" cy="35%" r="65%">
+                  <stop offset="0%" stop-color="#FFAA7A"/>
+                  <stop offset="100%" stop-color="#E05515"/>
+                </radialGradient>
+                <radialGradient id="f1b2s_ei" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#FFD8C0"/>
+                  <stop offset="100%" stop-color="#F0864A"/>
+                </radialGradient>
+                <radialGradient id="f1b2s_c" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#FF9070" stop-opacity=".50"/>
+                  <stop offset="100%" stop-color="#FF9070" stop-opacity="0"/>
+                </radialGradient>
+              </defs>
+              <ellipse cx="50" cy="117" rx="18" ry="3" fill="rgba(180,60,20,0.07)"/>
+              <!-- Arms reaching UP -->
+              <path d="M22 72 Q10 52 22 20" stroke="url(#f1b2s_b)" stroke-width="12" stroke-linecap="round" fill="none"/>
+              <path d="M78 72 Q90 52 78 20" stroke="url(#f1b2s_b)" stroke-width="12" stroke-linecap="round" fill="none"/>
+              <!-- Ears -->
+              <ellipse cx="20" cy="46" rx="9" ry="13" fill="url(#f1b2s_e)" transform="rotate(-10,20,46)"/>
+              <ellipse cx="20" cy="46" rx="5.5" ry="8" fill="url(#f1b2s_ei)" transform="rotate(-10,20,46)"/>
+              <ellipse cx="80" cy="46" rx="9" ry="13" fill="url(#f1b2s_e)" transform="rotate(10,80,46)"/>
+              <ellipse cx="80" cy="46" rx="5.5" ry="8" fill="url(#f1b2s_ei)" transform="rotate(10,80,46)"/>
+              <!-- Body -->
+              <circle cx="50" cy="78" r="38" fill="url(#f1b2s_b)"/>
+              <ellipse cx="34" cy="58" rx="13" ry="9" fill="rgba(255,255,255,0.24)" transform="rotate(-22,34,58)"/>
+              <ellipse cx="24" cy="86" rx="10" ry="5" fill="url(#f1b2s_c)"/>
+              <ellipse cx="76" cy="86" rx="10" ry="5" fill="url(#f1b2s_c)"/>
+              <!-- Eyes: wide, looking up (excited) -->
+              <circle cx="37" cy="73" r="10.5" fill="white"/>
+              <circle cx="38" cy="71" r="7.5" fill="#2A1206"/>
+              <circle cx="41" cy="68" r="3.2" fill="white"/>
+              <circle cx="63" cy="73" r="10.5" fill="white"/>
+              <circle cx="64" cy="71" r="7.5" fill="#2A1206"/>
+              <circle cx="67" cy="68" r="3.2" fill="white"/>
+              <!-- Mouth: excited O -->
+              <ellipse cx="50" cy="91" rx="5" ry="5.5" fill="rgba(155,40,10,0.62)"/>
+              <path d="M44 88 Q50 86 56 88" stroke="#D05820" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+              <!-- Hand grips -->
+              <circle cx="22" cy="20" r="7" fill="url(#f1b2s_b)"/>
+              <circle cx="78" cy="20" r="7" fill="url(#f1b2s_b)"/>
+            </svg>
           </div>
-          <!-- Overlay -->
-          <div style="position:absolute;inset:0;z-index:50;background:rgba(12,8,26,0.55);backdrop-filter:blur(5px)">
-            <!-- Status bar -->
-            <div style="position:absolute;top:20px;left:28px;right:28px;display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,0.40);font-weight:600;z-index:1">
-              <span>9:41</span>
-              <span style="display:flex;align-items:center;gap:3px"><span class="mi" style="font-size:13px">signal_cellular_alt</span><span class="mi" style="font-size:13px">wifi</span><span class="mi" style="font-size:13px">battery_full</span></span>
-            </div>
-            <!-- Recording content (above arc) -->
-            <div style="position:absolute;top:0;bottom:110px;left:0;right:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 24px">
-              <!-- REC indicator -->
-              <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">
-                <span style="width:7px;height:7px;border-radius:50%;background:#FF5252;animation:blink 1s steps(1) infinite;display:inline-block;flex-shrink:0"></span>
-                <span style="font-size:13px;color:rgba(255,255,255,0.88);font-weight:600;letter-spacing:.10em">REC · 00:08</span>
+          <!-- Screen content (homepage fully visible, no overlay) -->
+          <div class="screen">
+            <div class="rounded-3xl overflow-hidden mb-3 relative" style="height:175px;background-image:url('./assets/hero-medical.jpg');background-size:cover;background-position:center right;">
+              <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(155,95,45,0.62) 0%,rgba(155,95,45,0.30) 52%,transparent 72%)"></div>
+              <div class="absolute top-6 left-5" style="z-index:2">
+                <div class="text-white/70 text-[11px] tracking-wide">周一 · 晴</div>
+                <div class="text-white font-serif text-xl font-bold mt-0.5 leading-tight">早，小杨</div>
+                <div class="text-white/60 text-[10px] mt-1">下一件值得记住的事 ↓</div>
               </div>
-              <div style="font-size:10px;color:rgba(255,255,255,0.32);letter-spacing:.05em;margin-bottom:28px">按住说话，松手即发送</div>
-              <!-- 小念（专注倾听态） -->
-              <div style="position:relative;display:flex;align-items:center;justify-content:center;width:150px;height:150px;margin-bottom:14px;flex-shrink:0">
-                <span style="position:absolute;width:150px;height:150px;border-radius:50%;background:rgba(249,140,96,0.10);animation:ping 1.8s cubic-bezier(0,0,.2,1) infinite"></span>
-                <span style="position:absolute;width:118px;height:118px;border-radius:50%;background:rgba(249,140,96,0.14)"></span>
-                <svg width="108" height="118" viewBox="0 0 100 110" fill="none" xmlns="http://www.w3.org/2000/svg" style="position:relative;z-index:1;drop-shadow:0 6px 20px rgba(232,67,10,0.4)">
-                  <defs>
-                    <radialGradient id="f1b_b" cx="35%" cy="28%" r="68%"><stop offset="0%" stop-color="#FFC49A"/><stop offset="45%" stop-color="#F7622A"/><stop offset="100%" stop-color="#B83E14"/></radialGradient>
-                    <radialGradient id="f1b_e" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#FFAA7A"/><stop offset="100%" stop-color="#E05515"/></radialGradient>
-                    <radialGradient id="f1b_ei" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#FFD4B8"/><stop offset="100%" stop-color="#F8A07A"/></radialGradient>
-                    <radialGradient id="f1b_c" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#FF9070" stop-opacity=".55"/><stop offset="100%" stop-color="#FF9070" stop-opacity="0"/></radialGradient>
-                    <filter id="f1b_s"><feDropShadow dx="0" dy="5" stdDeviation="4.5" flood-color="rgba(180,60,20,0.28)"/></filter>
-                  </defs>
-                  <ellipse cx="50" cy="107" rx="26" ry="4.5" fill="rgba(180,60,20,0.10)"/>
-                  <ellipse cx="20" cy="18" rx="10" ry="14" fill="url(#f1b_e)" transform="rotate(-8,20,18)"/>
-                  <ellipse cx="20" cy="18" rx="6" ry="9" fill="url(#f1b_ei)" transform="rotate(-8,20,18)"/>
-                  <ellipse cx="78" cy="24" rx="9" ry="11" fill="url(#f1b_e)" transform="rotate(12,78,24)"/>
-                  <ellipse cx="78" cy="25" rx="5" ry="7" fill="url(#f1b_ei)" transform="rotate(12,78,25)"/>
-                  <circle cx="50" cy="62" r="42" fill="url(#f1b_b)" filter="url(#f1b_s)"/>
-                  <ellipse cx="32" cy="40" rx="13" ry="9" fill="rgba(255,255,255,0.26)" transform="rotate(-25,32,40)"/>
-                  <ellipse cx="24" cy="68" rx="11" ry="8" fill="url(#f1b_c)"/>
-                  <ellipse cx="76" cy="68" rx="11" ry="8" fill="url(#f1b_c)"/>
-                  <circle cx="36" cy="57" r="10" fill="white"/><circle cx="37" cy="58" r="7" fill="#2A1206"/>
-                  <circle cx="40" cy="53.5" r="3.2" fill="white"/>
-                  <circle cx="64" cy="57" r="10" fill="white"/><circle cx="65" cy="58" r="7" fill="#2A1206"/>
-                  <circle cx="68" cy="53.5" r="3.2" fill="white"/>
-                  <ellipse cx="50" cy="76" rx="5" ry="3" fill="rgba(180,50,10,0.25)"/>
-                  <path d="M43 73 Q50 78 57 73" stroke="#C04010" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-                  <path d="M80 52 Q87 58 80 64" stroke="#F7622A" stroke-width="2" fill="none" stroke-linecap="round" opacity=".65"/>
-                  <path d="M85 47 Q95 57 85 67" stroke="#F7622A" stroke-width="1.8" fill="none" stroke-linecap="round" opacity=".38"/>
-                  <path d="M18 72 Q12 62 14 50 Q16 42 22 44" stroke="url(#f1b_b)" stroke-width="10" stroke-linecap="round" fill="none"/>
-                </svg>
-              </div>
-              <!-- Waveform -->
-              <div style="display:flex;align-items:flex-end;justify-content:center;gap:3px;height:44px">
-                <span style="width:3px;background:#F98C60;border-radius:2px;height:32%"></span>
-                <span style="width:3px;background:#F98C60;border-radius:2px;height:58%"></span>
-                <span style="width:3px;background:#F98C60;border-radius:2px;height:82%"></span>
-                <span style="width:3px;background:#F98C60;border-radius:2px;height:45%"></span>
-                <span style="width:3px;background:#F98C60;border-radius:2px;height:96%"></span>
-                <span style="width:3px;background:#F98C60;border-radius:2px;height:70%"></span>
-                <span style="width:3px;background:#F98C60;border-radius:2px;height:40%"></span>
-                <span style="width:3px;background:#F98C60;border-radius:2px;height:85%"></span>
-                <span style="width:3px;background:#F98C60;border-radius:2px;height:55%"></span>
-                <span style="width:3px;background:#F98C60;border-radius:2px;height:92%"></span>
-                <span style="width:3px;background:#F98C60;border-radius:2px;height:62%"></span>
-                <span style="width:3px;background:rgba(249,140,96,0.48);border-radius:2px;height:30%"></span>
-                <span style="width:3px;background:rgba(249,140,96,0.26);border-radius:2px;height:18%"></span>
-                <span style="width:3px;background:rgba(249,140,96,0.14);border-radius:2px;height:10%"></span>
+              <div class="absolute bottom-3 left-3 right-3 rounded-2xl p-2.5 flex items-center gap-2" style="background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);z-index:2">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style="background:linear-gradient(135deg,#F5E0CC,#EDD0B8)">
+                  <span class="mi text-coral-700" style="font-size:18px">medication</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-xs font-semibold text-ink-900 truncate">陪妈妈去复诊</div>
+                  <div class="text-[10px] text-ink-500 mt-0.5">今天 10:30 · 市中心医院</div>
+                </div>
+                <span class="text-[10px] bg-coral-100 text-coral-700 px-1.5 py-0.5 rounded-full font-medium shrink-0">即将</span>
               </div>
             </div>
-            <!-- Cancel hint (outside arc, above it) -->
-            <div style="position:absolute;bottom:118px;left:0;right:0;text-align:center">
-              <div style="font-size:10px;color:rgba(255,255,255,0.28);letter-spacing:.04em;display:flex;align-items:center;justify-content:center;gap:6px">
-                <span style="flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(255,255,255,0.12));margin-left:24px"></span>
-                <span>↑ 上滑此处取消发送</span>
-                <span style="flex:1;height:1px;background:linear-gradient(to left,transparent,rgba(255,255,255,0.12));margin-right:24px"></span>
+            <div class="label mb-2">上午</div>
+            <div class="space-y-2">
+              <div class="rounded-2xl bg-white/80 border hairline p-2.5 flex gap-2.5 items-start">
+                <div class="mt-0.5 w-4 h-4 rounded-full border-2 border-coral-400 shrink-0"></div>
+                <div>
+                  <div class="text-xs font-medium text-ink-800">陪妈妈去复诊</div>
+                  <div class="text-[10px] text-ink-500 mt-0.5">10:30 · 市中心医院 · 提前一晚提醒</div>
+                </div>
+              </div>
+              <div class="rounded-2xl bg-white/80 border hairline p-2.5 flex gap-2.5 items-start">
+                <div class="mt-0.5 w-4 h-4 rounded-full bg-sage-500 flex items-center justify-center shrink-0"><span class="mi text-white" style="font-size:11px">check</span></div>
+                <div class="opacity-60">
+                  <div class="text-xs font-medium text-ink-800 line-through">给爸爸买降压药</div>
+                  <div class="text-[10px] text-ink-500 mt-0.5">爸爸 · 刚刚标记完成</div>
+                </div>
+              </div>
+              <div class="rounded-2xl bg-white/80 border hairline p-2.5 flex gap-2.5 items-start">
+                <div class="mt-0.5 w-4 h-4 rounded-full border-2 border-ink-100 shrink-0"></div>
+                <div>
+                  <div class="text-xs font-medium text-ink-800">把周末的照片发给姐姐</div>
+                  <div class="text-[10px] text-ink-500 mt-0.5">今晚 · 仅自己</div>
+                </div>
               </div>
             </div>
-            <!-- Arc zone：向下弧形，默认态 -->
-            <div style="position:absolute;bottom:0;left:0;right:0;height:110px;border-radius:50% 50% 0 0 / 50px 50px 0 0;background:rgba(255,255,255,0.10);border-top:1.5px solid rgba(255,255,255,0.20);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:22px;gap:5px">
-              <span class="mi" style="color:rgba(255,255,255,0.70);font-size:22px">send</span>
-              <span style="font-size:14px;color:rgba(255,255,255,0.82);font-weight:600;letter-spacing:.04em">松手发送</span>
+            <!-- bottom bar + cancel tooltip -->
+            <div class="mt-auto" style="position:relative;padding-top:18px">
+              <div style="background:#FFFFFF;border-radius:26px;padding:6px 0 10px;box-shadow:0 4px 22px rgba(0,0,0,0.09);display:flex;align-items:flex-end;justify-content:space-around;position:relative;overflow:visible">
+                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
+                  <span class="mi" style="font-size:22px;color:#F7622A">home</span>
+                  <span style="font-size:10px;font-weight:600;color:#F7622A">首页</span>
+                  <span style="width:4px;height:4px;border-radius:50%;background:#F7622A;margin-top:1px;display:block"></span>
+                </button>
+                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
+                  <span class="mi" style="font-size:22px;color:#B0B8C1">calendar_month</span>
+                  <span style="font-size:10px;color:#B0B8C1">日历</span>
+                </button>
+                <div style="flex:1"></div>
+                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
+                  <span class="mi" style="font-size:22px;color:#B0B8C1">checklist</span>
+                  <span style="font-size:10px;color:#B0B8C1">计划</span>
+                </button>
+                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
+                  <span class="mi" style="font-size:22px;color:#B0B8C1">person</span>
+                  <span style="font-size:10px;color:#B0B8C1">我的</span>
+                </button>
+                <div style="position:absolute;left:50%;transform:translateX(-50%);top:-22px">
+                  <div style="position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);white-space:nowrap">
+                    <div style="background:rgba(18,12,8,0.76);color:rgba(255,255,255,0.86);font-size:10px;padding:5px 12px;border-radius:99px;backdrop-filter:blur(8px);display:flex;align-items:center;gap:4px">
+                      <span class="mi" style="font-size:12px;opacity:0.55">arrow_upward</span>
+                      滑到此处取消发送
+                      <span class="mi" style="font-size:12px;opacity:0.55">arrow_upward</span>
+                    </div>
+                  </div>
+                  <span style="position:absolute;inset:-8px;border-radius:50%;background:rgba(232,67,10,0.14);animation:ping 1.6s cubic-bezier(0,0,.2,1) infinite"></span>
+                  <button style="width:58px;height:58px;border-radius:50%;background:linear-gradient(145deg,#F98C60 0%,#E8430A 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 26px rgba(232,67,10,0.45),0 0 0 5px rgba(249,140,96,0.18),inset 0 1px 0 rgba(255,255,255,0.28)">
+                    <span class="mi" style="color:white;font-size:24px">mic</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">② 遮罩展开：中部录音动画，弧形区域内松手即发送；弧形外侧灰色文字提示取消方向。</p>
+        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">② 绳子展开——小念拽绳从顶端加速滑下，首页内容完整可见，无任何遮罩。</p>
       </div>
 
-      <!-- Phone C : 手指滑出弧形 · 取消态（弧形变红） -->
+      <!-- ③ Phone C : 小念落至屏幕中央，捂耳收听 -->
       <div>
         <div class="phone shadow-phone">
-          <!-- Homepage ghost -->
-          <div style="position:absolute;inset:0;padding:54px 18px 20px;display:flex;flex-direction:column;opacity:0.48;pointer-events:none">
-            <div style="height:228px;border-radius:24px;background:linear-gradient(135deg,#FFE2D4 0%,#F7C8A0 100%);margin-bottom:12px;flex-shrink:0"></div>
-            <div style="height:10px;border-radius:6px;background:#c8c0d8;margin-bottom:8px;width:28%"></div>
-            <div style="height:52px;border-radius:16px;background:rgba(255,255,255,0.9);margin-bottom:6px"></div>
-            <div style="height:44px;border-radius:16px;background:rgba(255,255,255,0.9);margin-bottom:6px"></div>
-            <div style="height:44px;border-radius:16px;background:rgba(255,255,255,0.9)"></div>
+          <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+          <!-- REC indicator (below notch) -->
+          <div style="position:absolute;top:54px;left:50%;transform:translateX(-50%);z-index:25;display:flex;align-items:center;gap:5px;background:rgba(232,67,10,0.10);padding:3px 10px;border-radius:99px;pointer-events:none">
+            <span style="width:6px;height:6px;border-radius:50%;background:#E8430A;animation:blink 1s steps(1) infinite;display:block;flex-shrink:0"></span>
+            <span style="font-size:10px;font-weight:700;color:#E8430A;letter-spacing:0.06em">REC · 00:12</span>
           </div>
-          <!-- Overlay -->
-          <div style="position:absolute;inset:0;z-index:50;background:rgba(12,8,26,0.55);backdrop-filter:blur(5px)">
-            <!-- Status bar -->
-            <div style="position:absolute;top:20px;left:28px;right:28px;display:flex;justify-content:space-between;font-size:12px;color:rgba(255,200,200,0.40);font-weight:600;z-index:1">
-              <span>9:41</span>
-              <span style="display:flex;align-items:center;gap:3px"><span class="mi" style="font-size:13px">signal_cellular_alt</span><span class="mi" style="font-size:13px">wifi</span><span class="mi" style="font-size:13px">battery_full</span></span>
+          <!-- Mascot: at center, 捂耳收听 -->
+          <div style="position:absolute;left:50%;transform:translateX(-50%);top:295px;z-index:20;pointer-events:none">
+            <svg width="130" height="140" viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 10px 24px rgba(183,62,20,0.30))">
+              <defs>
+                <radialGradient id="f1b2l_b" cx="35%" cy="28%" r="68%">
+                  <stop offset="0%" stop-color="#FFC49A"/>
+                  <stop offset="45%" stop-color="#F7622A"/>
+                  <stop offset="100%" stop-color="#B83E14"/>
+                </radialGradient>
+                <radialGradient id="f1b2l_e" cx="40%" cy="35%" r="65%">
+                  <stop offset="0%" stop-color="#FFAA7A"/>
+                  <stop offset="100%" stop-color="#E05515"/>
+                </radialGradient>
+                <radialGradient id="f1b2l_ei" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#FFD8C0"/>
+                  <stop offset="100%" stop-color="#F0864A"/>
+                </radialGradient>
+                <radialGradient id="f1b2l_c" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#FF9070" stop-opacity=".50"/>
+                  <stop offset="100%" stop-color="#FF9070" stop-opacity="0"/>
+                </radialGradient>
+              </defs>
+              <ellipse cx="50" cy="117" rx="26" ry="4" fill="rgba(180,60,20,0.10)"/>
+              <!-- Arms covering ears (drawn before body) -->
+              <path d="M20 74 Q4 64 6 46" stroke="url(#f1b2l_b)" stroke-width="12" stroke-linecap="round" fill="none"/>
+              <path d="M80 74 Q96 64 94 46" stroke="url(#f1b2l_b)" stroke-width="12" stroke-linecap="round" fill="none"/>
+              <!-- Ears -->
+              <ellipse cx="18" cy="44" rx="9" ry="13" fill="url(#f1b2l_e)" transform="rotate(-10,18,44)"/>
+              <ellipse cx="18" cy="44" rx="5.5" ry="8" fill="url(#f1b2l_ei)" transform="rotate(-10,18,44)"/>
+              <ellipse cx="82" cy="44" rx="9" ry="13" fill="url(#f1b2l_e)" transform="rotate(10,82,44)"/>
+              <ellipse cx="82" cy="44" rx="5.5" ry="8" fill="url(#f1b2l_ei)" transform="rotate(10,82,44)"/>
+              <!-- Body -->
+              <circle cx="50" cy="75" r="38" fill="url(#f1b2l_b)"/>
+              <ellipse cx="34" cy="56" rx="13" ry="9" fill="rgba(255,255,255,0.24)" transform="rotate(-22,34,56)"/>
+              <ellipse cx="24" cy="83" rx="10" ry="5" fill="url(#f1b2l_c)"/>
+              <ellipse cx="76" cy="83" rx="10" ry="5" fill="url(#f1b2l_c)"/>
+              <!-- Eyes: wide, focused/attentive -->
+              <circle cx="37" cy="68" r="11" fill="white"/>
+              <circle cx="38" cy="69" r="8" fill="#2A1206"/>
+              <circle cx="42" cy="65" r="3.5" fill="white"/>
+              <circle cx="63" cy="68" r="11" fill="white"/>
+              <circle cx="64" cy="69" r="8" fill="#2A1206"/>
+              <circle cx="68" cy="65" r="3.5" fill="white"/>
+              <!-- Mouth: gentle focused curve -->
+              <path d="M43 87 Q50 91 57 87" stroke="#C04010" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <!-- Waveform below mascot -->
+          <div style="position:absolute;left:50%;transform:translateX(-50%);top:447px;z-index:20;pointer-events:none;display:flex;align-items:flex-end;gap:3px">
+            <div style="width:3px;height:8px;background:#F7622A;border-radius:2px;opacity:0.50"></div>
+            <div style="width:3px;height:16px;background:#F7622A;border-radius:2px;opacity:0.68"></div>
+            <div style="width:3px;height:26px;background:#F7622A;border-radius:2px;opacity:0.84"></div>
+            <div style="width:3px;height:34px;background:#F7622A;border-radius:2px;opacity:1.0"></div>
+            <div style="width:3px;height:22px;background:#F7622A;border-radius:2px;opacity:0.88"></div>
+            <div style="width:3px;height:30px;background:#F7622A;border-radius:2px;opacity:0.95"></div>
+            <div style="width:3px;height:14px;background:#F7622A;border-radius:2px;opacity:0.60"></div>
+            <div style="width:3px;height:28px;background:#F7622A;border-radius:2px;opacity:0.92"></div>
+            <div style="width:3px;height:20px;background:#F7622A;border-radius:2px;opacity:0.78"></div>
+            <div style="width:3px;height:10px;background:#F7622A;border-radius:2px;opacity:0.52"></div>
+          </div>
+          <!-- Screen content (homepage fully visible) -->
+          <div class="screen">
+            <div class="rounded-3xl overflow-hidden mb-3 relative" style="height:175px;background-image:url('./assets/hero-medical.jpg');background-size:cover;background-position:center right;">
+              <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(155,95,45,0.62) 0%,rgba(155,95,45,0.30) 52%,transparent 72%)"></div>
+              <div class="absolute top-6 left-5" style="z-index:2">
+                <div class="text-white/70 text-[11px] tracking-wide">周一 · 晴</div>
+                <div class="text-white font-serif text-xl font-bold mt-0.5 leading-tight">早，小杨</div>
+                <div class="text-white/60 text-[10px] mt-1">下一件值得记住的事 ↓</div>
+              </div>
+              <div class="absolute bottom-3 left-3 right-3 rounded-2xl p-2.5 flex items-center gap-2" style="background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);z-index:2">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style="background:linear-gradient(135deg,#F5E0CC,#EDD0B8)">
+                  <span class="mi text-coral-700" style="font-size:18px">medication</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-xs font-semibold text-ink-900 truncate">陪妈妈去复诊</div>
+                  <div class="text-[10px] text-ink-500 mt-0.5">今天 10:30 · 市中心医院</div>
+                </div>
+                <span class="text-[10px] bg-coral-100 text-coral-700 px-1.5 py-0.5 rounded-full font-medium shrink-0">即将</span>
+              </div>
             </div>
-            <!-- Recording content (above arc) — finger is now here in cancel zone -->
-            <div style="position:absolute;top:0;bottom:110px;left:0;right:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 24px">
-              <!-- REC indicator -->
-              <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">
-                <span style="width:7px;height:7px;border-radius:50%;background:#FF5252;animation:blink 1s steps(1) infinite;display:inline-block;flex-shrink:0"></span>
-                <span style="font-size:13px;color:rgba(255,200,200,0.85);font-weight:600;letter-spacing:.10em">REC · 00:08</span>
+            <div class="label mb-2">上午</div>
+            <div class="space-y-2">
+              <div class="rounded-2xl bg-white/80 border hairline p-2.5 flex gap-2.5 items-start">
+                <div class="mt-0.5 w-4 h-4 rounded-full border-2 border-coral-400 shrink-0"></div>
+                <div>
+                  <div class="text-xs font-medium text-ink-800">陪妈妈去复诊</div>
+                  <div class="text-[10px] text-ink-500 mt-0.5">10:30 · 市中心医院 · 提前一晚提醒</div>
+                </div>
               </div>
-              <div style="font-size:10px;color:rgba(255,150,150,0.45);letter-spacing:.05em;margin-bottom:28px">松手将取消本次录音</div>
-              <!-- 小念（取消告警态，红色光晕） -->
-              <div style="position:relative;display:flex;align-items:center;justify-content:center;width:150px;height:150px;margin-bottom:14px;flex-shrink:0;opacity:0.82">
-                <span style="position:absolute;width:118px;height:118px;border-radius:50%;background:rgba(255,80,80,0.16)"></span>
-                <svg width="108" height="118" viewBox="0 0 100 110" fill="none" xmlns="http://www.w3.org/2000/svg" style="position:relative;z-index:1;filter:drop-shadow(0 0 12px rgba(255,50,50,0.55))">
-                  <defs>
-                    <radialGradient id="f1bc_b" cx="35%" cy="28%" r="68%"><stop offset="0%" stop-color="#FFC49A"/><stop offset="45%" stop-color="#F7622A"/><stop offset="100%" stop-color="#B83E14"/></radialGradient>
-                    <radialGradient id="f1bc_e" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#FFAA7A"/><stop offset="100%" stop-color="#E05515"/></radialGradient>
-                    <radialGradient id="f1bc_ei" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#FFD4B8"/><stop offset="100%" stop-color="#F8A07A"/></radialGradient>
-                    <radialGradient id="f1bc_c" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#FF9070" stop-opacity=".55"/><stop offset="100%" stop-color="#FF9070" stop-opacity="0"/></radialGradient>
-                    <filter id="f1bc_s"><feDropShadow dx="0" dy="5" stdDeviation="4.5" flood-color="rgba(180,60,20,0.28)"/></filter>
-                  </defs>
-                  <ellipse cx="50" cy="107" rx="26" ry="4.5" fill="rgba(180,60,20,0.10)"/>
-                  <ellipse cx="20" cy="18" rx="10" ry="14" fill="url(#f1bc_e)" transform="rotate(-8,20,18)"/>
-                  <ellipse cx="20" cy="18" rx="6" ry="9" fill="url(#f1bc_ei)" transform="rotate(-8,20,18)"/>
-                  <ellipse cx="78" cy="24" rx="9" ry="11" fill="url(#f1bc_e)" transform="rotate(12,78,24)"/>
-                  <ellipse cx="78" cy="25" rx="5" ry="7" fill="url(#f1bc_ei)" transform="rotate(12,78,25)"/>
-                  <circle cx="50" cy="62" r="42" fill="url(#f1bc_b)" filter="url(#f1bc_s)"/>
-                  <ellipse cx="32" cy="40" rx="13" ry="9" fill="rgba(255,255,255,0.26)" transform="rotate(-25,32,40)"/>
-                  <ellipse cx="24" cy="68" rx="11" ry="8" fill="url(#f1bc_c)"/>
-                  <ellipse cx="76" cy="68" rx="11" ry="8" fill="url(#f1bc_c)"/>
-                  <!-- worried/surprised eyes (wider, asymmetric) -->
-                  <circle cx="36" cy="56" r="10" fill="white"/><circle cx="36" cy="57" r="7" fill="#2A1206"/>
-                  <circle cx="39" cy="52.5" r="3.2" fill="white"/>
-                  <circle cx="64" cy="56" r="10" fill="white"/><circle cx="64" cy="57" r="7" fill="#2A1206"/>
-                  <circle cx="67" cy="52.5" r="3.2" fill="white"/>
-                  <!-- worried mouth (slight frown) -->
-                  <path d="M43 77 Q50 73 57 77" stroke="#C04010" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-                  <!-- sweat drop -->
-                  <ellipse cx="74" cy="44" rx="3" ry="4.5" fill="rgba(180,220,255,0.70)" transform="rotate(12,74,44)"/>
-                  <path d="M18 72 Q12 62 14 50 Q16 42 22 44" stroke="url(#f1bc_b)" stroke-width="10" stroke-linecap="round" fill="none"/>
-                </svg>
+              <div class="rounded-2xl bg-white/80 border hairline p-2.5 flex gap-2.5 items-start">
+                <div class="mt-0.5 w-4 h-4 rounded-full bg-sage-500 flex items-center justify-center shrink-0"><span class="mi text-white" style="font-size:11px">check</span></div>
+                <div class="opacity-60">
+                  <div class="text-xs font-medium text-ink-800 line-through">给爸爸买降压药</div>
+                  <div class="text-[10px] text-ink-500 mt-0.5">爸爸 · 刚刚标记完成</div>
+                </div>
               </div>
-              <!-- Waveform (dim / paused) -->
-              <div style="display:flex;align-items:flex-end;justify-content:center;gap:3px;height:44px;opacity:0.35">
-                <span style="width:3px;background:#ff9090;border-radius:2px;height:32%"></span>
-                <span style="width:3px;background:#ff9090;border-radius:2px;height:58%"></span>
-                <span style="width:3px;background:#ff9090;border-radius:2px;height:82%"></span>
-                <span style="width:3px;background:#ff9090;border-radius:2px;height:45%"></span>
-                <span style="width:3px;background:#ff9090;border-radius:2px;height:96%"></span>
-                <span style="width:3px;background:#ff9090;border-radius:2px;height:70%"></span>
-                <span style="width:3px;background:#ff9090;border-radius:2px;height:40%"></span>
-                <span style="width:3px;background:#ff9090;border-radius:2px;height:85%"></span>
-                <span style="width:3px;background:#ff9090;border-radius:2px;height:55%"></span>
-                <span style="width:3px;background:#ff9090;border-radius:2px;height:92%"></span>
-                <span style="width:3px;background:#ff9090;border-radius:2px;height:62%"></span>
-                <span style="width:3px;background:rgba(255,144,144,0.48);border-radius:2px;height:30%"></span>
-                <span style="width:3px;background:rgba(255,144,144,0.26);border-radius:2px;height:18%"></span>
-                <span style="width:3px;background:rgba(255,144,144,0.14);border-radius:2px;height:10%"></span>
+              <div class="rounded-2xl bg-white/80 border hairline p-2.5 flex gap-2.5 items-start">
+                <div class="mt-0.5 w-4 h-4 rounded-full border-2 border-ink-100 shrink-0"></div>
+                <div>
+                  <div class="text-xs font-medium text-ink-800">把周末的照片发给姐姐</div>
+                  <div class="text-[10px] text-ink-500 mt-0.5">今晚 · 仅自己</div>
+                </div>
               </div>
             </div>
-            <!-- Cancel hint (now prominent, finger is here) -->
-            <div style="position:absolute;bottom:118px;left:0;right:0;text-align:center">
-              <div style="font-size:11px;color:rgba(255,120,120,0.85);letter-spacing:.04em;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px">
-                <span style="flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(255,80,80,0.35));margin-left:24px"></span>
-                <span>↑ 松手取消发送</span>
-                <span style="flex:1;height:1px;background:linear-gradient(to left,transparent,rgba(255,80,80,0.35));margin-right:24px"></span>
+            <!-- bottom bar + prominent cancel tooltip -->
+            <div class="mt-auto" style="position:relative;padding-top:18px">
+              <div style="background:#FFFFFF;border-radius:26px;padding:6px 0 10px;box-shadow:0 4px 22px rgba(0,0,0,0.09);display:flex;align-items:flex-end;justify-content:space-around;position:relative;overflow:visible">
+                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
+                  <span class="mi" style="font-size:22px;color:#F7622A">home</span>
+                  <span style="font-size:10px;font-weight:600;color:#F7622A">首页</span>
+                  <span style="width:4px;height:4px;border-radius:50%;background:#F7622A;margin-top:1px;display:block"></span>
+                </button>
+                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
+                  <span class="mi" style="font-size:22px;color:#B0B8C1">calendar_month</span>
+                  <span style="font-size:10px;color:#B0B8C1">日历</span>
+                </button>
+                <div style="flex:1"></div>
+                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
+                  <span class="mi" style="font-size:22px;color:#B0B8C1">checklist</span>
+                  <span style="font-size:10px;color:#B0B8C1">计划</span>
+                </button>
+                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
+                  <span class="mi" style="font-size:22px;color:#B0B8C1">person</span>
+                  <span style="font-size:10px;color:#B0B8C1">我的</span>
+                </button>
+                <div style="position:absolute;left:50%;transform:translateX(-50%);top:-22px">
+                  <div style="position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);white-space:nowrap">
+                    <div style="background:rgba(18,12,8,0.82);color:rgba(255,255,255,0.92);font-size:10px;padding:6px 14px;border-radius:99px;backdrop-filter:blur(10px);display:flex;align-items:center;gap:5px;box-shadow:0 4px 18px rgba(0,0,0,0.28)">
+                      <span class="mi" style="font-size:13px;opacity:0.55">arrow_upward</span>
+                      滑到此处取消发送
+                      <span class="mi" style="font-size:13px;opacity:0.55">arrow_upward</span>
+                    </div>
+                  </div>
+                  <span style="position:absolute;inset:-8px;border-radius:50%;background:rgba(232,67,10,0.16);animation:ping 1.6s cubic-bezier(0,0,.2,1) infinite"></span>
+                  <button style="width:58px;height:58px;border-radius:50%;background:linear-gradient(145deg,#F98C60 0%,#E8430A 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 26px rgba(232,67,10,0.45),0 0 0 5px rgba(249,140,96,0.18),inset 0 1px 0 rgba(255,255,255,0.28)">
+                    <span class="mi" style="color:white;font-size:24px">mic</span>
+                  </button>
+                </div>
               </div>
-            </div>
-            <!-- Arc zone：变为半透明红色 -->
-            <div style="position:absolute;bottom:0;left:0;right:0;height:110px;border-radius:50% 50% 0 0 / 50px 50px 0 0;background:rgba(210,30,30,0.38);border-top:1.5px solid rgba(255,90,90,0.52);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:22px;gap:5px">
-              <span class="mi" style="color:rgba(255,160,160,0.88);font-size:22px">delete_outline</span>
-              <span style="font-size:14px;color:rgba(255,180,180,0.88);font-weight:600;letter-spacing:.04em">松手取消</span>
             </div>
           </div>
         </div>
-        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">③ 手指滑出弧形：弧形变为半透明红色，麦克风图标同步变为 mic_off，松手录音即丢弃。</p>
+        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">③ 小念落至屏幕中央，双手捂耳专注收听；波形显示录音中，上滑麦克风即可取消。</p>
       </div>
 
     </div>
