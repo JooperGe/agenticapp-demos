@@ -411,28 +411,80 @@
     </div>
   </section>
 
-  <!-- Flow 01b : 首页副本 · 长按录音（小念绳降 + 捂耳收听） -->
+  <!-- Flow 01b : 首页副本 · 长按录音（能量进度条 + 小念趴耳收听） -->
   <section class="mt-28">
     <div class="flex items-baseline gap-3 mb-6">
       <span class="label">Flow 01b · 首页副本 · 长按录音</span>
-      <h2 class="font-serif text-2xl font-bold text-ink-800">长按底栏麦克风 · 小念从顶端滑下</h2>
+      <h2 class="font-serif text-2xl font-bold text-ink-800">长按麦克风 · 能量条计时 · 小念趴耳收听</h2>
     </div>
     <p class="text-sm text-ink-500 max-w-2xl mb-8 leading-relaxed">
-      长按底部麦克风，<b class="text-ink-800">无全屏遮罩</b>——小念拽着绳子从屏幕顶端滑入，落至屏幕中央后做
-      <b class="text-ink-800">捂耳收听</b>动作；麦克风上方浮现「滑到此处取消发送」提示条，手指上滑即可取消。
+      长按底部麦克风，按钮上方浮现「滑到此处取消发送」提示；提示上方出现
+      <b class="text-ink-800">能量进度条</b>，随录音时长逐步充满（上限 60 秒）；小念形象
+      <b class="text-ink-800">趴在进度条上沿捂耳收听</b>，随能量蓄积表情愈发专注。到 60 秒自动发送，上滑随时取消。
     </p>
 
     <div class="grid md:grid-cols-3 gap-10 place-items-center">
 
-      <!-- ① Phone A : 长按触发中（绳子从顶端探出） -->
+      <!-- ① Phone A : 刚开始录音（能量条刚亮起 ~8%） -->
       <div>
         <div class="phone shadow-phone">
           <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
-          <!-- Rope stub: peeking from below notch -->
-          <svg style="position:absolute;left:50%;transform:translateX(-50%);top:46px;z-index:20;pointer-events:none" width="8" height="46" viewBox="0 0 8 46">
-            <path d="M4 0 Q5 16 4 46" stroke="#B08040" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.75"/>
-            <circle cx="4" cy="26" r="2" fill="#8B5E20" opacity="0.5"/>
-          </svg>
+
+          <!-- Mascot A: resting on bar, just arrived (surprised / curious) -->
+          <div style="position:absolute;left:50%;transform:translateX(-50%);top:452px;z-index:22;pointer-events:none">
+            <svg width="100" height="95" viewBox="0 0 100 95" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 6px 16px rgba(183,62,20,0.28))">
+              <defs>
+                <radialGradient id="f1b3a_b" cx="35%" cy="28%" r="68%"><stop offset="0%" stop-color="#FFC49A"/><stop offset="45%" stop-color="#F7622A"/><stop offset="100%" stop-color="#B83E14"/></radialGradient>
+                <radialGradient id="f1b3a_e" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#FFAA7A"/><stop offset="100%" stop-color="#E05515"/></radialGradient>
+                <radialGradient id="f1b3a_ei" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#FFD8C0"/><stop offset="100%" stop-color="#F0864A"/></radialGradient>
+                <radialGradient id="f1b3a_c" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#FF9070" stop-opacity=".50"/><stop offset="100%" stop-color="#FF9070" stop-opacity="0"/></radialGradient>
+              </defs>
+              <!-- Arms reaching down to bar surface (drawn before body) -->
+              <path d="M30 62 Q20 75 18 90" stroke="url(#f1b3a_b)" stroke-width="11" stroke-linecap="round" fill="none"/>
+              <path d="M70 62 Q80 75 82 90" stroke="url(#f1b3a_b)" stroke-width="11" stroke-linecap="round" fill="none"/>
+              <!-- Ears -->
+              <ellipse cx="26" cy="22" rx="9" ry="13" fill="url(#f1b3a_e)" transform="rotate(-15,26,22)"/>
+              <ellipse cx="26" cy="22" rx="5.5" ry="8" fill="url(#f1b3a_ei)" transform="rotate(-15,26,22)"/>
+              <ellipse cx="74" cy="22" rx="9" ry="13" fill="url(#f1b3a_e)" transform="rotate(15,74,22)"/>
+              <ellipse cx="74" cy="22" rx="5.5" ry="8" fill="url(#f1b3a_ei)" transform="rotate(15,74,22)"/>
+              <!-- Body -->
+              <circle cx="50" cy="53" r="36" fill="url(#f1b3a_b)"/>
+              <ellipse cx="36" cy="38" rx="12" ry="8" fill="rgba(255,255,255,0.22)" transform="rotate(-20,36,38)"/>
+              <ellipse cx="27" cy="61" rx="9" ry="5" fill="url(#f1b3a_c)"/>
+              <ellipse cx="73" cy="61" rx="9" ry="5" fill="url(#f1b3a_c)"/>
+              <!-- Eyes: wide, surprised -->
+              <circle cx="37" cy="49" r="11" fill="white"/><circle cx="37" cy="49" r="7.5" fill="#2A1206"/><circle cx="40" cy="45" r="3" fill="white"/>
+              <circle cx="63" cy="49" r="11" fill="white"/><circle cx="63" cy="49" r="7.5" fill="#2A1206"/><circle cx="66" cy="45" r="3" fill="white"/>
+              <!-- Mouth: small O (surprised) -->
+              <ellipse cx="50" cy="64" rx="4" ry="4.5" fill="rgba(155,40,10,0.58)"/>
+              <!-- Paws -->
+              <circle cx="18" cy="90" r="6.5" fill="url(#f1b3a_b)"/>
+              <circle cx="82" cy="90" r="6.5" fill="url(#f1b3a_b)"/>
+            </svg>
+          </div>
+
+          <!-- Energy bar A: 8% -->
+          <div style="position:absolute;left:20px;right:20px;top:547px;z-index:23;pointer-events:none">
+            <div style="height:10px;border-radius:99px;background:rgba(232,67,10,0.11);overflow:hidden;position:relative">
+              <div style="position:absolute;left:0;top:0;bottom:0;width:8%;background:linear-gradient(90deg,#FBB080,#E8430A);border-radius:99px;box-shadow:0 0 8px rgba(232,67,10,0.40)">
+                <div style="position:absolute;top:2px;left:3px;right:1px;height:3px;border-radius:99px;background:rgba(255,255,255,0.48)"></div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:3px">
+              <span style="font-size:9px;color:rgba(232,67,10,0.78);font-weight:600;letter-spacing:0.02em">0:05</span>
+              <span style="font-size:9px;color:#B0B8C1">60s</span>
+            </div>
+          </div>
+
+          <!-- Cancel tooltip A -->
+          <div style="position:absolute;left:50%;transform:translateX(-50%);top:572px;z-index:24;white-space:nowrap;pointer-events:none">
+            <div style="background:rgba(18,12,8,0.75);color:rgba(255,255,255,0.86);font-size:10px;padding:5px 12px;border-radius:99px;backdrop-filter:blur(8px);display:flex;align-items:center;gap:4px">
+              <span class="mi" style="font-size:11px;opacity:0.55">arrow_upward</span>
+              滑到此处取消发送
+              <span class="mi" style="font-size:11px;opacity:0.55">arrow_upward</span>
+            </div>
+          </div>
+
           <div class="screen">
             <div class="rounded-3xl overflow-hidden mb-3 relative" style="height:175px;background-image:url('./assets/hero-medical.jpg');background-size:cover;background-position:center right;">
               <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(155,95,45,0.62) 0%,rgba(155,95,45,0.30) 52%,transparent 72%)"></div>
@@ -508,76 +560,67 @@
             </div>
           </div>
         </div>
-        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">① 长按麦克风——绳子从顶端悄悄探出，按钮光晕增强，小念即将滑入。</p>
+        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">① 长按麦克风——能量条刚亮起，小念趴上来侧耳准备收听。</p>
       </div>
 
-      <!-- ② Phone B : 小念滑下途中（绳子展开，人物悬在半空） -->
+      <!-- ② Phone B : 录音中（能量条 ~38%，小念安心趴耳） -->
       <div>
         <div class="phone shadow-phone">
           <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
-          <!-- Rope: fans from top-center down to mascot's two hand grips -->
-          <svg style="position:absolute;left:137px;top:46px;z-index:20;pointer-events:none" width="66" height="178" viewBox="0 0 66 178">
-            <path d="M33 0 Q28 60 16 128 Q8 158 0 178" stroke="#B08040" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.90"/>
-            <path d="M33 0 Q38 60 50 128 Q58 158 66 178" stroke="#B08040" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.90"/>
-            <circle cx="30" cy="44" r="2" fill="#8B5E20" opacity="0.55"/>
-            <circle cx="24" cy="96" r="2" fill="#8B5E20" opacity="0.55"/>
-            <circle cx="14" cy="148" r="2" fill="#8B5E20" opacity="0.55"/>
-            <circle cx="36" cy="44" r="2" fill="#8B5E20" opacity="0.55"/>
-            <circle cx="42" cy="96" r="2" fill="#8B5E20" opacity="0.55"/>
-            <circle cx="52" cy="148" r="2" fill="#8B5E20" opacity="0.55"/>
-          </svg>
-          <!-- Mascot: sliding down, arms raised, excited -->
-          <div style="position:absolute;left:50%;transform:translateX(-50%);top:206px;z-index:20;pointer-events:none">
-            <svg width="110" height="130" viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 8px 20px rgba(183,62,20,0.32))">
+
+          <!-- Mascot B: settled, content listening -->
+          <div style="position:absolute;left:50%;transform:translateX(-50%);top:452px;z-index:22;pointer-events:none">
+            <svg width="100" height="95" viewBox="0 0 100 95" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 6px 18px rgba(183,62,20,0.30))">
               <defs>
-                <radialGradient id="f1b2s_b" cx="35%" cy="28%" r="68%">
-                  <stop offset="0%" stop-color="#FFC49A"/>
-                  <stop offset="45%" stop-color="#F7622A"/>
-                  <stop offset="100%" stop-color="#B83E14"/>
-                </radialGradient>
-                <radialGradient id="f1b2s_e" cx="40%" cy="35%" r="65%">
-                  <stop offset="0%" stop-color="#FFAA7A"/>
-                  <stop offset="100%" stop-color="#E05515"/>
-                </radialGradient>
-                <radialGradient id="f1b2s_ei" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stop-color="#FFD8C0"/>
-                  <stop offset="100%" stop-color="#F0864A"/>
-                </radialGradient>
-                <radialGradient id="f1b2s_c" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stop-color="#FF9070" stop-opacity=".50"/>
-                  <stop offset="100%" stop-color="#FF9070" stop-opacity="0"/>
-                </radialGradient>
+                <radialGradient id="f1b3b_b" cx="35%" cy="28%" r="68%"><stop offset="0%" stop-color="#FFC49A"/><stop offset="45%" stop-color="#F7622A"/><stop offset="100%" stop-color="#B83E14"/></radialGradient>
+                <radialGradient id="f1b3b_e" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#FFAA7A"/><stop offset="100%" stop-color="#E05515"/></radialGradient>
+                <radialGradient id="f1b3b_ei" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#FFD8C0"/><stop offset="100%" stop-color="#F0864A"/></radialGradient>
+                <radialGradient id="f1b3b_c" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#FF9070" stop-opacity=".50"/><stop offset="100%" stop-color="#FF9070" stop-opacity="0"/></radialGradient>
               </defs>
-              <ellipse cx="50" cy="117" rx="18" ry="3" fill="rgba(180,60,20,0.07)"/>
-              <!-- Arms reaching UP -->
-              <path d="M22 72 Q10 52 22 20" stroke="url(#f1b2s_b)" stroke-width="12" stroke-linecap="round" fill="none"/>
-              <path d="M78 72 Q90 52 78 20" stroke="url(#f1b2s_b)" stroke-width="12" stroke-linecap="round" fill="none"/>
-              <!-- Ears -->
-              <ellipse cx="20" cy="46" rx="9" ry="13" fill="url(#f1b2s_e)" transform="rotate(-10,20,46)"/>
-              <ellipse cx="20" cy="46" rx="5.5" ry="8" fill="url(#f1b2s_ei)" transform="rotate(-10,20,46)"/>
-              <ellipse cx="80" cy="46" rx="9" ry="13" fill="url(#f1b2s_e)" transform="rotate(10,80,46)"/>
-              <ellipse cx="80" cy="46" rx="5.5" ry="8" fill="url(#f1b2s_ei)" transform="rotate(10,80,46)"/>
-              <!-- Body -->
-              <circle cx="50" cy="78" r="38" fill="url(#f1b2s_b)"/>
-              <ellipse cx="34" cy="58" rx="13" ry="9" fill="rgba(255,255,255,0.24)" transform="rotate(-22,34,58)"/>
-              <ellipse cx="24" cy="86" rx="10" ry="5" fill="url(#f1b2s_c)"/>
-              <ellipse cx="76" cy="86" rx="10" ry="5" fill="url(#f1b2s_c)"/>
-              <!-- Eyes: wide, looking up (excited) -->
-              <circle cx="37" cy="73" r="10.5" fill="white"/>
-              <circle cx="38" cy="71" r="7.5" fill="#2A1206"/>
-              <circle cx="41" cy="68" r="3.2" fill="white"/>
-              <circle cx="63" cy="73" r="10.5" fill="white"/>
-              <circle cx="64" cy="71" r="7.5" fill="#2A1206"/>
-              <circle cx="67" cy="68" r="3.2" fill="white"/>
-              <!-- Mouth: excited O -->
-              <ellipse cx="50" cy="91" rx="5" ry="5.5" fill="rgba(155,40,10,0.62)"/>
-              <path d="M44 88 Q50 86 56 88" stroke="#D05820" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-              <!-- Hand grips -->
-              <circle cx="22" cy="20" r="7" fill="url(#f1b2s_b)"/>
-              <circle cx="78" cy="20" r="7" fill="url(#f1b2s_b)"/>
+              <path d="M30 62 Q20 75 18 90" stroke="url(#f1b3b_b)" stroke-width="11" stroke-linecap="round" fill="none"/>
+              <path d="M70 62 Q80 75 82 90" stroke="url(#f1b3b_b)" stroke-width="11" stroke-linecap="round" fill="none"/>
+              <ellipse cx="26" cy="22" rx="9" ry="13" fill="url(#f1b3b_e)" transform="rotate(-15,26,22)"/>
+              <ellipse cx="26" cy="22" rx="5.5" ry="8" fill="url(#f1b3b_ei)" transform="rotate(-15,26,22)"/>
+              <ellipse cx="74" cy="22" rx="9" ry="13" fill="url(#f1b3b_e)" transform="rotate(15,74,22)"/>
+              <ellipse cx="74" cy="22" rx="5.5" ry="8" fill="url(#f1b3b_ei)" transform="rotate(15,74,22)"/>
+              <circle cx="50" cy="53" r="36" fill="url(#f1b3b_b)"/>
+              <ellipse cx="36" cy="38" rx="12" ry="8" fill="rgba(255,255,255,0.22)" transform="rotate(-20,36,38)"/>
+              <ellipse cx="27" cy="61" rx="9" ry="5" fill="url(#f1b3b_c)"/>
+              <ellipse cx="73" cy="61" rx="9" ry="5" fill="url(#f1b3b_c)"/>
+              <!-- Eyes: relaxed, half-lidded, content -->
+              <circle cx="37" cy="49" r="11" fill="white"/><circle cx="37" cy="50" r="7.5" fill="#2A1206"/><circle cx="40" cy="47" r="3" fill="white"/>
+                         <path d="M27 44 Q37 41 47 44" stroke="#1A0800" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+              <circle cx="63" cy="49" r="11" fill="white"/><circle cx="63" cy="50" r="7.5" fill="#2A1206"/><circle cx="66" cy="47" r="3" fill="white"/>
+              <path d="M53 44 Q63 41 73 44" stroke="#1A0800" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+              <!-- Mouth: gentle smile -->
+              <path d="M42 65 Q50 71 58 65" stroke="#C04010" stroke-width="2.5" fill="rgba(155,40,10,0.15)" stroke-linecap="round"/>
+              <circle cx="18" cy="90" r="6.5" fill="url(#f1b3b_b)"/>
+              <circle cx="82" cy="90" r="6.5" fill="url(#f1b3b_b)"/>
             </svg>
           </div>
-          <!-- Screen content (homepage fully visible, no overlay) -->
+
+          <!-- Energy bar B: 38% -->
+          <div style="position:absolute;left:20px;right:20px;top:547px;z-index:23;pointer-events:none">
+            <div style="height:10px;border-radius:99px;background:rgba(232,67,10,0.11);overflow:hidden;position:relative">
+              <div style="position:absolute;left:0;top:0;bottom:0;width:38%;background:linear-gradient(90deg,#FBB080,#E8430A);border-radius:99px;box-shadow:0 0 10px rgba(232,67,10,0.45)">
+                <div style="position:absolute;top:2px;left:3px;right:4px;height:3px;border-radius:99px;background:rgba(255,255,255,0.48)"></div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:3px">
+              <span style="font-size:9px;color:rgba(232,67,10,0.78);font-weight:600;letter-spacing:0.02em">0:23</span>
+              <span style="font-size:9px;color:#B0B8C1">60s</span>
+            </div>
+          </div>
+
+          <!-- Cancel tooltip B -->
+          <div style="position:absolute;left:50%;transform:translateX(-50%);top:572px;z-index:24;white-space:nowrap;pointer-events:none">
+            <div style="background:rgba(18,12,8,0.75);color:rgba(255,255,255,0.86);font-size:10px;padding:5px 12px;border-radius:99px;backdrop-filter:blur(8px);display:flex;align-items:center;gap:4px">
+              <span class="mi" style="font-size:11px;opacity:0.55">arrow_upward</span>
+              滑到此处取消发送
+              <span class="mi" style="font-size:11px;opacity:0.55">arrow_upward</span>
+            </div>
+          </div>
+
           <div class="screen">
             <div class="rounded-3xl overflow-hidden mb-3 relative" style="height:175px;background-image:url('./assets/hero-medical.jpg');background-size:cover;background-position:center right;">
               <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(155,95,45,0.62) 0%,rgba(155,95,45,0.30) 52%,transparent 72%)"></div>
@@ -601,57 +644,27 @@
             <div class="space-y-2">
               <div class="rounded-2xl bg-white/80 border hairline p-2.5 flex gap-2.5 items-start">
                 <div class="mt-0.5 w-4 h-4 rounded-full border-2 border-coral-400 shrink-0"></div>
-                <div>
-                  <div class="text-xs font-medium text-ink-800">陪妈妈去复诊</div>
-                  <div class="text-[10px] text-ink-500 mt-0.5">10:30 · 市中心医院 · 提前一晚提醒</div>
-                </div>
+                <div><div class="text-xs font-medium text-ink-800">陪妈妈去复诊</div><div class="text-[10px] text-ink-500 mt-0.5">10:30 · 市中心医院 · 提前一晚提醒</div></div>
               </div>
               <div class="rounded-2xl bg-white/80 border hairline p-2.5 flex gap-2.5 items-start">
                 <div class="mt-0.5 w-4 h-4 rounded-full bg-sage-500 flex items-center justify-center shrink-0"><span class="mi text-white" style="font-size:11px">check</span></div>
-                <div class="opacity-60">
-                  <div class="text-xs font-medium text-ink-800 line-through">给爸爸买降压药</div>
-                  <div class="text-[10px] text-ink-500 mt-0.5">爸爸 · 刚刚标记完成</div>
-                </div>
+                <div class="opacity-60"><div class="text-xs font-medium text-ink-800 line-through">给爸爸买降压药</div><div class="text-[10px] text-ink-500 mt-0.5">爸爸 · 刚刚标记完成</div></div>
               </div>
               <div class="rounded-2xl bg-white/80 border hairline p-2.5 flex gap-2.5 items-start">
                 <div class="mt-0.5 w-4 h-4 rounded-full border-2 border-ink-100 shrink-0"></div>
-                <div>
-                  <div class="text-xs font-medium text-ink-800">把周末的照片发给姐姐</div>
-                  <div class="text-[10px] text-ink-500 mt-0.5">今晚 · 仅自己</div>
-                </div>
+                <div><div class="text-xs font-medium text-ink-800">把周末的照片发给姐姐</div><div class="text-[10px] text-ink-500 mt-0.5">今晚 · 仅自己</div></div>
               </div>
             </div>
-            <!-- bottom bar + cancel tooltip -->
             <div class="mt-auto" style="position:relative;padding-top:18px">
               <div style="background:#FFFFFF;border-radius:26px;padding:6px 0 10px;box-shadow:0 4px 22px rgba(0,0,0,0.09);display:flex;align-items:flex-end;justify-content:space-around;position:relative;overflow:visible">
-                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
-                  <span class="mi" style="font-size:22px;color:#F7622A">home</span>
-                  <span style="font-size:10px;font-weight:600;color:#F7622A">首页</span>
-                  <span style="width:4px;height:4px;border-radius:50%;background:#F7622A;margin-top:1px;display:block"></span>
-                </button>
-                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
-                  <span class="mi" style="font-size:22px;color:#B0B8C1">calendar_month</span>
-                  <span style="font-size:10px;color:#B0B8C1">日历</span>
-                </button>
+                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0"><span class="mi" style="font-size:22px;color:#F7622A">home</span><span style="font-size:10px;font-weight:600;color:#F7622A">首页</span><span style="width:4px;height:4px;border-radius:50%;background:#F7622A;margin-top:1px;display:block"></span></button>
+                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0"><span class="mi" style="font-size:22px;color:#B0B8C1">calendar_month</span><span style="font-size:10px;color:#B0B8C1">日历</span></button>
                 <div style="flex:1"></div>
-                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
-                  <span class="mi" style="font-size:22px;color:#B0B8C1">checklist</span>
-                  <span style="font-size:10px;color:#B0B8C1">计划</span>
-                </button>
-                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
-                  <span class="mi" style="font-size:22px;color:#B0B8C1">person</span>
-                  <span style="font-size:10px;color:#B0B8C1">我的</span>
-                </button>
+                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0"><span class="mi" style="font-size:22px;color:#B0B8C1">checklist</span><span style="font-size:10px;color:#B0B8C1">计划</span></button>
+                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0"><span class="mi" style="font-size:22px;color:#B0B8C1">person</span><span style="font-size:10px;color:#B0B8C1">我的</span></button>
                 <div style="position:absolute;left:50%;transform:translateX(-50%);top:-22px">
-                  <div style="position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);white-space:nowrap">
-                    <div style="background:rgba(18,12,8,0.76);color:rgba(255,255,255,0.86);font-size:10px;padding:5px 12px;border-radius:99px;backdrop-filter:blur(8px);display:flex;align-items:center;gap:4px">
-                      <span class="mi" style="font-size:12px;opacity:0.55">arrow_upward</span>
-                      滑到此处取消发送
-                      <span class="mi" style="font-size:12px;opacity:0.55">arrow_upward</span>
-                    </div>
-                  </div>
                   <span style="position:absolute;inset:-8px;border-radius:50%;background:rgba(232,67,10,0.14);animation:ping 1.6s cubic-bezier(0,0,.2,1) infinite"></span>
-                  <button style="width:58px;height:58px;border-radius:50%;background:linear-gradient(145deg,#F98C60 0%,#E8430A 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 26px rgba(232,67,10,0.45),0 0 0 5px rgba(249,140,96,0.18),inset 0 1px 0 rgba(255,255,255,0.28)">
+                  <button style="width:58px;height:58px;border-radius:50%;background:linear-gradient(145deg,#F98C60 0%,#E8430A 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 26px rgba(232,67,10,0.48),0 0 0 5px rgba(249,140,96,0.20),inset 0 1px 0 rgba(255,255,255,0.28)">
                     <span class="mi" style="color:white;font-size:24px">mic</span>
                   </button>
                 </div>
@@ -659,79 +672,66 @@
             </div>
           </div>
         </div>
-        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">② 绳子展开——小念拽绳从顶端加速滑下，首页内容完整可见，无任何遮罩。</p>
+        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">② 录音进行中——能量条充至 38%，小念安心趴耳，表情自在专注。</p>
       </div>
 
-      <!-- ③ Phone C : 小念落至屏幕中央，捂耳收听 -->
+      <!-- ③ Phone C : 录音较长（能量条 ~68%，小念精神饱满） -->
       <div>
         <div class="phone shadow-phone">
           <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
-          <!-- REC indicator (below notch) -->
-          <div style="position:absolute;top:54px;left:50%;transform:translateX(-50%);z-index:25;display:flex;align-items:center;gap:5px;background:rgba(232,67,10,0.10);padding:3px 10px;border-radius:99px;pointer-events:none">
-            <span style="width:6px;height:6px;border-radius:50%;background:#E8430A;animation:blink 1s steps(1) infinite;display:block;flex-shrink:0"></span>
-            <span style="font-size:10px;font-weight:700;color:#E8430A;letter-spacing:0.06em">REC · 00:12</span>
-          </div>
-          <!-- Mascot: at center, 捂耳收听 -->
-          <div style="position:absolute;left:50%;transform:translateX(-50%);top:295px;z-index:20;pointer-events:none">
-            <svg width="130" height="140" viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 10px 24px rgba(183,62,20,0.30))">
+
+          <!-- Mascot C: energized, alert listening -->
+          <div style="position:absolute;left:50%;transform:translateX(-50%);top:452px;z-index:22;pointer-events:none">
+            <svg width="100" height="95" viewBox="0 0 100 95" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 6px 20px rgba(183,62,20,0.34))">
               <defs>
-                <radialGradient id="f1b2l_b" cx="35%" cy="28%" r="68%">
-                  <stop offset="0%" stop-color="#FFC49A"/>
-                  <stop offset="45%" stop-color="#F7622A"/>
-                  <stop offset="100%" stop-color="#B83E14"/>
-                </radialGradient>
-                <radialGradient id="f1b2l_e" cx="40%" cy="35%" r="65%">
-                  <stop offset="0%" stop-color="#FFAA7A"/>
-                  <stop offset="100%" stop-color="#E05515"/>
-                </radialGradient>
-                <radialGradient id="f1b2l_ei" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stop-color="#FFD8C0"/>
-                  <stop offset="100%" stop-color="#F0864A"/>
-                </radialGradient>
-                <radialGradient id="f1b2l_c" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stop-color="#FF9070" stop-opacity=".50"/>
-                  <stop offset="100%" stop-color="#FF9070" stop-opacity="0"/>
-                </radialGradient>
+                <radialGradient id="f1b3c_b" cx="35%" cy="28%" r="68%"><stop offset="0%" stop-color="#FFC49A"/><stop offset="45%" stop-color="#F7622A"/><stop offset="100%" stop-color="#B83E14"/></radialGradient>
+                <radialGradient id="f1b3c_e" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#FFAA7A"/><stop offset="100%" stop-color="#E05515"/></radialGradient>
+                <radialGradient id="f1b3c_ei" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#FFD8C0"/><stop offset="100%" stop-color="#F0864A"/></radialGradient>
+                <radialGradient id="f1b3c_c" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#FF9070" stop-opacity=".50"/><stop offset="100%" stop-color="#FF9070" stop-opacity="0"/></radialGradient>
               </defs>
-              <ellipse cx="50" cy="117" rx="26" ry="4" fill="rgba(180,60,20,0.10)"/>
-              <!-- Arms covering ears (drawn before body) -->
-              <path d="M20 74 Q4 64 6 46" stroke="url(#f1b2l_b)" stroke-width="12" stroke-linecap="round" fill="none"/>
-              <path d="M80 74 Q96 64 94 46" stroke="url(#f1b2l_b)" stroke-width="12" stroke-linecap="round" fill="none"/>
-              <!-- Ears -->
-              <ellipse cx="18" cy="44" rx="9" ry="13" fill="url(#f1b2l_e)" transform="rotate(-10,18,44)"/>
-              <ellipse cx="18" cy="44" rx="5.5" ry="8" fill="url(#f1b2l_ei)" transform="rotate(-10,18,44)"/>
-              <ellipse cx="82" cy="44" rx="9" ry="13" fill="url(#f1b2l_e)" transform="rotate(10,82,44)"/>
-              <ellipse cx="82" cy="44" rx="5.5" ry="8" fill="url(#f1b2l_ei)" transform="rotate(10,82,44)"/>
-              <!-- Body -->
-              <circle cx="50" cy="75" r="38" fill="url(#f1b2l_b)"/>
-              <ellipse cx="34" cy="56" rx="13" ry="9" fill="rgba(255,255,255,0.24)" transform="rotate(-22,34,56)"/>
-              <ellipse cx="24" cy="83" rx="10" ry="5" fill="url(#f1b2l_c)"/>
-              <ellipse cx="76" cy="83" rx="10" ry="5" fill="url(#f1b2l_c)"/>
-              <!-- Eyes: wide, focused/attentive -->
-              <circle cx="37" cy="68" r="11" fill="white"/>
-              <circle cx="38" cy="69" r="8" fill="#2A1206"/>
-              <circle cx="42" cy="65" r="3.5" fill="white"/>
-              <circle cx="63" cy="68" r="11" fill="white"/>
-              <circle cx="64" cy="69" r="8" fill="#2A1206"/>
-              <circle cx="68" cy="65" r="3.5" fill="white"/>
-              <!-- Mouth: gentle focused curve -->
-              <path d="M43 87 Q50 91 57 87" stroke="#C04010" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+              <path d="M30 62 Q20 75 18 90" stroke="url(#f1b3c_b)" stroke-width="11" stroke-linecap="round" fill="none"/>
+              <path d="M70 62 Q80 75 82 90" stroke="url(#f1b3c_b)" stroke-width="11" stroke-linecap="round" fill="none"/>
+              <!-- Ears: perked up more -->
+              <ellipse cx="24" cy="19" rx="9" ry="14" fill="url(#f1b3c_e)" transform="rotate(-12,24,19)"/>
+              <ellipse cx="24" cy="19" rx="5.5" ry="9" fill="url(#f1b3c_ei)" transform="rotate(-12,24,19)"/>
+              <ellipse cx="76" cy="19" rx="9" ry="14" fill="url(#f1b3c_e)" transform="rotate(12,76,19)"/>
+              <ellipse cx="76" cy="19" rx="5.5" ry="9" fill="url(#f1b3c_ei)" transform="rotate(12,76,19)"/>
+              <circle cx="50" cy="53" r="36" fill="url(#f1b3c_b)"/>
+              <ellipse cx="36" cy="38" rx="12" ry="8" fill="rgba(255,255,255,0.22)" transform="rotate(-20,36,38)"/>
+              <ellipse cx="27" cy="61" rx="9" ry="5" fill="url(#f1b3c_c)"/>
+              <ellipse cx="73" cy="61" rx="9" ry="5" fill="url(#f1b3c_c)"/>
+              <!-- Eyes: alert, bright -->
+              <circle cx="37" cy="48" r="11.5" fill="white"/><circle cx="37" cy="48" r="8" fill="#2A1206"/><circle cx="41" cy="44" r="3.2" fill="white"/>
+              <circle cx="63" cy="48" r="11.5" fill="white"/><circle cx="63" cy="48" r="8" fill="#2A1206"/><circle cx="67" cy="44" r="3.2" fill="white"/>
+              <!-- Mouth: wide happy smile -->
+              <path d="M40 65 Q50 73 60 65" stroke="#C04010" stroke-width="2.8" fill="rgba(155,40,10,0.18)" stroke-linecap="round"/>
+              <circle cx="18" cy="90" r="6.5" fill="url(#f1b3c_b)"/>
+              <circle cx="82" cy="90" r="6.5" fill="url(#f1b3c_b)"/>
             </svg>
           </div>
-          <!-- Waveform below mascot -->
-          <div style="position:absolute;left:50%;transform:translateX(-50%);top:447px;z-index:20;pointer-events:none;display:flex;align-items:flex-end;gap:3px">
-            <div style="width:3px;height:8px;background:#F7622A;border-radius:2px;opacity:0.50"></div>
-            <div style="width:3px;height:16px;background:#F7622A;border-radius:2px;opacity:0.68"></div>
-            <div style="width:3px;height:26px;background:#F7622A;border-radius:2px;opacity:0.84"></div>
-            <div style="width:3px;height:34px;background:#F7622A;border-radius:2px;opacity:1.0"></div>
-            <div style="width:3px;height:22px;background:#F7622A;border-radius:2px;opacity:0.88"></div>
-            <div style="width:3px;height:30px;background:#F7622A;border-radius:2px;opacity:0.95"></div>
-            <div style="width:3px;height:14px;background:#F7622A;border-radius:2px;opacity:0.60"></div>
-            <div style="width:3px;height:28px;background:#F7622A;border-radius:2px;opacity:0.92"></div>
-            <div style="width:3px;height:20px;background:#F7622A;border-radius:2px;opacity:0.78"></div>
-            <div style="width:3px;height:10px;background:#F7622A;border-radius:2px;opacity:0.52"></div>
+
+          <!-- Energy bar C: 68% with stronger glow -->
+          <div style="position:absolute;left:20px;right:20px;top:547px;z-index:23;pointer-events:none">
+            <div style="height:10px;border-radius:99px;background:rgba(232,67,10,0.11);overflow:hidden;position:relative">
+              <div style="position:absolute;left:0;top:0;bottom:0;width:68%;background:linear-gradient(90deg,#FBB080,#F7622A,#E8430A);border-radius:99px;box-shadow:0 0 12px rgba(232,67,10,0.55)">
+                <div style="position:absolute;top:2px;left:3px;right:8px;height:3px;border-radius:99px;background:rgba(255,255,255,0.48)"></div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:3px">
+              <span style="font-size:9px;color:rgba(232,67,10,0.85);font-weight:700;letter-spacing:0.02em">0:41</span>
+              <span style="font-size:9px;color:#B0B8C1">60s</span>
+            </div>
           </div>
-          <!-- Screen content (homepage fully visible) -->
+
+          <!-- Cancel tooltip C (slightly more prominent) -->
+          <div style="position:absolute;left:50%;transform:translateX(-50%);top:572px;z-index:24;white-space:nowrap;pointer-events:none">
+            <div style="background:rgba(18,12,8,0.80);color:rgba(255,255,255,0.90);font-size:10px;padding:5px 13px;border-radius:99px;backdrop-filter:blur(8px);display:flex;align-items:center;gap:4px;box-shadow:0 3px 12px rgba(0,0,0,0.22)">
+              <span class="mi" style="font-size:11px;opacity:0.55">arrow_upward</span>
+              滑到此处取消发送
+              <span class="mi" style="font-size:11px;opacity:0.55">arrow_upward</span>
+            </div>
+          </div>
+
           <div class="screen">
             <div class="rounded-3xl overflow-hidden mb-3 relative" style="height:175px;background-image:url('./assets/hero-medical.jpg');background-size:cover;background-position:center right;">
               <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(155,95,45,0.62) 0%,rgba(155,95,45,0.30) 52%,transparent 72%)"></div>
@@ -755,57 +755,27 @@
             <div class="space-y-2">
               <div class="rounded-2xl bg-white/80 border hairline p-2.5 flex gap-2.5 items-start">
                 <div class="mt-0.5 w-4 h-4 rounded-full border-2 border-coral-400 shrink-0"></div>
-                <div>
-                  <div class="text-xs font-medium text-ink-800">陪妈妈去复诊</div>
-                  <div class="text-[10px] text-ink-500 mt-0.5">10:30 · 市中心医院 · 提前一晚提醒</div>
-                </div>
+                <div><div class="text-xs font-medium text-ink-800">陪妈妈去复诊</div><div class="text-[10px] text-ink-500 mt-0.5">10:30 · 市中心医院 · 提前一晚提醒</div></div>
               </div>
               <div class="rounded-2xl bg-white/80 border hairline p-2.5 flex gap-2.5 items-start">
                 <div class="mt-0.5 w-4 h-4 rounded-full bg-sage-500 flex items-center justify-center shrink-0"><span class="mi text-white" style="font-size:11px">check</span></div>
-                <div class="opacity-60">
-                  <div class="text-xs font-medium text-ink-800 line-through">给爸爸买降压药</div>
-                  <div class="text-[10px] text-ink-500 mt-0.5">爸爸 · 刚刚标记完成</div>
-                </div>
+                <div class="opacity-60"><div class="text-xs font-medium text-ink-800 line-through">给爸爸买降压药</div><div class="text-[10px] text-ink-500 mt-0.5">爸爸 · 刚刚标记完成</div></div>
               </div>
               <div class="rounded-2xl bg-white/80 border hairline p-2.5 flex gap-2.5 items-start">
                 <div class="mt-0.5 w-4 h-4 rounded-full border-2 border-ink-100 shrink-0"></div>
-                <div>
-                  <div class="text-xs font-medium text-ink-800">把周末的照片发给姐姐</div>
-                  <div class="text-[10px] text-ink-500 mt-0.5">今晚 · 仅自己</div>
-                </div>
+                <div><div class="text-xs font-medium text-ink-800">把周末的照片发给姐姐</div><div class="text-[10px] text-ink-500 mt-0.5">今晚 · 仅自己</div></div>
               </div>
             </div>
-            <!-- bottom bar + prominent cancel tooltip -->
             <div class="mt-auto" style="position:relative;padding-top:18px">
               <div style="background:#FFFFFF;border-radius:26px;padding:6px 0 10px;box-shadow:0 4px 22px rgba(0,0,0,0.09);display:flex;align-items:flex-end;justify-content:space-around;position:relative;overflow:visible">
-                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
-                  <span class="mi" style="font-size:22px;color:#F7622A">home</span>
-                  <span style="font-size:10px;font-weight:600;color:#F7622A">首页</span>
-                  <span style="width:4px;height:4px;border-radius:50%;background:#F7622A;margin-top:1px;display:block"></span>
-                </button>
-                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
-                  <span class="mi" style="font-size:22px;color:#B0B8C1">calendar_month</span>
-                  <span style="font-size:10px;color:#B0B8C1">日历</span>
-                </button>
+                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0"><span class="mi" style="font-size:22px;color:#F7622A">home</span><span style="font-size:10px;font-weight:600;color:#F7622A">首页</span><span style="width:4px;height:4px;border-radius:50%;background:#F7622A;margin-top:1px;display:block"></span></button>
+                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0"><span class="mi" style="font-size:22px;color:#B0B8C1">calendar_month</span><span style="font-size:10px;color:#B0B8C1">日历</span></button>
                 <div style="flex:1"></div>
-                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
-                  <span class="mi" style="font-size:22px;color:#B0B8C1">checklist</span>
-                  <span style="font-size:10px;color:#B0B8C1">计划</span>
-                </button>
-                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0">
-                  <span class="mi" style="font-size:22px;color:#B0B8C1">person</span>
-                  <span style="font-size:10px;color:#B0B8C1">我的</span>
-                </button>
+                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0"><span class="mi" style="font-size:22px;color:#B0B8C1">checklist</span><span style="font-size:10px;color:#B0B8C1">计划</span></button>
+                <button style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:4px 0"><span class="mi" style="font-size:22px;color:#B0B8C1">person</span><span style="font-size:10px;color:#B0B8C1">我的</span></button>
                 <div style="position:absolute;left:50%;transform:translateX(-50%);top:-22px">
-                  <div style="position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);white-space:nowrap">
-                    <div style="background:rgba(18,12,8,0.82);color:rgba(255,255,255,0.92);font-size:10px;padding:6px 14px;border-radius:99px;backdrop-filter:blur(10px);display:flex;align-items:center;gap:5px;box-shadow:0 4px 18px rgba(0,0,0,0.28)">
-                      <span class="mi" style="font-size:13px;opacity:0.55">arrow_upward</span>
-                      滑到此处取消发送
-                      <span class="mi" style="font-size:13px;opacity:0.55">arrow_upward</span>
-                    </div>
-                  </div>
                   <span style="position:absolute;inset:-8px;border-radius:50%;background:rgba(232,67,10,0.16);animation:ping 1.6s cubic-bezier(0,0,.2,1) infinite"></span>
-                  <button style="width:58px;height:58px;border-radius:50%;background:linear-gradient(145deg,#F98C60 0%,#E8430A 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 26px rgba(232,67,10,0.45),0 0 0 5px rgba(249,140,96,0.18),inset 0 1px 0 rgba(255,255,255,0.28)">
+                  <button style="width:58px;height:58px;border-radius:50%;background:linear-gradient(145deg,#F98C60 0%,#E8430A 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 28px rgba(232,67,10,0.52),0 0 0 5px rgba(249,140,96,0.22),inset 0 1px 0 rgba(255,255,255,0.28)">
                     <span class="mi" style="color:white;font-size:24px">mic</span>
                   </button>
                 </div>
@@ -813,7 +783,7 @@
             </div>
           </div>
         </div>
-        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">③ 小念落至屏幕中央，双手捂耳专注收听；波形显示录音中，上滑麦克风即可取消。</p>
+        <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">③ 能量蓄积至 68%——小念精神饱满，耳朵竖起，表情更加专注投入。</p>
       </div>
 
     </div>
