@@ -143,12 +143,29 @@
 
   <!-- Flow 1 : 首页 + 创建 + 智能联系人 -->
   <section class="mt-6">
-    <div class="flex items-baseline gap-3 mb-6">
-      <span class="label">Flow 01 · Secondary</span>
-      <h2 class="font-serif text-2xl font-bold text-ink-800">今日一览 · 文字输入作为次要方式</h2>
-    </div>
+    <!-- ── 标题行 ── -->
+    <div style="display:flex;align-items:flex-start;gap:48px;margin-bottom:24px">
+      <div style="flex:1;min-width:0">
+        <div class="flex items-baseline gap-3">
+          <span class="label">Flow 01 · Secondary</span>
+          <h2 class="font-serif text-2xl font-bold text-ink-800">今日一览 · 文字输入作为次要方式</h2>
+        </div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="flex items-baseline gap-3">
+          <span class="label" style="background:#1D4ED8;color:white;border-color:transparent">V2 · Redesign</span>
+          <h2 class="font-serif text-2xl font-bold text-ink-800">同流程 · 新版视觉方案</h2>
+        </div>
+      </div>
+    </div><!-- /标题行 -->
 
-    <div class="grid md:grid-cols-3 gap-10 place-items-center">
+    <!-- ── 内容行 ── -->
+    <div style="display:flex;align-items:flex-start;gap:48px">
+
+      <!-- ── 左侧：Flow 01 缩小一半 ── -->
+      <div style="flex:1;min-width:0">
+        <div style="zoom:0.5;transform-origin:top left">
+          <div class="grid md:grid-cols-3 gap-10 place-items-center">
 
       <!-- Screen: Today -->
       <div>
@@ -408,25 +425,50 @@
         <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">③ 提前提醒：不是冷冰冰的开关，而是一句<b class="text-ink-800">被情境触发的轻问</b>。</p>
       </div>
 
-    </div>
+    </div><!-- /grid -->
+        </div><!-- /zoom wrapper -->
+      </div><!-- /左侧 -->
+
+      <!-- ── 右侧：V2 新版设计 ── -->
+      <div style="flex:1;min-width:0">
+        <img src="./assets/page/page01.png" alt="Flow 01 V2 设计稿" style="width:100%;border-radius:20px;box-shadow:0 8px 40px rgba(42,18,6,0.12)"/>
+      </div><!-- /右侧 -->
+
+    </div><!-- /内容行 -->
   </section>
 
   <!-- Flow 01b : 首页副本 · 长按录音（能量进度条 + 小念趴耳收听） -->
   <section class="mt-28">
-    <div class="flex items-baseline gap-3 mb-6">
-      <span class="label">Flow 01b · 首页副本 · 长按录音</span>
-      <h2 class="font-serif text-2xl font-bold text-ink-800">长按麦克风 · 能量条计时 · 小念趴耳收听</h2>
-    </div>
-    <p class="text-sm text-ink-500 max-w-2xl mb-8 leading-relaxed">
-      长按底部麦克风，按钮上方浮现「滑到此处取消发送」提示；提示上方出现
-      <b class="text-ink-800">能量进度条</b>，随录音时长逐步充满（上限 60 秒）；小念形象
-      <b class="text-ink-800">趴在进度条上沿捂耳收听</b>，随能量蓄积表情愈发专注。到 60 秒自动发送，上滑随时取消。
-    </p>
+    <!-- ── 标题行 ── -->
+    <div style="display:flex;align-items:flex-start;gap:48px;margin-bottom:32px">
+      <div style="flex:1;min-width:0">
+        <div class="flex items-baseline gap-3 mb-3">
+          <span class="label">Flow 01b · 首页副本 · 长按录音</span>
+          <h2 class="font-serif text-2xl font-bold text-ink-800">长按麦克风 · 能量条计时 · 小念趴耳收听</h2>
+        </div>
+        <p class="text-sm text-ink-500 max-w-2xl leading-relaxed">
+          长按底部麦克风，按钮上方浮现「滑到此处取消发送」提示；提示上方出现
+          <b class="text-ink-800">能量进度条</b>，随录音时长逐步充满（上限 60 秒）；小念形象
+          <b class="text-ink-800">趴在进度条上沿捂耳收听</b>，随能量蓄积表情愈发专注。到 60 秒自动发送，上滑随时取消。
+        </p>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="flex items-baseline gap-3">
+          <span class="label" style="background:#1D4ED8;color:white;border-color:transparent">V2 · Redesign</span>
+          <h2 class="font-serif text-2xl font-bold text-ink-800">同流程 · 新版视觉方案</h2>
+        </div>
+      </div>
+    </div><!-- /标题行 -->
 
-    <div class="grid md:grid-cols-3 gap-10 place-items-center">
+    <!-- ── 内容行 ── -->
+    <div style="display:flex;align-items:stretch;gap:48px">
+      <!-- ── 左侧：Flow 01b 缩小一半 ── -->
+      <div style="flex:1;min-width:0">
+        <div style="zoom:0.5;transform-origin:top left">
+          <div class="grid md:grid-cols-3 gap-10 place-items-center">
 
       <!-- ① Phone A : 刚开始录音（能量条刚亮起 ~8%） -->
-      <div>
+      <div id="flow01b-screen-a">
         <div class="phone shadow-phone">
           <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
 
@@ -564,7 +606,7 @@
       </div>
 
       <!-- ② Phone B : 录音中（能量条 ~38%，小念安心趴耳） -->
-      <div>
+      <div id="flow01b-screen-b">
         <div class="phone shadow-phone">
           <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
 
@@ -676,7 +718,7 @@
       </div>
 
       <!-- ③ Phone C : 录音较长（能量条 ~68%，小念精神饱满） -->
-      <div>
+      <div id="flow01b-screen-c">
         <div class="phone shadow-phone">
           <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
 
@@ -786,22 +828,48 @@
         <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">③ 能量蓄积至 68%——小念精神饱满，耳朵竖起，表情更加专注投入。</p>
       </div>
 
-    </div>
+    </div><!-- /grid -->
+        </div><!-- /zoom wrapper -->
+      </div><!-- /左侧 -->
+
+      <!-- ── 右侧：V2 新版设计 ── -->
+      <div style="flex:1;min-width:0;display:flex;align-items:flex-start">
+        <img src="./assets/page/flow-01b_v2.png" alt="Flow 01b V2 设计稿" style="width:100%;height:100%;object-fit:contain;object-position:top left;border-radius:20px;box-shadow:0 8px 40px rgba(42,18,6,0.12)"/>
+      </div><!-- /右侧 -->
+
+    </div><!-- /内容行 -->
   </section>
 
   <!-- Flow 2 : 语音主路径 -->
   <section class="mt-28">
-    <div class="flex items-baseline gap-3 mb-6">
-      <span class="label">Flow 02 · Primary</span>
-      <h2 class="font-serif text-2xl font-bold text-ink-800">说一句话 · 一整段牵挂被拆成小事</h2>
-    </div>
-    <p class="text-sm text-ink-500 max-w-2xl mb-8 leading-relaxed">
-      语音是 Nudge 的主入口。你不需要像写清单那样一条一条敲 —— 就像平时对家人说话那样念一遍，
-      它会自动识别「对方」「每一件事」以及<b class="text-ink-800">三种时间：提醒 · 开工 · 到点</b>，
-      并把<b class="text-ink-800">你的原话以语音气泡的形式</b>一并发过去，既省力，也不会误解。
-    </p>
+    <!-- ── 标题行 ── -->
+    <div style="display:flex;align-items:flex-start;gap:48px;margin-bottom:32px">
+      <div style="flex:1;min-width:0">
+        <div class="flex items-baseline gap-3 mb-3">
+          <span class="label">Flow 02 · Primary</span>
+          <h2 class="font-serif text-2xl font-bold text-ink-800">说一句话 · 一整段牵挂被拆成小事</h2>
+        </div>
+        <p class="text-sm text-ink-500 max-w-2xl leading-relaxed">
+          语音是 Nudge 的主入口。你不需要像写清单那样一条一条敲 —— 就像平时对家人说话那样念一遍，
+          它会自动识别「对方」「每一件事」以及<b class="text-ink-800">三种时间：提醒 · 开工 · 到点</b>，
+          并把<b class="text-ink-800">你的原话以语音气泡的形式</b>一并发过去，既省力，也不会误解。
+        </p>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="flex items-baseline gap-3">
+          <span class="label" style="background:#1D4ED8;color:white;border-color:transparent">V2 · Redesign</span>
+          <h2 class="font-serif text-2xl font-bold text-ink-800">同流程 · 新版视觉方案</h2>
+        </div>
+      </div>
+    </div><!-- /标题行 -->
 
-    <div class="grid md:grid-cols-3 gap-10 place-items-center">
+    <!-- ── 内容行 ── -->
+    <div style="display:flex;align-items:flex-start;gap:48px">
+
+      <!-- ── 左侧：Flow 02 缩小一半 ── -->
+      <div style="flex:1;min-width:0">
+        <div style="zoom:0.5;transform-origin:top left">
+          <div class="grid md:grid-cols-3 gap-10 place-items-center">
 
       <!-- A : Recording in progress -->
       <div>
@@ -1111,17 +1179,42 @@
         <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">③ 对方收到：上方是你的<b class="text-ink-800">原话语音</b>（可播放 + 转写），下方是结构化任务。</p>
       </div>
 
-    </div>
+    </div><!-- /grid -->
+        </div><!-- /zoom wrapper -->
+      </div><!-- /左侧 -->
+
+      <!-- ── 右侧：V2 新版设计 ── -->
+      <div style="flex:1;min-width:0">
+        <img src="./assets/page/flow_02_primary_v2.png" alt="Flow 02 V2 设计稿" style="width:100%;border-radius:20px;box-shadow:0 8px 40px rgba(42,18,6,0.12)"/>
+      </div><!-- /右侧 -->
+
+    </div><!-- /内容行 -->
   </section>
 
   <!-- Flow 3 : 联系人绑定 + 双端同步 -->
   <section class="mt-28">
-    <div class="flex items-baseline gap-3 mb-6">
-      <span class="label">Flow 03</span>
-      <h2 class="font-serif text-2xl font-bold text-ink-800">绑定关系 · 待办在双方之间流动</h2>
-    </div>
+    <!-- ── 标题行 ── -->
+    <div style="display:flex;align-items:flex-start;gap:48px;margin-bottom:24px">
+      <div style="flex:1;min-width:0">
+        <div class="flex items-baseline gap-3">
+          <span class="label">Flow 03</span>
+          <h2 class="font-serif text-2xl font-bold text-ink-800">绑定关系 · 待办在双方之间流动</h2>
+        </div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="flex items-baseline gap-3">
+          <span class="label" style="background:#1D4ED8;color:white;border-color:transparent">V2 · Redesign</span>
+          <h2 class="font-serif text-2xl font-bold text-ink-800">同流程 · 新版视觉方案</h2>
+        </div>
+      </div>
+    </div><!-- /标题行 -->
 
-    <div class="grid md:grid-cols-3 gap-10 place-items-center">
+    <!-- ── 内容行 ── -->
+    <div style="display:flex;align-items:flex-start;gap:48px">
+      <!-- ── 左侧：Flow 03 缩小一半 ── -->
+      <div style="flex:1;min-width:0">
+        <div style="zoom:0.5;transform-origin:top left">
+          <div class="grid md:grid-cols-3 gap-10 place-items-center">
 
       <!-- Contacts -->
       <div>
@@ -1333,16 +1426,42 @@
         <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">⑥ 执行者视角：一次只出现一件，<b class="text-ink-800">滑一下就能回应</b>，不用打字。</p>
       </div>
 
-    </div>
+    </div><!-- /grid -->
+        </div><!-- /zoom wrapper -->
+      </div><!-- /左侧 -->
+
+      <!-- ── 右侧：V2 新版设计 ── -->
+      <div style="flex:1;min-width:0">
+        <img src="./assets/page/flow_03_v2.png" alt="Flow 03 V2 设计稿" style="width:100%;border-radius:20px;box-shadow:0 8px 40px rgba(42,18,6,0.12)"/>
+      </div><!-- /右侧 -->
+
+    </div><!-- /内容行 -->
   </section>
 
   <!-- ===================== Flow 4 : 收件箱 + 重复任务 + 周视图 ===================== -->
   <section class="mt-28">
-    <div class="flex items-baseline gap-3 mb-6">
-      <span class="label">Flow 04</span>
-      <h2 class="font-serif text-2xl font-bold text-ink-800">动态收件箱 · 重复任务 · 周历视图</h2>
-    </div>
-    <div class="grid md:grid-cols-3 gap-10 place-items-center">
+    <!-- ── 标题行 ── -->
+    <div style="display:flex;align-items:flex-start;gap:48px;margin-bottom:24px">
+      <div style="flex:1;min-width:0">
+        <div class="flex items-baseline gap-3">
+          <span class="label">Flow 04</span>
+          <h2 class="font-serif text-2xl font-bold text-ink-800">动态收件箱 · 重复任务 · 周历视图</h2>
+        </div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="flex items-baseline gap-3">
+          <span class="label" style="background:#1D4ED8;color:white;border-color:transparent">V2 · Redesign</span>
+          <h2 class="font-serif text-2xl font-bold text-ink-800">同流程 · 新版视觉方案</h2>
+        </div>
+      </div>
+    </div><!-- /标题行 -->
+
+    <!-- ── 内容行 ── -->
+    <div style="display:flex;align-items:flex-start;gap:48px">
+      <!-- ── 左侧：Flow 04 缩小一半 ── -->
+      <div style="flex:1;min-width:0">
+        <div style="zoom:0.5;transform-origin:top left">
+          <div class="grid md:grid-cols-3 gap-10 place-items-center">
 
       <!-- Screen A: Inbox -->
       <div>
@@ -1591,16 +1710,42 @@
         <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">⑥ 周视图：横条日期选择，彩点表示当日有任务，重复任务用绿色 repeat 图标区分。</p>
       </div>
 
-    </div>
+    </div><!-- /grid -->
+        </div><!-- /zoom wrapper -->
+      </div><!-- /左侧 -->
+
+      <!-- ── 右侧：V2 新版设计 ── -->
+      <div style="flex:1;min-width:0">
+        <img src="./assets/page/flow_04_v2.png" alt="Flow 04 V2 设计稿" style="width:100%;border-radius:20px;box-shadow:0 8px 40px rgba(42,18,6,0.12)"/>
+      </div><!-- /右侧 -->
+
+    </div><!-- /内容行 -->
   </section>
 
   <!-- ===================== Flow 5 : 归档 + 引导 + 设置 ===================== -->
   <section class="mt-28">
-    <div class="flex items-baseline gap-3 mb-6">
-      <span class="label">Flow 05</span>
-      <h2 class="font-serif text-2xl font-bold text-ink-800">完成归档 · 新手引导 · 通知偏好</h2>
-    </div>
-    <div class="grid md:grid-cols-3 gap-10 place-items-center">
+    <!-- ── 标题行 ── -->
+    <div style="display:flex;align-items:flex-start;gap:48px;margin-bottom:24px">
+      <div style="flex:1;min-width:0">
+        <div class="flex items-baseline gap-3">
+          <span class="label">Flow 05</span>
+          <h2 class="font-serif text-2xl font-bold text-ink-800">完成归档 · 新手引导 · 通知偏好</h2>
+        </div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="flex items-baseline gap-3">
+          <span class="label" style="background:#1D4ED8;color:white;border-color:transparent">V2 · Redesign</span>
+          <h2 class="font-serif text-2xl font-bold text-ink-800">同流程 · 新版视觉方案</h2>
+        </div>
+      </div>
+    </div><!-- /标题行 -->
+
+    <!-- ── 内容行 ── -->
+    <div style="display:flex;align-items:flex-start;gap:48px">
+      <!-- ── 左侧：Flow 05 缩小一半 ── -->
+      <div style="flex:1;min-width:0">
+        <div style="zoom:0.5;transform-origin:top left">
+          <div class="grid md:grid-cols-3 gap-10 place-items-center">
 
       <!-- Screen D: Done archive -->
       <div>
@@ -1806,7 +1951,16 @@
         <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">⑨ 通知偏好：黑底「睡眠时段」卡最醒目，「重要可穿透」兜底，其余 toggle 默认理性。</p>
       </div>
 
-    </div>
+    </div><!-- /grid -->
+        </div><!-- /zoom wrapper -->
+      </div><!-- /左侧 -->
+
+      <!-- ── 右侧：V2 新版设计 ── -->
+      <div style="flex:1;min-width:0">
+        <img src="./assets/page/flow_05_v2.png" alt="Flow 05 V2 设计稿" style="width:100%;border-radius:20px;box-shadow:0 8px 40px rgba(42,18,6,0.12)"/>
+      </div><!-- /右侧 -->
+
+    </div><!-- /内容行 -->
   </section>
 
   <!-- ===================== Extra : Widget + 共享今日 ===================== -->
@@ -1936,16 +2090,32 @@
 
   <!-- Flow 06 : 剪贴板检测 · 从其他 App 无缝导入 -->
   <section class="mt-28">
-    <div class="flex items-baseline gap-3 mb-6">
-      <span class="label">Flow 06 · Clipboard</span>
-      <h2 class="font-serif text-2xl font-bold text-ink-800">从微信复制 · 打开即转待办</h2>
-    </div>
-    <p class="text-sm text-ink-500 max-w-2xl mb-8 leading-relaxed">
-      在微信、短信、备忘录等任意 App 里复制一段文字，切换到 Nudge 时自动检测剪贴板，
-      底部弹出确认卡片，一键衔接到 AI 解析流程，无需任何手动粘贴操作。
-    </p>
+    <!-- ── 标题行 ── -->
+    <div style="display:flex;align-items:flex-start;gap:48px;margin-bottom:32px">
+      <div style="flex:1;min-width:0">
+        <div class="flex items-baseline gap-3 mb-3">
+          <span class="label">Flow 06 · Clipboard</span>
+          <h2 class="font-serif text-2xl font-bold text-ink-800">从微信复制 · 打开即转待办</h2>
+        </div>
+        <p class="text-sm text-ink-500 max-w-2xl leading-relaxed">
+          在微信、短信、备忘录等任意 App 里复制一段文字，切换到 Nudge 时自动检测剪贴板，
+          底部弹出确认卡片，一键衔接到 AI 解析流程，无需任何手动粘贴操作。
+        </p>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="flex items-baseline gap-3">
+          <span class="label" style="background:#1D4ED8;color:white;border-color:transparent">V2 · Redesign</span>
+          <h2 class="font-serif text-2xl font-bold text-ink-800">同流程 · 新版视觉方案</h2>
+        </div>
+      </div>
+    </div><!-- /标题行 -->
 
-    <div class="grid md:grid-cols-2 gap-10 place-items-center">
+    <!-- ── 内容行 ── -->
+    <div style="display:flex;align-items:flex-start;gap:48px">
+      <!-- ── 左侧：Flow 06 缩小一半 ── -->
+      <div style="flex:1;min-width:0">
+        <div style="zoom:0.5;transform-origin:top left">
+          <div class="grid md:grid-cols-2 gap-10 place-items-center">
 
       <!-- A : 检测到剪贴板，底部弹出提示 -->
       <div>
@@ -2091,7 +2261,16 @@
         <p class="text-center text-xs text-ink-500 mt-4 max-w-xs mx-auto leading-relaxed">② 无缝衔接 AI 解析：时间、地点、随身物品一并提取，高亮标注原文出处。</p>
       </div>
 
-    </div>
+    </div><!-- /grid -->
+        </div><!-- /zoom wrapper -->
+      </div><!-- /左侧 -->
+
+      <!-- ── 右侧：V2 新版设计 ── -->
+      <div style="flex:1;min-width:0">
+        <img src="./assets/page/flow_06_clipboard_v2.png" alt="Flow 06 V2 设计稿" style="width:100%;border-radius:20px;box-shadow:0 8px 40px rgba(42,18,6,0.12)"/>
+      </div><!-- /右侧 -->
+
+    </div><!-- /内容行 -->
   </section>
 
   <!-- Design tokens footer -->
