@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s \"https://www.google.com/search?q=Pocketify+app+save+content\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\")",
+      "Bash(curl -s \"https://www.google.com/search?q=Pocketify+AI+bookmark+manager+features\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\")",
+      "Bash(curl -s \"https://www.google.com/search?q=Pocketify+app+review+site:producthunt.com+OR+site:apps.apple.com+OR+site:play.google.com\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\")",
+      "Bash(curl -s \"https://en.wikipedia.org/wiki/Pocketify\" -H \"User-Agent: Mozilla/5.0\")",
+      "Bash(curl -sL \"https://apps.apple.com/search?term=pocketify&entity=software\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36\")",
+      "Bash(curl -sL \"https://play.google.com/store/search?q=pocketify&c=apps\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36\")",
+      "Bash(curl -sL \"https://en.wikipedia.org/w/index.php?title=Pocketify&action=edit\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\)\")",
+      "Bash(grep -v \"^$\")",
+      "Bash(curl -sL \"https://www.producthunt.com/search?q=pocketify\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36\")",
+      "Bash(curl -sL \"https://pocketify.app\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36\")",
+      "Bash(curl -sL \"https://pocketify.io\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36\")",
+      "Bash(curl -sL \"https://getpocketify.com\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36\")",
+      "Bash(curl -sL \"https://www.reddit.com/search/?q=pocketify+app\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36\")",
+      "Bash(curl -sL \"https://itunes.apple.com/search?term=pocketify&entity=software&limit=10\" -H \"User-Agent: Mozilla/5.0\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -sL \"https://play.google.com/store/apps/details?id=com.pocketify\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36\")",
+      "Bash(curl -s \"https://duckduckgo.com/html/?q=Pocketify+app+save+content+bookmark\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\")",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s \"https://duckduckgo.com/html/?q=Pocketify+app+save+read+later+review\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\")",
+      "Bash(curl -s \"https://duckduckgo.com/html/?q=Pocketify+app+Top+Tags+iOS+AI+summarize+tag\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\")",
+      "Bash(curl -sL \"https://www.notion.so/Pocketify-Privacy-Policy-31378324ff7e80fea45be0b5a22079be\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36\")",
+      "Bash(curl -sL \"https://twitter.com/aes_tech_studio\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36\")",
+      "Bash(curl -s \"https://itunes.apple.com/lookup?id=1589642043\" -H \"User-Agent: Mozilla/5.0\")",
+      "Bash(curl -s \"https://duckduckgo.com/html/?q=%22Pocketify%22+%22Top+Tags%22+iOS+app+review\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\")",
+      "Bash(curl -s \"https://apps.apple.com/us/app/pocketify-save-read-later/id1589642043\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\" -H \"Accept-Language: en-US,en;q=0.9\")",
+      "Bash(curl -sL \"https://apps.apple.com/us/app/pocketify-save-read-later/id1589642043\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\" -H \"Accept-Language: en-US,en;q=0.9\")",
+      "Read(//tmp/**)",
+      "Bash(python3 -c \" import json, sys try: data = json.load\\(sys.stdin\\) entries = data.get\\('feed', {}\\).get\\('entry', []\\) for entry in entries[:10]: if 'author' in entry: title = entry.get\\('title', {}\\).get\\('label', ''\\) content = entry.get\\('content', {}\\).get\\('label', ''\\) rating = entry.get\\('im:rating', {}\\).get\\('label', ''\\) print\\(f'Rating: {rating}/5 - {title}'\\) print\\(f' {content[:300]}'\\) print\\(\\) except Exception as e: print\\(f'Error: {e}'\\) \")",
+      "Bash(python3 -c \" import json, sys try: data = json.load\\(sys.stdin\\) entries = data.get\\('feed', {}\\).get\\('entry', []\\) for entry in entries: if 'author' in entry: title = entry.get\\('title', {}\\).get\\('label', ''\\) content = entry.get\\('content', {}\\).get\\('label', ''\\) rating = entry.get\\('im:rating', {}\\).get\\('label', ''\\) version = entry.get\\('im:version', {}\\).get\\('label', ''\\) print\\(f'Rating: {rating}/5 \\(v{version}\\) - {title}'\\) print\\(f' {content[:500]}'\\) print\\(\\) except Exception as e: print\\(f'Error: {e}'\\) \")",
+      "Bash(python3 -c \" import sys, re content = sys.stdin.read\\(\\) text = re.sub\\(r'<[^>]*>', ' ', content\\) text = re.sub\\(r'\\\\s+', ' ', text\\) for match in re.finditer\\(r'.{0,150}Pocketify.{0,150}', text, re.IGNORECASE\\): print\\(match.group\\(\\).strip\\(\\)\\) print\\('---'\\) \")"
+    ]
+  }
+}
