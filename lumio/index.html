@@ -90,6 +90,40 @@
     /* ── Scroll fade mask ── */
     .scroll-fade { mask-image: linear-gradient(180deg, transparent 0%, #000 8%, #000 92%, transparent 100%); }
 
+    /* ── Flow compare layout (原版 vs V2) ── */
+    .flow-compare { display: flex; gap: 0; align-items: flex-start; flex-wrap: nowrap; }
+    .flow-compare-original {
+      flex: 0 0 50%; width: 50%; min-width: 0;
+      padding-right: 24px;
+    }
+    /* 手机行等比缩放：3台手机(340px) + 2个gap(40px) ≈ 1100px → zoom 0.58 后约 638px，刚好塞进 50% 列 */
+    .flow-compare-original > .flex {
+      flex-wrap: nowrap !important;
+      zoom: 0.58;
+      transform-origin: top left;
+    }
+    .flow-compare-v2 {
+      flex: 0 0 50%; width: 50%; min-width: 0;
+      position: sticky; top: 24px; padding-left: 24px;
+      border-left: 1px solid rgba(28,25,23,.07);
+    }
+    .v2-img {
+      width: 100%; border-radius: 20px;
+      box-shadow: 0 12px 40px -8px rgba(28,25,23,.16), 0 0 0 1px rgba(28,25,23,.06);
+      display: block;
+    }
+    .v2-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 999px;
+      font-size: 11px; font-weight: 600; letter-spacing: .04em;
+      background: linear-gradient(135deg,#C4B5FD,#818CF8); color: white;
+      margin-bottom: 10px;
+    }
+    .compare-divider {
+      width: 1px; background: linear-gradient(180deg, transparent, rgba(28,25,23,.1) 20%, rgba(28,25,23,.1) 80%, transparent);
+      flex-shrink: 0; align-self: stretch; margin: 0 -12px;
+    }
+
     /* ── Notification bubble ── */
     .notif { border-radius: 18px; padding: 12px 14px; background: rgba(255,255,255,.96); backdrop-filter: blur(16px); box-shadow: 0 8px 32px -8px rgba(28,25,23,.18); }
   </style>
@@ -141,9 +175,11 @@
       <h2 class="font-serif text-2xl font-bold text-stone-800">收藏入口 · 首页 · 文章阅读</h2>
     </div>
 
-    <div class="flex gap-10 flex-wrap">
-
-      <!-- ── Screen 1: 收藏触发（服务号回复） ── -->
+    <div class="flow-compare">
+      <!-- 原版设计 -->
+      <div class="flow-compare-original">
+        <p class="section-title mb-4">原版设计</p>
+        <div class="flex gap-10 flex-wrap">
       <div class="animate__animated animate__fadeInUp" style="animation-delay:.05s">
         <p class="section-title mb-3">① 转发后服务号回复</p>
         <div class="phone shadow-phone">
@@ -375,7 +411,16 @@
         </div>
       </div>
 
-    </div><!-- /flex row -->
+        </div><!-- /original screens -->
+      </div><!-- /flow-compare-original -->
+
+      <!-- V2 设计 -->
+      <div class="flow-compare-v2">
+        <span class="v2-badge">✦ V2 新设计</span>
+        <img src="assets/page/flow_01_v2.png" class="v2-img" alt="Flow 01 V2 设计"/>
+      </div>
+
+    </div><!-- /flow-compare -->
   </section>
 
 
@@ -386,7 +431,11 @@
       <h2 class="font-serif text-2xl font-bold text-stone-800">智能搜索 · 召回通知 · 召回详情</h2>
     </div>
 
-    <div class="flex gap-10 flex-wrap">
+    <div class="flow-compare">
+      <!-- 原版设计 -->
+      <div class="flow-compare-original">
+        <p class="section-title mb-4">原版设计</p>
+        <div class="flex gap-10 flex-wrap">
 
       <!-- ── Screen 4: 搜索页 ── -->
       <div class="animate__animated animate__fadeInUp" style="animation-delay:.05s">
@@ -580,7 +629,16 @@
         </div>
       </div>
 
-    </div><!-- /flex row -->
+        </div><!-- /original screens -->
+      </div><!-- /flow-compare-original -->
+
+      <!-- V2 设计 -->
+      <div class="flow-compare-v2">
+        <span class="v2-badge">✦ V2 新设计</span>
+        <img src="assets/page/flow_02_v2.png" class="v2-img" alt="Flow 02 V2 设计"/>
+      </div>
+
+    </div><!-- /flow-compare -->
   </section>
 
 
@@ -591,7 +649,11 @@
       <h2 class="font-serif text-2xl font-bold text-stone-800">个人中心 · 知识统计</h2>
     </div>
 
-    <div class="flex gap-10 flex-wrap">
+    <div class="flow-compare">
+      <!-- 原版设计 -->
+      <div class="flow-compare-original">
+        <p class="section-title mb-4">原版设计</p>
+        <div class="flex gap-10 flex-wrap">
 
       <!-- ── Screen 7: 个人中心 ── -->
       <div class="animate__animated animate__fadeInUp">
@@ -778,7 +840,16 @@
         </div>
       </div>
 
-    </div>
+        </div><!-- /original screens -->
+      </div><!-- /flow-compare-original -->
+
+      <!-- V2 设计 -->
+      <div class="flow-compare-v2">
+        <span class="v2-badge">✦ V2 新设计</span>
+        <img src="assets/page/flow_03_v2.png" class="v2-img" alt="Flow 03 V2 设计"/>
+      </div>
+
+    </div><!-- /flow-compare -->
   </section>
 
 
