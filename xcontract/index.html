@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XContract · 智能合同管理</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ivory:   { 50:'#FFFAFA', 100:'#FFF0F0', 200:'#FFE4E4', 300:'#FFD0D0' },
+            crimson: { 50:'#FFF1F2', 100:'#FFE4E6', 200:'#FECDD3', 300:'#FDA4AF', 400:'#FB7185', 500:'#F43F5E', 600:'#E11D48', 700:'#BE123C', 800:'#9F1239' },
+            slate:   { 50:'#F8FAFC', 100:'#F1F5F9', 200:'#E2E8F0', 300:'#CBD5E1', 400:'#94A3B8', 500:'#64748B', 600:'#475569', 700:'#334155', 800:'#1E293B', 900:'#0F172A' },
+          },
+          fontFamily: {
+            sans:  ['Inter','PingFang SC','system-ui','sans-serif'],
+            serif: ['"Noto Serif SC"','serif'],
+          },
+          boxShadow: {
+            soft:  '0 10px 30px -12px rgba(225,29,72,.15), 0 4px 12px -4px rgba(15,23,42,.05)',
+            phone: '0 40px 80px -20px rgba(15,23,42,.28), 0 18px 40px -18px rgba(225,29,72,.20)',
+            chip:  '0 4px 12px -4px rgba(225,29,72,.35)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html, body { background: #FDF8F8; color: #0F172A; }
+    body {
+      background-image:
+        radial-gradient(1100px 500px at 5%  -5%,  #FFE4E6 0%, transparent 60%),
+        radial-gradient(800px  450px at 108% 8%,  #FECDD3 0%, transparent 55%),
+        radial-gradient(700px  400px at 50%  110%, #FFF0F0 0%, transparent 60%);
+    }
+
+    /* ── Phone frame ── */
+    .phone {
+      width: 340px; height: 700px; border-radius: 44px;
+      background: linear-gradient(180deg, #FFFCFC 0%, #FFF4F4 100%);
+      border: 1px solid rgba(15,23,42,.06);
+      position: relative; overflow: hidden; flex-shrink: 0;
+    }
+    .phone::before {
+      content: ""; position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+      width: 110px; height: 26px; border-radius: 999px; background: #0F172A; z-index: 40;
+    }
+    .screen { position: absolute; inset: 0; padding: 54px 18px 20px; display: flex; flex-direction: column; }
+    .statusbar { position: absolute; top: 20px; left: 28px; right: 28px; display: flex; justify-content: space-between; font-size: 12px; color: #1E293B; font-weight: 600; z-index: 30; }
+
+    /* ── Shared utilities ── */
+    .mi { font-family: 'Material Icons Round'; font-weight: normal; font-style: normal;
+          font-size: 20px; line-height: 1; display: inline-block; -webkit-font-smoothing: antialiased; }
+    .chip  { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+    .dot   { width: 6px; height: 6px; border-radius: 999px; display: inline-block; }
+    .label { font-size: 11px; color: #64748B; letter-spacing: .08em; text-transform: uppercase; }
+    .flow-label { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: .06em; background: #FFE4E6; color: #9F1239; }
+
+    /* ── Bottom nav ── */
+    .bottom-nav { display: flex; justify-content: space-around; align-items: center; padding: 10px 0 14px; border-top: 1px solid rgba(15,23,42,.07); background: rgba(255,252,252,.92); backdrop-filter: blur(12px); flex-shrink: 0; }
+    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; color: #94A3B8; }
+    .nav-item.active { color: #E11D48; }
+
+    /* ── Animations ── */
+    .float { animation: float 5s ease-in-out infinite; }
+    @keyframes float { 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-7px) } }
+
+    @keyframes blink  { 50%{ opacity:0 } }
+    @keyframes pdot   { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+    @keyframes spin   { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+    @keyframes scanMove { 0%{ top:22% } 100%{ top:72% } }
+
+    .scroll-fade { mask-image: linear-gradient(180deg, transparent 0%, #000 8%, #000 92%, transparent 100%); }
+
+    /* ── Scan viewfinder corners ── */
+    .corner { position: absolute; width: 20px; height: 20px; }
+    .corner-tl { top:-1px; left:-1px;  border-top:3px solid #FB7185; border-left:3px solid #FB7185;  border-radius:4px 0 0 0; }
+    .corner-tr { top:-1px; right:-1px; border-top:3px solid #FB7185; border-right:3px solid #FB7185; border-radius:0 4px 0 0; }
+    .corner-bl { bottom:-1px; left:-1px;  border-bottom:3px solid #FB7185; border-left:3px solid #FB7185;  border-radius:0 0 0 4px; }
+    .corner-br { bottom:-1px; right:-1px; border-bottom:3px solid #FB7185; border-right:3px solid #FB7185; border-radius:0 0 4px 0; }
+    .scan-line { position:absolute; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent 0%,#FB7185 30%,#F43F5E 50%,#FB7185 70%,transparent 100%); animation:scanMove 1.8s ease-in-out infinite alternate; }
+  </style>
+</head>
+<body class="font-sans antialiased">
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<header class="px-10 pt-14 pb-8">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-2xl flex items-center justify-center shadow-chip"
+           style="background:linear-gradient(135deg,#FB7185,#BE123C)">
+        <span class="mi text-white" style="font-size:22px">description</span>
+      </div>
+      <div>
+        <div class="font-serif text-2xl font-bold text-slate-800 leading-tight">XContract</div>
+        <div class="text-xs text-slate-400 tracking-wide">智能合同管理 · 扫描·分析·签署，一步到位</div>
+      </div>
+    </div>
+    <div class="hidden md:flex items-center gap-2">
+      <span class="chip bg-ivory-100 text-slate-600"><span class="dot bg-green-500"></span>Design Preview</span>
+      <span class="chip bg-ivory-100 text-slate-600">v0.1 · Mobile App</span>
+    </div>
+  </div>
+
+  <div class="mt-12 max-w-3xl">
+    <h1 class="font-serif text-4xl md:text-5xl font-bold text-slate-900 leading-tight">
+      扫一张合同，<br/><span class="text-crimson-600">AI 秒懂</span>全部条款。
+    </h1>
+    <p class="mt-5 text-slate-500 leading-relaxed max-w-xl">
+      XContract 让合同管理变得简单。用手机扫描任意纸质合同，AI 自动提取甲乙方信息、金额、期限等关键字段，
+      智能识别<b class="text-slate-700">风险条款</b>和<b class="text-slate-700">不平等约定</b>，
+      帮你在签字前真正看清每一个细节。
+    </p>
+    <div class="mt-6 flex flex-wrap gap-3">
+      <span class="chip bg-crimson-100 text-crimson-700" style="font-size:13px;padding:7px 14px">
+        <span class="mi" style="font-size:16px;margin-right:4px">document_scanner</span>扫描识别
+      </span>
+      <span class="chip bg-ivory-100 text-slate-600" style="font-size:13px;padding:7px 14px">
+        <span class="mi" style="font-size:16px;margin-right:4px">auto_awesome</span>AI 解析
+      </span>
+      <span class="chip bg-ivory-100 text-slate-600" style="font-size:13px;padding:7px 14px">
+        <span class="mi" style="font-size:16px;margin-right:4px">warning_amber</span>风险预警
+      </span>
+      <span class="chip bg-ivory-100 text-slate-600" style="font-size:13px;padding:7px 14px">
+        <span class="mi" style="font-size:16px;margin-right:4px">library_books</span>合同模版
+      </span>
+    </div>
+  </div>
+</header>
+
+<main class="px-10 pb-32">
+
+<!-- ═══════════════════ FLOW 01 · 登录 ═══════════════════ -->
+<section class="mt-8">
+  <div class="flex items-baseline gap-3 mb-6">
+    <span class="flow-label">Flow 01</span>
+    <h2 class="font-serif text-2xl font-bold text-slate-800">登录 · 账号注册与身份验证</h2>
+  </div>
+  <div class="flex gap-10 flex-wrap">
+
+    <!-- ① 启动页 -->
+    <div class="animate__animated animate__fadeInUp" style="animation-delay:.05s">
+      <p class="label mb-3">① 启动页</p>
+      <div class="phone shadow-phone">
+        <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+        <div class="screen" style="background:linear-gradient(160deg,#FFF1F2 0%,#FFE4E6 55%,#FECDD3 100%)">
+          <!-- Decorative blobs -->
+          <div style="position:absolute;top:-60px;right:-60px;width:200px;height:200px;border-radius:999px;background:rgba(225,29,72,.07)"></div>
+          <div style="position:absolute;bottom:100px;left:-40px;width:140px;height:140px;border-radius:999px;background:rgba(251,113,133,.09)"></div>
+          <!-- Center logo -->
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;gap:0">
+            <div class="float" style="width:82px;height:82px;border-radius:24px;background:linear-gradient(135deg,#FB7185,#BE123C);display:flex;align-items:center;justify-content:center;margin-bottom:18px;box-shadow:0 16px 40px -8px rgba(190,18,60,.38)">
+              <span class="mi text-white" style="font-size:40px">description</span>
+            </div>
+            <div class="font-serif text-2xl font-bold text-slate-800 mb-2">XContract</div>
+            <div style="font-size:13px;color:#64748B;text-align:center;line-height:1.7;padding:0 24px">智能合同管理平台<br/>让每一份合同都清晰透明</div>
+          </div>
+          <!-- Actions -->
+          <div style="padding:0 8px 16px">
+            <button style="width:100%;padding:14px;border-radius:16px;background:linear-gradient(135deg,#F43F5E,#BE123C);color:white;font-size:15px;font-weight:600;border:none;box-shadow:0 8px 24px -4px rgba(190,18,60,.36)">手机号登录 / 注册</button>
+            <div style="text-align:center;margin-top:12px;font-size:11px;color:#94A3B8">
+              登录即代表同意 <span style="color:#E11D48">用户协议</span> 与 <span style="color:#E11D48">隐私政策</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ② 手机号输入 -->
+    <div class="animate__animated animate__fadeInUp" style="animation-delay:.15s">
+      <p class="label mb-3">② 手机号登录</p>
+      <div class="phone shadow-phone">
+        <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+        <div class="screen">
+          <div style="display:flex;align-items:center;margin-bottom:32px">
+            <span class="mi text-slate-300" style="font-size:18px">arrow_back_ios</span>
+          </div>
+          <div class="font-serif text-2xl font-bold text-slate-800 mb-2">欢迎使用</div>
+          <div style="font-size:13px;color:#64748B;margin-bottom:32px">输入手机号，快速登录或注册</div>
+          <!-- Phone input -->
+          <div style="margin-bottom:16px">
+            <div style="font-size:11px;color:#64748B;margin-bottom:6px">手机号</div>
+            <div style="display:flex;align-items:center;gap:10px;border:1.5px solid #FDA4AF;border-radius:14px;padding:13px 16px;background:white">
+              <span style="font-size:13px;font-weight:600;color:#334155;border-right:1px solid #E2E8F0;padding-right:10px;flex-shrink:0">+86</span>
+              <span style="font-size:14px;font-weight:500;color:#0F172A;flex:1">138 8888 8888</span>
+              <span class="mi text-slate-300" style="font-size:16px">cancel</span>
+            </div>
+          </div>
+          <button style="width:100%;padding:14px;border-radius:14px;background:linear-gradient(135deg,#F43F5E,#BE123C);color:white;font-size:14px;font-weight:600;border:none;margin-bottom:22px;box-shadow:0 6px 20px -4px rgba(190,18,60,.30)">获取验证码</button>
+          <!-- Divider -->
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:22px">
+            <div style="flex:1;height:1px;background:#E2E8F0"></div>
+            <span style="font-size:11px;color:#94A3B8">其他方式登录</span>
+            <div style="flex:1;height:1px;background:#E2E8F0"></div>
+          </div>
+          <div style="display:flex;justify-content:center;gap:20px">
+            <div style="width:48px;height:48px;border-radius:14px;background:#F1F5F9;display:flex;align-items:center;justify-content:center">
+              <span class="mi text-slate-500" style="font-size:24px">chat</span>
+            </div>
+            <div style="width:48px;height:48px;border-radius:14px;background:#F1F5F9;display:flex;align-items:center;justify-content:center">
+              <span class="mi text-slate-500" style="font-size:24px">face</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ③ 验证码 -->
+    <div class="animate__animated animate__fadeInUp" style="animation-delay:.25s">
+      s">
+      <p class="label mb-3">③ 输入验证码</p>
+      <div class="phone shadow-phone">
+        <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+        <div class="screen">
+          <div style="display:flex;align-items:center;margin-bottom:32px">
+            <span class="mi text-slate-300" style="font-size:18px">arrow_back_ios</span>
+          </div>
+          <div class="font-serif text-2xl font-bold text-slate-800 mb-2">验证手机号</div>
+          <div style="font-size:13px;color:#64748B;margin-bottom:32px">
+            验证码已发送至 <span style="color:#0F172A;font-weight:600">+86 138****8888</span>
+          </div>
+          <!-- OTP boxes -->
+          <div style="display:flex;gap:8px;margin-bottom:22px">
+            <div style="flex:1;height:52px;border-radius:14px;background:white;border:2px solid #FDA4AF;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#0F172A">3</div>
+            <div style="flex:1;height:52px;border-radius:14px;background:white;border:2px solid #FDA4AF;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#0F172A">7</div>
+            <div style="flex:1;height:52px;border-radius:14px;background:white;border:2px solid #FDA4AF;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#0F172A">2</div>
+            <!-- Active box -->
+            <div style="flex:1;height:52px;border-radius:14px;background:white;border:2px solid #E11D48;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px rgba(225,29,72,.10)">
+              <span style="width:2px;height:22px;background:#E11D48;border-radius:2px;display:inline-block;animation:blink 1s steps(1) infinite"></span>
+            </div>
+            <div style="flex:1;height:52px;border-radius:14px;background:#F8FAFC;border:1.5px solid #E2E8F0"></div>
+            <div style="flex:1;height:52px;border-radius:14px;background:#F8FAFC;border:1.5px solid #E2E8F0"></div>
+          </div>
+          <div style="text-align:center;font-size:12px;color:#94A3B8;margin-bottom:28px">
+            未收到？<span style="color:#E11D48;font-weight:500">重新发送 (52s)</span>
+          </div>
+          <button style="width:100%;padding:14px;border-radius:14px;background:linear-gradient(135deg,#F43F5E,#BE123C);color:white;font-size:14px;font-weight:600;border:none;opacity:.4">验证登录</button>
+          <div style="text-align:center;margin-top:10px;font-size:11px;color:#94A3B8">输入完整验证码后自动验证</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════ FLOW 02 · 扫描合同 ═══════════════════ -->
+<section class="mt-20">
+  <div class="flex items-baseline gap-3 mb-6">
+    <span class="flow-label">Flow 02</span>
+    <h2 class="font-serif text-2xl font-bold text-slate-800">扫描合同 · 摄像头识别与上传处理</h2>
+  </div>
+  <div class="flex gap-10 flex-wrap">
+
+    <!-- ① 首页 -->
+    <div class="animate__animated animate__fadeInUp" style="animation-delay:.05s">
+      <p class="label mb-3">① 首页</p>
+      <div class="phone shadow-phone">
+        <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+        <div class="screen">
+          <!-- Header row -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div>
+              <div style="font-size:10px;color:#94A3B8;margin-bottom:1px">早上好，张明</div>
+              <div class="font-serif" style="font-size:17px;font-weight:700;color:#0F172A">我的合同</div>
+            </div>
+            <div style="width:36px;height:36px;border-radius:999px;background:linear-gradient(135deg,#FB7185,#BE123C);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px -2px rgba(190,18,60,.30)">
+              <span style="color:white;font-size:13px;font-weight:700">张</span>
+            </div>
+          </div>
+          <!-- Scan CTA card -->
+          <div style="border-radius:20px;padding:16px;background:linear-gradient(135deg,#F43F5E,#9F1239);margin-bottom:14px;position:relative;overflow:hidden">
+            <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:999px;background:rgba(255,255,255,.07)"></div>
+            <div style="font-size:11px;color:rgba(255,255,255,.70);margin-bottom:4px">快速操作</div>
+            <div style="font-size:17px;font-weight:700;color:white;margin-bottom:12px">扫描新合同</div>
+            <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.20);border-radius:10px;padding:7px 12px">
+              <span class="mi text-white" style="font-size:16px">document_scanner</span>
+              <span style="font-size:12px;font-weight:600;color:white">开始扫描</span>
+            </div>
+          </div>
+          <!-- Stats -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+            <div style="background:white;border-radius:12px;padding:10px;text-align:center;box-shadow:0 2px 8px rgba(15,23,42,.04)">
+              <div style="font-size:18px;font-weight:700;color:#E11D48">12</div>
+              <div style="font-size:9px;color:#94A3B8;margin-top:2px">全部</div>
+            </div>
+            <div style="background:white;border-radius:12px;padding:10px;text-align:center;box-shadow:0 2px 8px rgba(15,23,42,.04)">
+              <div style="font-size:18px;font-weight:700;color:#F59E0B">3</div>
+              <div style="font-size:9px;color:#94A3B8;margin-top:2px">待处理</div>
+            </div>
+            <div style="background:white;border-radius:12px;padding:10px;text-align:center;box-shadow:0 2px 8px rgba(15,23,42,.04)">
+              <div style="font-size:18px;font-weight:700;color:#10B981">9</div>
+              <div style="font-size:9px;color:#94A3B8;margin-top:2px">已完成</div>
+            </div>
+          </div>
+          <!-- Recent list -->
+          <div style="font-size:10px;color:#94A3B8;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">最近合同</div>
+          <div class="scroll-fade" style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:7px">
+            <div style="background:white;border-radius:13px;padding:10px 12px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(15,23,42,.04)">
+              <div style="width:34px;height:34px;border-radius:10px;background:#FFF1F2;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span class="mi text-crimson-500" style="font-size:17px">description</span></div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:11px;font-weight:600;color:#0F172A;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">劳动合同 - 2025年版</div>
+                <div style="font-size:10px;color:#94A3B8">上海XX科技 · 5月7日</div>
+              </div>
+              <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px;background:#DCFCE7;color:#15803D">已分析</span>
+            </div>
+            <div style="background:white;border-radius:13px;padding:10px 12px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(15,23,42,.04)">
+              <div style="width:34px;height:34px;border-radius:10px;background:#FFF7ED;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span class="mi" style="font-size:17px;color:#D97706">handshake</span></div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:11px;font-weight:600;color:#0F172A;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">服务采购合同</div>
+                <div style="font-size:10px;color:#94A3B8">北京YY贸易 · 5月5日</div>
+              </div>
+              <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px;background:#FEF3C7;color:#D97706">分析中</span>
+            </div>
+            <div style="background:white;border-radius:13px;padding:10px 12px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(15,23,42,.04)">
+              <div style="width:34px;height:34px;border-radius:10px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span class="mi" style="font-size:17px;color:#2563EB">article</span></div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:11px;font-weight:600;color:#0F172A;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">房屋租赁合同</div>
+                <div style="font-size:10px;color:#94A3B8">个人 · 4月28日</div>
+              </div>
+              <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px;background:#FFE4E6;color:#BE123C">1处风险</span>
+            </div>
+          </div>
+          <!-- Bottom nav -->
+          <div class="bottom-nav">
+            <div class="nav-item active"><span class="mi" style="font-size:20px">home</span>首页</div>
+            <div class="nav-item"><span class="mi" style="font-size:20px">document_scanner</span>扫描</div>
+            <div class="nav-item"><span class="mi" style="font-size:20px">library_books</span>模版</div>
+            <div class="nav-item"><span class="mi" style="font-size:20px">person</span>我的</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ② 扫描界面 -->
+    <div class="animate__animated animate__fadeInUp" style="animation-delay:.15s">
+      <p class="label mb-3">② 扫描界面</p>
+      <div class="phone shadow-phone">
+        <div class="statusbar" style="color:white"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+        <div class="screen" style="background:#0C0C0C;padding:54px 0 0">
+          <!-- Top bar -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0 18px 14px">
+            <span class="mi" style="font-size:22px;color:rgba(255,255,255,.8)">close</span>
+            <span style="font-size:14px;font-weight:600;color:white">扫描合同</span>
+            <span class="mi" style="font-size:22px;color:rgba(255,255,255,.8)">flash_off</span>
+          </div>
+          <!-- Viewfinder -->
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:0 22px">
+            <div style="position:relative;width:100%;aspect-ratio:3/4;max-height:360px">
+              <div style="position:absolute;inset:0;border:1.5px dashed rgba(251,113,133,.35);border-radius:10px">
+                <div class="corner corner-tl"></div>
+                <div class="corner corner-tr"></div>
+                <div class="corner corner-bl"></div>
+                <div class="corner corner-br"></div>
+                <!-- Simulated document content -->
+                <div style="position:absolute;inset:4px;background:rgba(255,255,255,.05);border-radius:7px;display:flex;align-items:center;justify-content:center;overflow:hidden">
+                  <div style="width:82%;opacity:.12;padding:16px 0">
+                    <div style="height:9px;background:white;border-radius:2px;margin-bottom:7px"></div>
+                    <div style="height:6px;background:white;border-radius:2px;margin-bottom:5px;width:88%"></div>
+                    <div style="height:6px;background:white;border-radius:2px;margin-bottom:5px;width:72%"></div>
+                    <div style="height:6px;background:white;border-radius:2px;margin-bottom:10px;width:80%"></div>
+                    <div style="height:6px;background:white;border-radius:2px;margin-bottom:5px"></div>
+                    <div style="height:6px;background:white;border-radius:2px;margin-bottom:5px;width:64%"></div>
+                    <div style="height:6px;background:white;border-radius:2px;margin-bottom:10px;width:85%"></div>
+                    <div style="height:6px;background:white;border-radius:2px;margin-bottom:5px;width:68%"></div>
+                    <div style="height:6px;background:white;border-radius:2px;width:52%"></div>
+                  </div>
+                </div>
+                <div class="scan-line"></div>
+              </div>
+            </div>
+          </div>
+          <!-- Hint -->
+          <div style="text-align:center;padding:12px 18px">
+            <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(251,113,133,.14);border:1px solid rgba(251,113,133,.28);border-radius:20px;padding:6px 14px">
+              <span style="width:6px;height:6px;border-radius:999px;background:#FB7185;display:inline-block;animation:pdot 1.5s ease-in-out infinite"></span>
+              <span style="font-size:12px;color:#FDA4AF;font-weight:500">正在检测文档边缘...</span>
+            </div>
+          </div>
+          <!-- Controls -->
+          <div style="padding:10px 28px 28px;display:flex;align-items:center;justify-content:space-between">
+            <div style="width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center">
+              <span class="mi" style="color:white;font-size:22px">photo_library</span>
+            </div>
+            <div style="width:68px;height:68px;border-radius:999px;border:3px solid white;display:flex;align-items:center;justify-content:center">
+              <div style="width:52px;height:52px;border-radius:999px;background:white"></div>
+            </div>
+            <div style="width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center">
+              <span class="mi" style="color:white;font-size:22px">rotate_right</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ③ 处理中 -->
+    <div class="animate__animated animate__fadeInUp" style="animation-delay:.25s">
+      <p class="label mb-3">③ 上传与解析</p>
+      <div class="phone shadow-phone">
+        <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+        <div class="screen">
+          <div style="display:flex;align-items:center;margin-bottom:22px">
+            <span class="mi text-slate-300" style="font-size:18px">arrow_back_ios</span>
+          </div>
+          <!-- Doc preview -->
+          <div style="background:#F8FAFC;border-radius:16px;padding:12px;margin-bottom:20px;display:flex;gap:12px;align-items:center;border:1px solid #E2E8F0">
+            <div style="width:46px;height:58px;background:white;border-radius:8px;border:1px solid #E2E8F0;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(15,23,42,.06)">
+              <span class="mi text-crimson-400" style="font-size:22px">description</span>
+            </div>
+            <div>
+              <div style="font-size:12px;font-weight:600;color:#0F172A;margin-bottom:2px">服务采购合同.jpg</div>
+              <div style="font-size:10px;color:#94A3B8">3 页 · 1.2 MB · 已上传</div>
+            </div>
+            <span class="mi" style="font-size:18px;color:#10B981;margin-left:auto">check_circle</span>
+          </div>
+          <div class="font-serif text-lg font-bold text-slate-800 mb-1">正在智能解析中...</div>
+          <div style="font-size:12px;color:#64748B;margin-bottom:16px">预计还需 <span style="color:#E11D48;font-weight:600">8 秒</span>完成分析</div>
+          <!-- Progress bar -->
+          <div style="background:#F1F5F9;border-radius:999px;height:6px;margin-bottom:20px;overflow:hidden">
+            <div style="width:62%;height:100%;background:linear-gradient(90deg,#FB7185,#E11D48);border-radius:999px"></div>
+          </div>
+          <!-- Steps -->
+          <div style="display:flex;flex-direction:column;gap:0">
+            <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #F1F5F9">
+              <div style="width:28px;height:28px;border-radius:999px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span class="mi" style="font-size:14px;color:#15803D">check</span></div>
+              <div style="flex:1"><div style="font-size:12px;font-weight:600;color:#0F172A">图片上传</div><div style="font-size:10px;color:#10B981">已完成</div></div>
+              <span style="font-size:11px;color:#94A3B8">0.8s</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #F1F5F9">
+              <div style="width:28px;height:28px;border-radius:999px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span class="mi" style="font-size:14px;color:#15803D">check</span></div>
+              <div style="flex:1"><div style="font-size:12px;font-weight:600;color:#0F172A">文字识别 (OCR)</div><div style="font-size:10px;color:#10B981">识别 2,847 字</div></div>
+              <span style="font-size:11px;color:#94A3B8">2.1s</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #F1F5F9">
+              <div style="width:28px;height:28px;border-radius:999px;background:linear-gradient(135deg,#FB7185,#E11D48);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <span class="mi text-white" style="font-size:14px;animation:spin .8s linear infinite">sync</span>
+              </div>
+              <div style="flex:1"><div style="font-size:12px;font-weight:600;color:#0F172A">AI 智能分析</div><div style="font-size:10px;color:#E11D48">提取关键条款中...</div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:11px 0">
+              <div style="width:28px;height:28px;border-radius:999px;background:#F1F5F9;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span class="mi text-slate-300" style="font-size:14px">shield</span></div>
+              <div style="flex:1"><div style="font-size:12px;font-weight:500;color:#94A3B8">风险评估</div><div style="font-size:10px;color:#CBD5E1">等待中...</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════ FLOW 03 · 分析结果 ═══════════════════ -->
+<section class="mt-20">
+  <div class="flex items-baseline gap-3 mb-6">
+    <span class="flow-label">Flow 03</span>
+    <h2 class="font-serif text-2xl font-bold text-slate-800">分析结果 · AI 条款解读与风险标注</h2>
+  </div>
+  <div class="flex gap-10 flex-wrap">
+
+    <!-- ① 分析概览 -->
+    <div class="animate__animated animate__fadeInUp" style="animation-delay:.05s">
+      <p class="label mb-3">① 分析概览</p>
+      <div class="phone shadow-phone">
+        <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+        <div class="screen">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <span class="mi text-slate-300" style="font-size:18px">arrow_back_ios</span>
+            <span style="font-size:14px;font-weight:600;color:#0F172A">合同分析</span>
+            <span class="mi text-slate-400" style="font-size:20px">share</span>
+          </div>
+          <!-- Success -->
+          <div style="background:linear-gradient(135deg,#DCFCE7,#BBF7D0);border-radius:16px;padding:12px 14px;margin-bottom:13px;display:flex;align-items:center;gap:10px">
+            <span class="mi" style="font-size:22px;color:#15803D">check_circle</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#14532D">解析完成</div>
+              <div style="font-size:11px;color:#16A34A">共识别 12 个条款 · 发现 2 处风险</div>
+            </div>
+          </div>
+          <!-- Contract title -->
+          <div style="font-size:16px;font-weight:700;color:#0F172A;margin-bottom:3px">服务采购合同</div>
+          <div style="font-size:11px;color:#94A3B8;margin-bottom:12px">北京YY贸易有限公司 · 2025年5月5日</div>
+          <!-- Key info -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px">
+            <div style="background:#F8FAFC;border-radius:12px;padding:9px 11px">
+              <div style="font-size:10px;color:#94A3B8;margin-bottom:2px">甲方</div>
+              <div style="font-size:12px;font-weight:600;color:#0F172A">北京YY贸易</div>
+            </div>
+            <div style="background:#F8FAFC;border-radius:12px;padding:9px 11px">
+              <div style="font-size:10px;color:#94A3B8;margin-bottom:2px">乙方</div>
+              <div style="font-size:12px;font-weight:600;color:#0F172A">上海XX科技</div>
+            </div>
+            <div style="background:#F8FAFC;border-radius:12px;padding:9px 11px">
+              <div style="font-size:10px;color:#94A3B8;margin-bottom:2px">合同金额</div>
+              <div style="font-size:12px;font-weight:600;color:#E11D48">¥ 258,000</div>
+            </div>
+            <div style="background:#F8FAFC;border-radius:12px;padding:9px 11px">
+              <div style="font-size:10px;color:#94A3B8;margin-bottom:2px">合同期限</div>
+              <div style="font-size:12px;font-weight:600;color:#0F172A">12 个月</div>
+            </div>
+          </div>
+          <!-- Risk badge -->
+          <div style="background:white;border-radius:14px;padding:11px 13px;border:1.5px solid #FEF3C7;margin-bottom:13px;display:flex;align-items:center;gap:10px">
+            <div style="width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#FEF3C7,#FDE68A);display:flex;align-items:center;justify-content:center">
+              <span class="mi" style="font-size:19px;color:#D97706">warning_amber</span>
+            </div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;color:#92400E">中等风险</div>
+              <div style="font-size:11px;color:#D97706">2 处条款需要关注</div>
+            </div>
+            <span class="mi text-slate-300" style="font-size:18px">chevron_right</span>
+          </div>
+          <!-- Actions -->
+          <div style="display:flex;gap:8px;margin-top:auto">
+            <button style="flex:1;padding:11px;border-radius:12px;background:#F8FAFC;border:1px solid #E2E8F0;font-size:12px;font-weight:600;color:#475569">查看条款</button>
+            <button style="flex:1;padding:11px;border-radius:12px;background:linear-gradient(135deg,#F43F5E,#BE123C);border:none;font-size:12px;font-weight:600;color:white">风险详情</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ② 关键条款 -->
+    <div class="animate__animated animate__fadeInUp" style="animation-delay:.15s">
+      <p class="label mb-3">② 关键条款解读</p>
+      <div class="phone shadow-phone">
+        <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+        <div class="screen">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <span class="mi text-slate-300" style="font-size:18px">arrow_back_ios</span>
+            <span style="font-size:14px;font-weight:600;color:#0F172A">条款解读</span>
+            <span class="mi text-slate-400" style="font-size:20px">filter_list</span>
+          </div>
+          <!-- Filter tabs -->
+          <div style="display:flex;gap:6px;margin-bottom:13px;overflow-x:auto;scrollbar-width:none;flex-shrink:0">
+            <div style="flex-shrink:0;padding:4px 10px;border-radius:20px;background:#FFE4E6;color:#BE123C;font-size:11px;font-weight:600">全部 12</div>
+            <div style="flex-shrink:0;padding:4px 10px;border-radius:20px;background:#F1F5F9;color:#64748B;font-size:11px">付款 3</div>
+            <div style="flex-shrink:0;padding:4px 10px;border-radius:20px;background:#F1F5F9;color:#64748B;font-size:11px">违约 2</div>
+            <div style="flex-shrink:0;padding:4px 10px;border-radius:20px;background:#F1F5F9;color:#64748B;font-size:11px">保密 2</div>
+            <div style="flex-shrink:0;padding:4px 10px;border-radius:20px;background:#F1F5F9;color:#64748B;font-size:11px">知产 1</div>
+          </div>
+          <!-- Clause list -->
+          <div class="scroll-fade" style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:7px">
+            <!-- Safe -->
+            <div style="background:white;border-radius:13px;padding:10px 12px;border:1px solid #F1F5F9;display:flex;gap:9px">
+              <div style="width:5px;border-radius:999px;background:#10B981;flex-shrink:0"></div>
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+                  <span style="font-size:11px;font-weight:600;color:#0F172A">付款方式</span>
+                  <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#DCFCE7;color:#15803D">无风险</span>
+                </div>
+                <div style="font-size:10px;color:#64748B;line-height:1.6">签订后 30 日内支付 30% 预付款，验收合格后 60 日内付清余款。</div>
+              </div>
+            </div>
+            <!-- Caution -->
+            <div style="background:white;border-radius:13px;padding:10px 12px;border:1px solid #FEF3C7;display:flex;gap:9px">
+              <div style="width:5px;border-radius:999px;background:#F59E0B;flex-shrink:0"></div>
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+                  <span style="font-size:11px;font-weight:600;color:#0F172A">保密条款</span>
+                  <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#FEF3C7;color:#D97706">注意</span>
+                </div>
+                <div style="font-size:10px;color:#64748B;line-height:1.6">乙方需保密甲方全部业务信息，保密期限为<b style="color:#D97706">合同终止后 5 年</b>，范围较宽泛。</div>
+              </div>
+            </div>
+            <!-- Risk -->
+            <div style="background:white;border-radius:13px;padding:10px 12px;border:1px solid #FFE4E6;display:flex;gap:9px">
+              <div style="width:5px;border-radius:999px;background:#E11D48;flex-shrink:0"></div>
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+                  <span style="font-size:11px;font-weight:600;color:#0F172A">违约责任</span>
+                  <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#FFE4E6;color:#BE123C">高风险</span>
+                </div>
+                <div style="font-size:10px;color:#64748B;line-height:1.6">乙方违约需赔偿合同总价款的<b style="color:#E11D48">30%</b>，甲方违约仅退预付款，责任不对等。</div>
+              </div>
+            </div>
+            <!-- Safe -->
+            <div style="background:white;border-radius:13px;padding:10px 12px;border:1px solid #F1F5F9;display:flex;gap:9px">
+              <div style="width:5px;border-radius:999px;background:#10B981;flex-shrink:0"></div>
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+                  <span style="font-size:11px;font-weight:600;color:#0F172A">知识产权</span>
+                  <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#DCFCE7;color:#15803D">无风险</span>
+                </div>
+                <div style="font-size:10px;color:#64748B;line-height:1.6">交付物著作权归甲方，乙方保留技术方案和方法论的知识产权。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ③ 风险详情 -->
+    <div class="animate__animated animate__fadeInUp" style="animation-delay:.25s">
+      <p class="label mb-3">③ 风险预警详情</p>
+      <div class="phone shadow-phone">
+        <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+        <div class="screen">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <span class="mi text-slate-300" style="font-size:18px">arrow_back_ios</span>
+            <span style="font-size:14px;font-weight:600;color:#0F172A">风险预警</span>
+            <span class="mi text-slate-400" style="font-size:20px">download</span>
+          </div>
+          <!-- Summary banner -->
+          <div style="background:linear-gradient(135deg,#FFF1F2,#FFE4E6);border-radius:15px;padding:11px 13px;margin-bottom:12px;border:1px solid #FECDD3">
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
+              <span class="mi" style="font-size:17px;color:#E11D48">shield</span>
+              <span style="font-size:13px;font-weight:700;color:#9F1239">发现 2 处风险条款</span>
+            </div>
+            <div style="font-size:11px;color:#BE123C;line-height:1.6">建议签署前与对方协商修改，或咨询法律顾问。</div>
+          </div>
+          <div class="scroll-fade" style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:9px">
+            <!-- Risk 1 -->
+            <div style="background:white;border-radius:15px;padding:12px;border:1.5px solid #FFE4E6">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">
+                <span style="width:18px;height:18px;border-radius:999px;background:#FEE2E2;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:800;color:#DC2626">!</span>
+                <span style="font-size:12px;font-weight:700;color:#BE123C">违约责任不对等</span>
+                <span style="margin-left:auto;font-size:10px;padding:2px 6px;border-radius:4px;background:#FEE2E2;color:#DC2626;font-weight:600">高风险</span>
+              </div>
+              <div style="background:#FFF8F8;border-radius:8px;padding:7px 9px;margin-bottom:7px;border-left:3px solid #FCA5A5">
+                <div style="font-size:9px;color:#94A3B8;margin-bottom:2px">原文（第十二条）</div>
+                <div style="font-size:10px;color:#374151;line-height:1.6">"乙方未按时交付的，应按合同总价款的30%向甲方支付违约金..."</div>
+              </div>
+              <div style="font-size:10px;color:#DC2626;line-height:1.6;margin-bottom:7px"><b>风险：</b>乙方违约金率 30% 远高于行业惯例（5-10%），且甲方无对等条款。</div>
+              <div style="background:#F0FDF4;border-radius:8px;padding:7px 9px;border-left:3px solid #86EFAC">
+                <div style="font-size:9px;color:#15803D;margin-bottom:2px;font-weight:600">建议修改</div>
+                <div style="font-size:10px;color:#166534;line-height:1.6">将违约金率改为 10%，并增加甲方逾期付款的对等违约条款。</div>
+              </div>
+            </div>
+            <!-- Risk 2 -->
+            <div style="background:white;border-radius:15px;padding:12px;border:1.5px solid #FEF3C7">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">
+                <span style="width:18px;height:18px;border-radius:999px;background:#FEF9C3;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:800;color:#CA8A04">!</span>
+                <span style="font-size:12px;font-weight:700;color:#92400E">保密范围过宽</span>
+                <span style="margin-left:auto;font-size:10px;padding:2px 6px;border-radius:4px;background:#FEF3C7;color:#D97706;font-weight:600">注意</span>
+              </div>
+              <div style="background:#FFFBEB;border-radius:8px;padding:7px 9px;margin-bottom:7px;border-left:3px solid #FDE68A">
+                <div style="font-size:9px;color:#94A3B8;margin-bottom:2px">原文（第八条）</div>
+                <div style="font-size:10px;color:#374151;line-height:1.6">"乙方对甲方一切商业秘密及业务信息负有永久保密义务..."</div>
+              </div>
+              <div style="font-size:10px;color:#D97706;line-height:1.6;margin-bottom:7px"><b>风险：</b>"一切业务信息"范围过广且无时间限制，可能限制乙方未来发展。</div>
+              <div style="background:#F0FDF4;border-radius:8px;padding:7px 9px;border-left:3px solid #86EFAC">
+                <div style="font-size:9px;color:#15803D;margin-bottom:2px;font-weight:600">建议修改</div>
+                <div style="font-size:10px;color:#166534;line-height:1.6">明确保密信息范围，将保密期限改为"合同终止后 3 年"。</div>
+              </div>
+            </div>
+          </div>
+          <button style="width:100%;padding:11px;border-radius:13px;background:linear-gradient(135deg,#F43F5E,#BE123C);border:none;font-size:12px;font-weight:600;color:white;margin-top:8px;box-shadow:0 6px 20px -4px rgba(190,18,60,.25)">
+            <span class="mi text-white" style="font-size:14px;vertical-align:middle;margin-right:3px">download</span>导出风险分析报告
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════ FLOW 04 · 合同模版 ═══════════════════ -->
+<section class="mt-20">
+  <div class="flex items-baseline gap-3 mb-6">
+    <span class="flow-label">Flow 04</span>
+    <h2 class="font-serif text-2xl font-bold text-slate-800">合同模版 · 浏览、选用与填写</h2>
+  </div>
+  <div class="flex gap-10 flex-wrap">
+
+    <!-- ① 模版库 -->
+    <div class="animate__animated animate__fadeInUp" style="animation-delay:.05s">
+      <p class="label mb-3">① 模版库</p>
+      <div class="phone shadow-phone">
+        <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+        <div class="screen">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px">
+            <div class="font-serif" style="font-size:17px;font-weight:700;color:#0F172A">合同模版</div>
+            <span class="mi text-slate-400" style="font-size:20px">search</span>
+          </div>
+          <!-- Category filter -->
+          <div style="display:flex;gap:6px;margin-bottom:13px;overflow-x:auto;scrollbar-width:none;flex-shrink:0">
+            <div style="flex-shrink:0;padding:4px 11px;border-radius:20px;background:#FFE4E6;color:#BE123C;font-size:11px;font-weight:600">全部</div>
+            <div style="flex-shrink:0;padding:4px 11px;border-radius:20px;background:#F1F5F9;color:#64748B;font-size:11px">劳动</div>
+            <div style="flex-shrink:0;padding:4px 11px;border-radius:20px;background:#F1F5F9;color:#64748B;font-size:11px">采购</div>
+            <div style="flex-shrink:0;padding:4px 11px;border-radius:20px;background:#F1F5F9;color:#64748B;font-size:11px">服务</div>
+            <div style="flex-shrink:0;padding:4px 11px;border-radius:20px;background:#F1F5F9;color:#64748B;font-size:11px">NDA</div>
+            <div style="flex-shrink:0;padding:4px 11px;border-radius:20px;background:#F1F5F9;color:#64748B;font-size:11px">租赁</div>
+          </div>
+          <!-- Grid -->
+          <div class="scroll-fade" style="flex:1;overflow:hidden;display:grid;grid-template-columns:1fr 1fr;gap:8px;align-content:start">
+            <div style="background:white;border-radius:16px;padding:12px;border:1px solid #F1F5F9">
+              <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#FB7185,#BE123C);display:flex;align-items:center;justify-content:center;margin-bottom:8px"><span class="mi text-white" style="font-size:18px">work</span></div>
+              <div style="font-size:11px;font-weight:600;color:#0F172A;margin-bottom:2px">劳动合同</div>
+              <div style="font-size:9px;color:#94A3B8">已用 2,341 次</div>
+            </div>
+            <div style="background:white;border-radius:16px;padding:12px;border:1px solid #F1F5F9">
+              <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#FDE68A,#D97706);display:flex;align-items:center;justify-content:center;margin-bottom:8px"><span class="mi text-white" style="font-size:18px">shopping_cart</span></div>
+              <div style="font-size:11px;font-weight:600;color:#0F172A;margin-bottom:2px">采购合同</div>
+              <div style="font-size:9px;color:#94A3B8">已用 1,892 次</div>
+            </div>
+            <div style="background:white;border-radius:16px;padding:12px;border:1.5px solid #FFE4E6">
+              <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#C4B5FD,#7C3AED);display:flex;align-items:center;justify-content:center;margin-bottom:8px"><span class="mi text-white" style="font-size:18px">handshake</span></div>
+              <div style="font-size:11px;font-weight:600;color:#0F172A;margin-bottom:2px">服务合同</div>
+              <div style="font-size:9px;color:#94A3B8">已用 1,567 次</div>
+              <div style="font-size:9px;color:#E11D48;font-weight:600;margin-top:3px">热门</div>
+            </div>
+            <div style="background:white;border-radius:16px;padding:12px;border:1px solid #F1F5F9">
+              <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#6EE7B7,#059669);display:flex;align-items:center;justify-content:center;margin-bottom:8px"><span class="mi text-white" style="font-size:18px">lock</span></div>
+              <div style="font-size:11px;font-weight:600;color:#0F172A;margin-bottom:2px">保密协议</div>
+              <div style="font-size:9px;color:#94A3B8">已用 988 次</div>
+            </div>
+            <div style="background:white;border-radius:16px;padding:12px;border:1px solid #F1F5F9">
+              <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#93C5FD,#2563EB);display:flex;align-items:center;justify-content:center;margin-bottom:8px"><span class="mi text-white" style="font-size:18px">apartment</span></div>
+              <div style="font-size:11px;font-weight:600;color:#0F172A;margin-bottom:2px">租赁合同</div>
+              <div style="font-size:9px;color:#94A3B8">已用 756 次</div>
+            </div>
+            <div style="background:white;border-radius:16px;padding:12px;border:1.5px dashed #E2E8F0">
+              <div style="width:36px;height:36px;border-radius:10px;background:#F1F5F9;display:flex;align-items:center;justify-content:center;margin-bottom:8px"><span class="mi text-slate-400" style="font-size:18px">add</span></div>
+              <div style="font-size:11px;font-weight:600;color:#64748B;margin-bottom:2px">自定义模版</div>
+              <div style="font-size:9px;color:#94A3B8">从头创建</div>
+            </div>
+          </div>
+          <!-- Bottom nav -->
+          <div class="bottom-nav">
+            <div class="nav-item"><span class="mi" style="font-size:20px">home</span>首页</div>
+            <div class="nav-item"><span class="mi" style="font-size:20px">document_scanner</span>扫描</div>
+            <div class="nav-item active"><span class="mi" style="font-size:20px">library_books</span>模版</div>
+            <div class="nav-item"><span class="mi" style="font-size:20px">person</span>我的</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ② 模版详情 -->
+    <div class="animate__animated animate__fadeInUp" style="animation-delay:.15s">
+      <p class="label mb-3">② 模版详情</p>
+      <div class="phone shadow-phone">
+        <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+        <div class="screen">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px">
+            <span class="mi text-slate-300" style="font-size:18px">arrow_back_ios</span>
+            <span style="font-size:14px;font-weight:600;color:#0F172A">模版详情</span>
+            <span class="mi text-slate-400" style="font-size:20px">bookmark_border</span>
+          </div>
+          <!-- Document preview -->
+          <div style="background:#F8FAFC;border-radius:16px;padding:14px;margin-bottom:13px;border:1px solid #E2E8F0;position:relative">
+            <div style="background:white;border-radius:8px;padding:10px;box-shadow:0 2px 10px rgba(15,23,42,.06)">
+              <div style="height:9px;background:#0F172A;border-radius:2px;width:55%;margin:0 auto 9px"></div>
+              <div style="height:5px;background:#E2E8F0;border-radius:2px;margin-bottom:5px"></div>
+              <div style="height:5px;background:#E2E8F0;border-radius:2px;width:85%;margin-bottom:5px"></div>
+              <div style="height:5px;background:#FDA4AF;border-radius:2px;margin-bottom:8px"></div>
+              <div style="height:5px;background:#E2E8F0;border-radius:2px;margin-bottom:5px"></div>
+              <div style="height:5px;background:#E2E8F0;border-radius:2px;width:70%;margin-bottom:5px"></div>
+              <div style="height:5px;background:#FDA4AF;border-radius:2px;width:50%;margin-bottom:8px"></div>
+              <div style="height:5px;background:#E2E8F0;border-radius:2px;margin-bottom:5px"></div>
+              <div style="height:5px;background:#E2E8F0;border-radius:2px;width:78%"></div>
+            </div>
+            <div style="position:absolute;top:10px;right:10px;background:#FFE4E6;border-radius:7px;padding:2px 7px;font-size:10px;font-weight:600;color:#BE123C">12 个填写项</div>
+          </div>
+          <!-- Info -->
+          <div style="font-size:15px;font-weight:700;color:#0F172A;margin-bottom:6px">服务采购合同模版</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">
+            <span style="padding:2px 8px;border-radius:5px;background:#FFE4E6;color:#BE123C;font-size:10px;font-weight:500">通用版</span>
+            <span style="padding:2px 8px;border-radius:5px;background:#F1F5F9;color:#64748B;font-size:10px">甲方委托乙方</span>
+            <span style="padding:2px 8px;border-radius:5px;background:#DCFCE7;color:#15803D;font-size:10px">律师审核</span>
+          </div>
+          <!-- Stats -->
+          <div style="display:flex;gap:0;margin-bottom:12px;padding:10px 0;border-top:1px solid #F1F5F9;border-bottom:1px solid #F1F5F9">
+            <div style="text-align:center;flex:1"><div style="font-size:15px;font-weight:700;color:#E11D48">1,567</div><div style="font-size:9px;color:#94A3B8;margin-top:1px">使用次数</div></div>
+            <div style="text-align:center;flex:1"><div style="font-size:15px;font-weight:700;color:#0F172A">4.8</div><div style="font-size:9px;color:#94A3B8;margin-top:1px">评分</div></div>
+            <div style="text-align:center;flex:1"><div style="font-size:15px;font-weight:700;color:#0F172A">12</div><div style="font-size:9px;color:#94A3B8;margin-top:1px">填写项</div></div>
+          </div>
+          <div style="font-size:11px;color:#64748B;line-height:1.7;flex:1;margin-bottom:14px">
+            适用于甲方委托乙方提供专业服务的场景，涵盖服务内容、付款方式、保密条款、验收标准等核心条款，经过法律顾问审核。
+          </div>
+          <button style="width:100%;padding:13px;border-radius:14px;background:linear-gradient(135deg,#F43F5E,#BE123C);border:none;font-size:14px;font-weight:600;color:white;box-shadow:0 6px 20px -4px rgba(190,18,60,.30)">使用此模版</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ③ 填写合同信息 -->
+    <div class="animate__animated animate__fadeInUp" style="animation-delay:.25s">
+      <p class="label mb-3">③ 填写合同信息</p>
+      <div class="phone shadow-phone">
+        <div class="statusbar"><span>9:41</span><span class="flex items-center gap-1"><span class="mi" style="font-size:14px">signal_cellular_alt</span><span class="mi" style="font-size:14px">wifi</span><span class="mi" style="font-size:14px">battery_full</span></span></div>
+        <div class="screen">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px">
+            <span class="mi text-slate-300" style="font-size:18px">arrow_back_ios</span>
+            <span style="font-size:14px;font-weight:600;color:#0F172A">填写合同信息</span>
+            <span style="font-size:11px;color:#E11D48;font-weight:600">3/12</span>
+          </div>
+          <!-- Progress -->
+          <div style="background:#F1F5F9;border-radius:999px;height:4px;margin-bottom:14px;overflow:hidden">
+            <div style="width:25%;height:100%;background:linear-gradient(90deg,#FB7185,#E11D48);border-radius:999px"></div>
+          </div>
+          <!-- AI hint -->
+          <div style="background:linear-gradient(135deg,#FFF1F2,#FFE4E6);border-radius:12px;padding:9px 12px;margin-bottom:13px;display:flex;align-items:center;gap:8px;border:1px solid #FECDD3">
+            <span class="mi" style="font-size:18px;color:#E11D48">auto_awesome</span>
+            <div style="flex:1">
+              <div style="font-size:11px;font-weight:600;color:#9F1239">AI 智能填充</div>
+              <div style="font-size:10px;color:#BE123C">从已分析合同中自动提取</div>
+            </div>
+            <button style="padding:4px 10px;border-radius:8px;background:#E11D48;border:none;font-size:10px;font-weight:600;color:white">一键填充</button>
+          </div>
+          <!-- Form -->
+          <div class="scroll-fade" style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:9px">
+            <div>
+              <div style="font-size:11px;color:#64748B;margin-bottom:4px">甲方名称 <span style="color:#E11D48">*</span></div>
+              <div style="border:1.5px solid #FDA4AF;border-radius:12px;padding:11px 13px;background:white;font-size:13px;font-weight:500;color:#0F172A;display:flex;align-items:center;justify-content:space-between">
+                北京YY贸易有限公司 <span class="mi" style="font-size:16px;color:#10B981">check_circle</span>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#64748B;margin-bottom:4px">乙方名称 <span style="color:#E11D48">*</span></div>
+              <div style="border:1.5px solid #FDA4AF;border-radius:12px;padding:11px 13px;background:white;font-size:13px;font-weight:500;color:#0F172A;display:flex;align-items:center;justify-content:space-between">
+                上海XX科技有限公司 <span class="mi" style="font-size:16px;color:#10B981">check_circle</span>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#64748B;margin-bottom:4px">合同金额 <span style="color:#E11D48">*</span></div>
+              <div style="border:2px solid #E11D48;border-radius:12px;padding:11px 13px;background:white;font-size:13px;font-weight:500;color:#0F172A;display:flex;align-items:center;justify-content:space-between;box-shadow:0 0 0 3px rgba(225,29,72,.08)">
+                <span>¥ 258,000</span>
+                <span style="width:2px;height:18px;background:#E11D48;border-radius:2px;display:inline-block;animation:blink 1s steps(1) infinite"></span>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#64748B;margin-bottom:4px">合同期限</div>
+              <div style="border:1.5px solid #E2E8F0;border-radius:12px;padding:11px 13px;background:#F8FAFC;font-size:13px;color:#94A3B8;display:flex;align-items:center;justify-content:space-between">
+                请选择期限 <span class="mi" style="font-size:16px;color:#CBD5E1">expand_more</span>
+              </div>
+            </div>
+          </div>
+          <button style="width:100%;padding:12px;border-radius:13px;background:linear-gradient(135deg,#F43F5E,#BE123C);border:none;font-size:13px;font-weight:600;color:white;margin-top:8px;box-shadow:0 6px 20px -4px rgba(190,18,60,.25)">预览合同</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════ 核心价值 ═══════════════════ -->
+<section class="mt-24 max-w-4xl">
+  <div class="flex items-baseline gap-3 mb-10">
+    <span class="flow-label">核心价值</span>
+    <h2 class="font-serif text-2xl font-bold text-slate-800">为什么选择 XContract</h2>
+  </div>
+  <div class="grid md:grid-cols-3 gap-6">
+    <div style="background:white;border-radius:22px;padding:24px;box-shadow:0 4px 20px -4px rgba(225,29,72,.10)">
+      <div style="width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#FB7185,#BE123C);display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+        <span class="mi text-white" style="font-size:22px">document_scanner</span>
+      </div>
+      <div class="font-serif" style="font-size:17px;font-weight:700;color:#0F172A;margin-bottom:8px">零门槛扫描</div>
+      <p style="font-size:13px;color:#64748B;line-height:1.7">用手机摄像头对准纸质合同，AI 自动矫正透视、增强图像，无需专业设备，随时随地完成扫描。</p>
+    </div>
+    <div style="background:white;border-radius:22px;padding:24px;box-shadow:0 4px 20px -4px rgba(225,29,72,.10)">
+      <div style="width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#FDE68A,#D97706);display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+        <span class="mi text-white" style="font-size:22px">auto_awesome</span>
+      </div>
+      <div class="font-serif" style="font-size:17px;font-weight:700;color:#0F172A;margin-bottom:8px">AI 深度解析</div>
+      <p style="font-size:13px;color:#64748B;line-height:1.7">自动提取甲乙方、金额、期限、违约条款等关键字段，结合法律知识库识别不平等条款与隐藏风险。</p>
+    </div>
+    <div style="background:white;border-radius:22px;padding:24px;box-shadow:0 4px 20px -4px rgba(225,29,72,.10)">
+      <div style="width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#C4B5FD,#7C3AED);display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+        <span class="mi text-white" style="font-size:22px">library_books</span>
+      </div>
+      <div class="font-serif" style="font-size:17px;font-weight:700;color:#0F172A;margin-bottom:8px">专业模版库</div>
+      <p style="font-size:13px;color:#64748B;line-height:1.7">内置 100+ 套经律师审核的合同模版，覆盖劳动、采购、服务、保密等常见场景，填写即可生成正式合同。</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ═══════════════════ FOOTER ═══════════════════ -->
+<footer style="padding:40px 40px 60px;border-top:1px solid rgba(15,23,42,.07);margin-top:40px">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#FB7185,#BE123C);display:flex;align-items:center;justify-content:center">
+        <span class="mi text-white" style="font-size:16px">description</span>
+      </div>
+      <span class="font-serif" style="font-size:16px;font-weight:700;color:#0F172A">XContract</span>
+      <span style="font-size:12px;color:#94A3B8">Design Preview v0.1</span>
+    </div>
+    <div style="font-size:12px;color:#94A3B8">智能合同管理 · 扫描·分析·签署，一步到位</div>
+  </div>
+</footer>
+
+</body>
+</html>
