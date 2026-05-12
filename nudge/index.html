@@ -2333,7 +2333,7 @@
         <span class="mi text-white" style="font-size:14px">lightbulb</span>
       </div>
       <span class="font-serif text-lg font-bold text-ink-900">Ideas</span>
-      <span class="chip bg-coral-100 text-coral-700 text-[10px] ml-1">1 条</span>
+      <span class="chip bg-coral-100 text-coral-700 text-[10px] ml-1">2 条</span>
     </div>
     <p class="text-[11px] text-ink-400 leading-relaxed">产品想法备忘 · 左右滑动查看</p>
     <!-- scroll hint arrow -->
@@ -2430,14 +2430,99 @@
       </div>
     </div><!-- /idea-slot #001 -->
 
-    <!-- ── Idea #002 placeholder ── -->
+    <!-- ── Idea #002 ── -->
     <div class="idea-slot">
-      <div class="rounded-3xl border-2 border-dashed border-ink-200 p-6 flex flex-col items-center justify-center text-center h-full hover:border-coral-300 hover:bg-coral-50/20 transition-all group" style="min-height:400px">
-        <div class="w-14 h-14 rounded-full bg-cream-200 group-hover:bg-coral-100 flex items-center justify-center mb-4 transition-all">
-          <span class="mi text-ink-400 group-hover:text-coral-600 transition-all" style="font-size:28px">add</span>
+      <div class="rounded-3xl border border-ink-100 bg-white/80 p-5 shadow-soft h-full overflow-y-auto" style="max-height:calc(100vh - 160px)">
+        <div class="flex items-start justify-between mb-3">
+          <div>
+            <div class="text-[10px] text-ink-400 tracking-widest uppercase mb-1">Idea #002 · 互动 / 社交传播</div>
+            <div class="font-serif text-[17px] font-bold text-ink-900 leading-snug">收到任务？可以皮一下，<br/>申请延期给发起者看</div>
+          </div>
+          <span class="chip bg-coral-50 text-coral-700 text-[10px] border border-coral-200 shrink-0 ml-2">待评估</span>
         </div>
-        <div class="text-sm font-medium text-ink-400 group-hover:text-coral-700 transition-all">Idea #002</div>
-        <div class="text-[11px] text-ink-300 mt-1.5 leading-relaxed group-hover:text-coral-400 transition-all">下一条产品想法<br/>等待记录</div>
+        <p class="text-[12px] text-ink-500 leading-relaxed mb-4">
+          收到任务的一方可以向发起者发起<b class="text-ink-700">延期申请</b>，通过文字或语音说明原因；
+          发起者可选择<b class="text-ink-700">同意</b>或<b class="text-ink-700">拒绝</b>，拒绝时还可搭配好玩文案——
+          既增加互动感，也天然适合自媒体传播。
+        </p>
+
+        <!-- mini demo -->
+        <div class="rounded-2xl bg-cream-100/60 border border-cream-300 p-3 mb-4">
+          <div class="text-[10px] text-ink-400 tracking-wider uppercase mb-3">交互流程</div>
+
+          <!-- step 1: 接收方申请延期 -->
+          <div class="flex items-start gap-2 mb-3">
+            <div class="w-6 h-6 rounded-full bg-coral-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-chip">
+              <span class="mi" style="font-size:12px">pan_tool</span>
+            </div>
+            <div>
+              <div class="text-[9px] text-ink-400 mb-1">接收方 · 点击"申请延期"</div>
+              <div class="inline-block rounded-xl rounded-tl-sm bg-white border border-cream-300 px-2.5 py-1.5 text-[12px] text-ink-800 shadow-soft">
+                「最近太忙了，能再给我两天吗？🥺」
+              </div>
+            </div>
+          </div>
+
+          <!-- step 2: 发起者收到通知 -->
+          <div class="flex items-start gap-2 mb-3">
+            <div class="w-6 h-6 rounded-full bg-ink-100 flex items-center justify-center shrink-0 mt-0.5">
+              <span class="mi text-coral-600" style="font-size:12px">notifications</span>
+            </div>
+            <div class="flex-1">
+              <div class="text-[9px] text-ink-400 mb-1.5">发起者收到通知</div>
+              <div class="rounded-lg bg-white border border-cream-300 p-2 text-[10px] space-y-1.5">
+                <div class="flex items-center gap-2"><span class="text-ink-400 w-12 shrink-0">申请人</span><span class="chip bg-coral-100 text-coral-700 px-1.5 py-0.5 text-[9px]">小红</span></div>
+                <div class="flex items-center gap-2"><span class="text-ink-400 w-12 shrink-0">任务</span><span class="text-ink-700">完成 Q2 报告初稿</span></div>
+                <div class="flex items-center gap-2"><span class="text-ink-400 w-12 shrink-0">理由</span><span class="text-ink-600">「最近太忙了，能再给我两天吗？🥺」</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- step 3: 发起者操作 -->
+          <div class="rounded-lg bg-white border border-cream-300 p-2.5">
+            <div class="text-[9px] text-ink-400 mb-2">发起者选择回应</div>
+            <div class="flex gap-2">
+              <button class="flex-1 rounded-xl bg-sage-100 border border-sage-300 text-[10px] text-sage-700 py-1.5 flex items-center justify-center gap-1">
+                <span class="mi" style="font-size:11px">check_circle</span>同意延期
+              </button>
+              <button class="flex-1 rounded-xl bg-coral-50 border border-coral-300 text-[10px] text-coral-700 py-1.5 flex items-center justify-center gap-1">
+                <span class="mi" style="font-size:11px">cancel</span>拒绝 + 好玩文案
+              </button>
+            </div>
+          </div>
+
+          <!-- 拒绝文案示例 -->
+          <div class="mt-2.5 rounded-lg bg-white border border-dashed border-coral-300 p-2.5">
+            <div class="text-[9px] text-coral-600 font-medium mb-1.5 flex items-center gap-1">
+              <span class="mi" style="font-size:10px">auto_awesome</span>拒绝文案示例（可选、可自媒体传播）
+            </div>
+            <div class="space-y-1">
+              <div class="text-[10px] text-ink-700 bg-coral-50 rounded-lg px-2 py-1">「不行，就是现在。⚡️」</div>
+              <div class="text-[10px] text-ink-700 bg-coral-50 rounded-lg px-2 py-1">「延期申请已收到，已存档，已忽略。」</div>
+              <div class="text-[10px] text-ink-700 bg-coral-50 rounded-lg px-2 py-1">「我比你更忙，但我的活儿交了。」</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- pros / cons -->
+        <div class="grid grid-cols-2 gap-2">
+          <div class="rounded-xl bg-cream-100/70 border border-cream-200 p-2.5">
+            <div class="text-[9px] text-sage-700 font-medium mb-1.5 flex items-center gap-1"><span class="mi" style="font-size:11px">thumb_up</span>亮点</div>
+            <ul class="text-[10px] text-ink-600 space-y-1 leading-relaxed">
+              <li>· 增加双方真实互动感</li>
+              <li>· 拒绝文案天然可截图传播</li>
+              <li>· 语音/文字申请降低摩擦</li>
+            </ul>
+          </div>
+          <div class="rounded-xl bg-cream-100/70 border border-cream-200 p-2.5">
+            <div class="text-[9px] text-coral-700 font-medium mb-1.5 flex items-center gap-1"><span class="mi" style="font-size:11px">warning_amber</span>待解决</div>
+            <ul class="text-[10px] text-ink-600 space-y-1 leading-relaxed">
+              <li>· 文案需防止过于冒犯</li>
+              <li>· 申请频次限制策略</li>
+              <li>· 私密场景需关闭传播</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div><!-- /idea-slot #002 -->
 
