@@ -2341,7 +2341,7 @@
         <span class="mi text-white" style="font-size:14px">lightbulb</span>
       </div>
       <span class="font-serif text-lg font-bold text-ink-900">Ideas</span>
-      <span class="chip bg-coral-100 text-coral-700 text-[10px] ml-1">3 条</span>
+      <span class="chip bg-coral-100 text-coral-700 text-[10px] ml-1">5 条</span>
     </div>
     <p class="text-[11px] text-ink-400 leading-relaxed">产品想法备忘 · 左右滑动查看</p>
     <!-- scroll hint arrow -->
@@ -2638,11 +2638,241 @@
       </div>
     </div><!-- /idea-slot #003 -->
 
+    <!-- ── Idea #004 ── -->
+    <div class="idea-slot">
+      <div class="rounded-3xl border border-ink-100 bg-white/80 p-5 shadow-soft h-full overflow-y-auto" style="max-height:calc(100vh - 160px)">
+        <div class="flex items-start justify-between mb-3">
+          <div>
+            <div class="text-[10px] text-ink-400 tracking-widest uppercase mb-1">Idea #004 · IoT / 实体感知</div>
+            <div class="font-serif text-[17px] font-bold text-ink-900 leading-snug">药盒 + 水杯联动，<br/>吃药这件事自己汇报</div>
+          </div>
+          <span class="chip bg-violet-50 text-violet-700 text-[10px] border border-violet-200 shrink-0 ml-2">探索中</span>
+        </div>
+        <p class="text-[12px] text-ink-500 leading-relaxed mb-4">
+          不依赖老人主动打卡——在<b class="text-ink-700">药盒</b>和<b class="text-ink-700">水杯/水壶</b>这两个实体上加入感知能力，
+          吃药动作发生时自动记录并同步给家属，老人无需碰手机。
+        </p>
+
+        <!-- 技术路径对比 -->
+        <div class="rounded-2xl bg-cream-100/60 border border-cream-300 p-3 mb-3">
+          <div class="text-[10px] text-ink-400 tracking-wider uppercase mb-3">四种实现路径</div>
+
+          <!-- 路径 1 NFC -->
+          <div class="flex items-start gap-2 mb-3">
+            <div class="w-6 h-6 rounded-full bg-coral-100 border border-coral-300 flex items-center justify-center shrink-0 mt-0.5">
+              <span class="mi text-coral-600" style="font-size:12px">nfc</span>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-0.5">
+                <div class="text-[11px] font-semibold text-ink-800">NFC 贴纸</div>
+                <span class="chip bg-sage-100 text-sage-700 text-[9px] border border-sage-200">MVP 首选</span>
+              </div>
+              <p class="text-[10px] text-ink-500 leading-relaxed">
+                药盒 / 水杯贴 NFC 贴纸（¥5），手机碰一下自动记录。成本极低，iOS 14+ / Android 全支持，
+                老人操作：<b class="text-ink-700">碰一下</b>。
+              </p>
+            </div>
+          </div>
+
+          <!-- 路径 2 智能药盒 -->
+          <div class="flex items-start gap-2 mb-3">
+            <div class="w-6 h-6 rounded-full bg-coral-100 border border-coral-300 flex items-center justify-center shrink-0 mt-0.5">
+              <span class="mi text-coral-600" style="font-size:12px">medication</span>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-0.5">
+                <div class="text-[11px] font-semibold text-ink-800">智能药盒（BLE/WiFi）</div>
+                <span class="chip bg-ink-100 text-ink-500 text-[9px]">最完整</span>
+              </div>
+              <p class="text-[10px] text-ink-500 leading-relaxed">
+                药盒内置开盖传感器 + 重力传感器，自动上报开盖时间和取药粒数。
+                可接入米家 / 华为智慧生活生态，无需自研硬件。
+              </p>
+            </div>
+          </div>
+
+          <!-- 路径 3 双重联动 -->
+          <div class="flex items-start gap-2 mb-3">
+            <div class="w-6 h-6 rounded-full bg-coral-100 border border-coral-300 flex items-center justify-center shrink-0 mt-0.5">
+              <span class="mi text-coral-600" style="font-size:12px">link</span>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-0.5">
+                <div class="text-[11px] font-semibold text-ink-800">药盒 + 水杯双重联动</div>
+                <span class="chip bg-amber-50 text-amber-700 text-[9px] border border-amber-200">精准度最高</span>
+              </div>
+              <p class="text-[10px] text-ink-500 leading-relaxed">
+                两个传感器同时触发 → 置信度 95%，自动记录。
+                仅药盒开盖但无水杯联动 → 低置信度，App 发软确认：「刚才打开药盒了，喝水了吗？」
+              </p>
+            </div>
+          </div>
+
+          <!-- 路径 4 第三方接入 -->
+          <div class="flex items-start gap-2">
+            <div class="w-6 h-6 rounded-full bg-coral-100 border border-coral-300 flex items-center justify-center shrink-0 mt-0.5">
+              <span class="mi text-coral-600" style="font-size:12px">api</span>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-0.5">
+                <div class="text-[11px] font-semibold text-ink-800">接入现有智能硬件 API</div>
+              </div>
+              <p class="text-[10px] text-ink-500 leading-relaxed">
+                市面已有智能药盒品牌（华为、小米有品）提供开放 API，Nudge 直接接入，
+                不自研硬件，专注 App 侧情感化表达。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 角色体验 -->
+        <div class="rounded-2xl bg-cream-100/60 border border-cream-300 p-3 mb-3">
+          <div class="text-[10px] text-ink-400 tracking-wider uppercase mb-2.5">各角色体验</div>
+          <div class="space-y-2">
+            <div class="flex items-start gap-2">
+              <span class="chip bg-ink-100 text-ink-500 text-[9px] shrink-0 mt-0.5">老人</span>
+              <p class="text-[10px] text-ink-600 leading-relaxed">完全被动——正常拿药、喝水，无需打开 App，无学习成本。</p>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="chip bg-coral-100 text-coral-700 text-[9px] shrink-0 mt-0.5">家属</span>
+              <p class="text-[10px] text-ink-600 leading-relaxed">收到推送「爸爸 09:15 吃药了 ✓」，可点赞或语音回复，增加情感联结。</p>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="chip bg-sage-100 text-sage-700 text-[9px] shrink-0 mt-0.5">数据</span>
+              <p class="text-[10px] text-ink-600 leading-relaxed">吃药时间线 + 连续打卡天数 + 漏服预警（到点未检测到开盖 → 先提醒老人 → 升级通知家属）。</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- pros / cons -->
+        <div class="grid grid-cols-2 gap-2">
+          <div class="rounded-xl bg-cream-100/70 border border-cream-200 p-2.5">
+            <div class="text-[9px] text-sage-700 font-medium mb-1.5 flex items-center gap-1"><span class="mi" style="font-size:11px">thumb_up</span>亮点</div>
+            <ul class="text-[10px] text-ink-600 space-y-1 leading-relaxed">
+              <li>· 老人零操作，最低阻力</li>
+              <li>· 漏服可及时介入，高价值</li>
+              <li>· 硬件联名是天然 PR 话题</li>
+              <li>· 数据沉淀，可供医生参考</li>
+            </ul>
+          </div>
+          <div class="rounded-xl bg-cream-100/70 border border-cream-200 p-2.5">
+            <div class="text-[9px] text-coral-700 font-medium mb-1.5 flex items-center gap-1"><span class="mi" style="font-size:11px">warning_amber</span>待解决</div>
+            <ul class="text-[10px] text-ink-600 space-y-1 leading-relaxed">
+              <li>· 硬件分发链路复杂</li>
+              <li>· BLE 配对对老人仍有门槛</li>
+              <li>· 误报需设计容错机制</li>
+              <li>· 隐私：持续感知需明确告知</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div><!-- /idea-slot #004 -->
+
+    <!-- ── Idea #005 ── -->
+    <div class="idea-slot">
+      <div class="rounded-3xl border border-ink-100 bg-white/80 p-5 shadow-soft h-full overflow-y-auto" style="max-height:calc(100vh - 160px)">
+        <div class="flex items-start justify-between mb-3">
+          <div>
+            <div class="text-[10px] text-ink-400 tracking-widest uppercase mb-1">Idea #005 · 设计哲学 / 情绪管理</div>
+            <div class="font-serif text-[17px] font-bold text-ink-900 leading-snug">弱化完成状态，<br/>别让关心变成催促</div>
+          </div>
+          <span class="chip bg-sage-100 text-sage-700 text-[10px] border border-sage-200 shrink-0 ml-2">设计原则</span>
+        </div>
+        <p class="text-[12px] text-ink-500 leading-relaxed mb-4">
+          发起者实时看到「对方还没完成」，容易产生<b class="text-ink-700">焦虑和催促冲动</b>；
+          接收者知道对方在盯着进度，会感到<b class="text-ink-700">压迫感</b>。
+          设计上需要主动弱化这种双向紧张。
+        </p>
+
+        <!-- 核心矛盾 -->
+        <div class="rounded-2xl bg-cream-100/60 border border-cream-300 p-3 mb-3">
+          <div class="text-[10px] text-ink-400 tracking-wider uppercase mb-2.5">矛盾拆解</div>
+          <div class="space-y-2">
+            <div class="flex items-start gap-2">
+              <span class="mi text-coral-500 shrink-0 mt-0.5" style="font-size:14px">sentiment_dissatisfied</span>
+              <div class="flex-1 min-w-0">
+                <div class="text-[10px] font-semibold text-ink-700 mb-0.5">发起者侧：焦虑</div>
+                <p class="text-[10px] text-ink-500 leading-relaxed">「他看了但还没动」「距 deadline 还有 2 小时，怎么还没开始」——进度透明反而放大担忧</p>
+              </div>
+            </div>
+            <div class="w-full border-t border-cream-300"></div>
+            <div class="flex items-start gap-2">
+              <span class="mi text-amber-500 shrink-0 mt-0.5" style="font-size:14px">sentiment_very_dissatisfied</span>
+              <div class="flex-1 min-w-0">
+                <div class="text-[10px] font-semibold text-ink-700 mb-0.5">接收者侧：压迫</div>
+                <p class="text-[10px] text-ink-500 leading-relaxed">「她一定在等我的回复」「没完成会不会让对方失望」——被监视感破坏自主性和关系温度</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 设计策略 -->
+        <div class="rounded-2xl bg-cream-100/60 border border-cream-300 p-3 mb-3">
+          <div class="text-[10px] text-ink-400 tracking-wider uppercase mb-3">弱化策略</div>
+          <div class="space-y-3">
+
+            <div class="flex items-start gap-2">
+              <div class="w-5 h-5 rounded-full bg-sage-200 flex items-center justify-center shrink-0 mt-0.5">
+                <span class="mi text-sage-700" style="font-size:11px">visibility_off</span>
+              </div>
+              <div>
+                <div class="text-[11px] font-semibold text-ink-800 mb-0.5">默认隐藏实时进度</div>
+                <p class="text-[10px] text-ink-500 leading-relaxed">发起者不主动查询，就不会看到「未读」「未开始」等状态。只有<b class="text-ink-700">完成时</b>才主动推送通知，沉默即代表「在处理中」。</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-2">
+              <div class="w-5 h-5 rounded-full bg-sage-200 flex items-center justify-center shrink-0 mt-0.5">
+                <span class="mi text-sage-700" style="font-size:11px">schedule</span>
+              </div>
+              <div>
+                <div class="text-[11px] font-semibold text-ink-800 mb-0.5">用「预计完成」替代「是否完成」</div>
+                <p class="text-[10px] text-ink-500 leading-relaxed">接收者可设置「预计几点弄好」，发起者看到的是<b class="text-ink-700">一个承诺</b>而不是一个进度条——降低监控感，强化信任。</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-2">
+              <div class="w-5 h-5 rounded-full bg-sage-200 flex items-center justify-center shrink-0 mt-0.5">
+                <span class="mi text-sage-700" style="font-size:11px">palette</span>
+              </div>
+              <div>
+                <div class="text-[11px] font-semibold text-ink-800 mb-0.5">视觉语言：避免红色 / 数字倒计时</div>
+                <p class="text-[10px] text-ink-500 leading-relaxed">截止时间用浅灰色小字而非醒目红色，不用「剩余 X 小时」的紧张倒计时，配色和字重传递的是<b class="text-ink-700">提示</b>而非<b class="text-ink-700">警报</b>。</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-2">
+              <div class="w-5 h-5 rounded-full bg-sage-200 flex items-center justify-center shrink-0 mt-0.5">
+                <span class="mi text-sage-700" style="font-size:11px">auto_awesome</span>
+              </div>
+              <div>
+                <div class="text-[11px] font-semibold text-ink-800 mb-0.5">完成时放大庆祝，未完成时轻描淡写</div>
+                <p class="text-[10px] text-ink-500 leading-relaxed">完成推送有温暖动效和语气（「搞定了 🎉」）；漏掉或延迟，系统不追责，只是轻轻记录，让当事人自己决定是否提及。</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- 核心原则 -->
+        <div class="rounded-xl bg-sage-50 border border-sage-200 p-2.5 flex items-start gap-2">
+          <span class="mi text-sage-600 shrink-0" style="font-size:14px">favorite</span>
+          <p class="text-[10px] text-sage-700 leading-relaxed">
+            <b>设计底线：</b>Nudge 是帮两个人更顺畅地协作，不是给任何一方增加考核压力。
+            「完成」应该让人感到被看见，「未完成」不应该让人感到被审判。
+          </p>
+        </div>
+
+      </div>
+    </div><!-- /idea-slot #005 -->
+
   </div><!-- /ideas-strip -->
 
   <!-- dot indicator -->
   <div class="ideas-dots shrink-0" id="ideaDots">
     <span class="active"></span>
+    <span></span>
+    <span></span>
     <span></span>
     <span></span>
   </div>
