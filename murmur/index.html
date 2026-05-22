@@ -151,11 +151,28 @@
 
   <!-- ══ Flow 01: 情绪入口 ══ -->
   <section class="mt-8">
-    <div class="flex items-baseline gap-3 mb-6">
-      <span class="flow-label" style="background:#EFEBFA;color:#6D28D9">Flow 01</span>
-      <h2 class="font-serif text-2xl font-bold">选择情绪 · 即时匹配</h2>
-    </div>
+    <!-- ── 标题行 ── -->
+    <div style="display:flex;align-items:flex-start;gap:48px;margin-bottom:24px">
+      <div style="flex:1;min-width:0">
+        <div class="flex items-baseline gap-3">
+          <span class="flow-label" style="background:#EFEBFA;color:#6D28D9">Flow 01</span>
+          <h2 class="font-serif text-2xl font-bold">选择情绪 · 即时匹配</h2>
+        </div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="flex items-baseline gap-3">
+          <span class="flow-label" style="background:#7C3AED;color:white">V2 · Redesign</span>
+          <h2 class="font-serif text-2xl font-bold">同流程 · 新版视觉方案</h2>
+        </div>
+      </div>
+    </div><!-- /标题行 -->
 
+    <!-- ── 内容行 ── -->
+    <div style="display:flex;align-items:flex-start;gap:48px">
+
+      <!-- ── 左侧：Flow 01 缩小一半 ── -->
+      <div style="flex:1;min-width:0">
+        <div style="zoom:0.5;transform-origin:top left">
     <div class="flex gap-10 flex-wrap">
       <!-- Screen 1: 情绪选择 -->
       <div class="animate__animated animate__fadeInUp" style="animation-delay:.05s">
@@ -388,6 +405,24 @@
           </div>
         </div>
       </div>
+    </div><!-- /flex-wrap (第一行) -->
+        </div><!-- /zoom wrapper -->
+      </div><!-- /左侧 -->
+
+      <!-- ── 右侧：V2 新版设计 ── -->
+      <div style="flex:1;min-width:0">
+        <img src="./assets/page/flow_01_v2.png" alt="Flow 01 V2 设计稿" style="width:100%;border-radius:20px;box-shadow:0 8px 40px rgba(20,14,32,0.12)"/>
+      </div><!-- /右侧 -->
+
+    </div><!-- /内容行 (第一行) -->
+
+    <!-- ── 内容行 (第二行：②-b + ③) ── -->
+    <div style="display:flex;align-items:flex-start;gap:48px;margin-top:48px">
+
+      <!-- ── 左侧：②-b + ③ 缩小一半 ── -->
+      <div style="flex:1;min-width:0">
+        <div style="zoom:0.5;transform-origin:top left">
+    <div class="flex gap-10 flex-wrap">
 
       <!-- Screen 2b: 匹配结果（三种类型） -->
       <div class="animate__animated animate__fadeInUp" style="animation-delay:.2s">
@@ -534,7 +569,16 @@
           </div>
         </div>
       </div>
-    </div>
+    </div><!-- /flex-wrap (第二行) -->
+        </div><!-- /zoom wrapper -->
+      </div><!-- /左侧 -->
+
+      <!-- ── 右侧：V2 新版设计 (②-b + ③) ── -->
+      <div style="flex:1;min-width:0">
+        <img src="./assets/page/flow_01_02_v2.png" alt="Flow 01-02 V2 设计稿" style="width:100%;border-radius:20px;box-shadow:0 8px 40px rgba(20,14,32,0.12)"/>
+      </div><!-- /右侧 -->
+
+    </div><!-- /内容行 (第二行) -->
   </section>
 
   <!-- ══ Flow 01B: 对话中 · 安全提醒与语音输入 ══ -->
