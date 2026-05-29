@@ -1,0 +1,1182 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>笔替 Resona · 借他人之笔，写你想说的话</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            dusk:    { 50:'#F8F6FD', 100:'#F1ECFA', 200:'#E5DBF5', 300:'#D4C5EE' },
+            violet:  { 300:'#C4B5FD', 400:'#A78BFA', 500:'#8B5CF6', 600:'#7C3AED', 700:'#6D28D9', 800:'#5B21B6' },
+            indigo:  { 300:'#A5B4FC', 400:'#818CF8', 500:'#6366F1', 600:'#4F46E5' },
+            ink:     { 400:'#A1A1AA', 500:'#71717A', 600:'#52525B', 700:'#3F3F46', 800:'#27272A', 900:'#18181B' },
+            blush:   { 100:'#FFE4E6', 200:'#FECDD3', 300:'#FDA4AF' },
+          },
+          fontFamily: {
+            sans:  ['Inter','PingFang SC','system-ui','sans-serif'],
+            serif: ['"Noto Serif SC"','serif'],
+          },
+          boxShadow: {
+            soft:  '0 10px 30px -12px rgba(124,58,237,.18), 0 4px 12px -4px rgba(24,24,27,.05)',
+            phone: '0 40px 80px -20px rgba(24,24,27,.28), 0 18px 40px -18px rgba(124,58,237,.22)',
+            card:  '0 4px 20px -4px rgba(124,58,237,.14), 0 1px 4px rgba(24,24,27,.04)',
+            chip:  '0 4px 12px -4px rgba(124,58,237,.35)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html, body { background: #F7F5FC; color: #18181B; }
+    body {
+      background-image:
+        radial-gradient(1100px 500px at 5%  -5%,  #F1ECFA 0%, transparent 60%),
+        radial-gradient(800px  450px at 108% 8%,  #EEF2FF 0%, transparent 55%),
+        radial-gradient(700px  400px at 50%  110%, #FBF6FE 0%, transparent 60%);
+    }
+
+    /* ── Phone frame ── */
+    .phone {
+      width: 340px; height: 700px; border-radius: 44px;
+      background: linear-gradient(180deg, #FFFFFF 0%, #FAF7FE 100%);
+      border: 1px solid rgba(24,24,27,.06);
+      position: relative; overflow: hidden;
+      flex-shrink: 0;
+    }
+    .phone::before {
+      content: ""; position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+      width: 110px; height: 26px; border-radius: 999px; background: #18181B; z-index: 40;
+    }
+    .screen { position: absolute; inset: 0; padding: 54px 18px 20px; display: flex; flex-direction: column; }
+    .statusbar { position: absolute; top: 20px; left: 28px; right: 28px; display: flex; justify-content: space-between; font-size: 12px; color: #27272A; font-weight: 600; z-index: 30; }
+
+    /* ── Shared utilities ── */
+    .mi { font-family: 'Material Icons Round'; font-weight: normal; font-style: normal; font-size: 20px; line-height: 1; letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; direction: ltr; -webkit-font-smoothing: antialiased; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+    .dot  { width: 6px; height: 6px; border-radius: 999px; display: inline-block; }
+    .label{ font-size: 11px; color: #71717A; letter-spacing: .08em; text-transform: uppercase; }
+
+    /* ── Persona card ── */
+    .persona-card {
+      border-radius: 18px; padding: 12px;
+      background: white; box-shadow: 0 2px 12px -4px rgba(124,58,237,.12), 0 1px 3px rgba(24,24,27,.04);
+    }
+    .persona-avatar {
+      width: 38px; height: 38px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-family: 'Noto Serif SC', serif; font-weight: 700; font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    /* ── Bottom nav ── */
+    .bottom-nav { display: flex; justify-content: space-around; align-items: center; padding: 10px 0 14px; border-top: 1px solid rgba(24,24,27,.07); background: rgba(255,255,255,.92); backdrop-filter: blur(12px); flex-shrink: 0; }
+    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; color: #A1A1AA; }
+    .nav-item.active { color: #7C3AED; }
+
+    /* ── Tag pills ── */
+    .tag { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; }
+
+    /* ── Animations ── */
+    .float { animation: float 5s ease-in-out infinite; }
+    @keyframes float { 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-7px) } }
+    .pulse-dot { animation: pdot 2s ease-in-out infinite; }
+    @keyframes pdot { 0%,100%{ opacity:1; transform:scale(1) } 50%{ opacity:.5; transform:scale(.8) } }
+
+    /* ── Section labels ── */
+    .flow-label { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: .06em; background: #EDE9FE; color: #5B21B6; }
+
+    /* ── Diff highlight ── */
+    .diff-add { background: rgba(167,139,250,.18); border-radius: 4px; padding: 0 2px; }
+    .diff-del { color: #A1A1AA; text-decoration: line-through; }
+  </style>
+</head>
+<body class="font-sans antialiased">
+
+<!-- ══════════ HEADER · 品牌区 ══════════ -->
+<header class="px-10 pt-14 pb-8">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-2xl flex items-center justify-center shadow-chip"
+           style="background:linear-gradient(135deg,#A78BFA,#6D28D9)">
+        <span class="mi text-white" style="font-size:22px">draw</span>
+      </div>
+      <div>
+        <div class="font-serif text-2xl font-bold leading-tight">笔替 <span class="opacity-40 font-sans font-medium text-base">Resona</span></div>
+        <div class="text-xs tracking-wide opacity-60">借他人之笔，写你想说的话</div>
+      </div>
+    </div>
+    <div class="hidden md:flex items-center gap-2">
+      <span class="chip bg-ink-100 text-ink-600" style="background:#F4F4F5">
+        <span class="dot bg-violet-500 pulse-dot"></span>Design Preview
+      </span>
+      <span class="chip bg-ink-100 text-ink-600" style="background:#F4F4F5">v0.1 · Web App</span>
+    </div>
+  </div>
+
+  <div class="mt-12 max-w-3xl">
+    <h1 class="font-serif text-4xl md:text-5xl font-bold leading-tight">
+      选一个人，<span class="text-violet-700">替你写出</span><br/>
+      你想说但没说好的那句话。
+    </h1>
+    <p class="mt-5 opacity-60 leading-relaxed max-w-xl">
+      Resona 把"风格"做成一等公民——预置的人物风格库、可调的语气滑块、可一键升级到多人对谈播客脚本。
+      你只管写下要点，剩下的，交给那支被你选中的笔。
+    </p>
+    <div class="mt-6 flex flex-wrap gap-3">
+      <span class="chip bg-violet-100 text-violet-700" style="font-size:13px;padding:7px 14px">
+        <span class="mi" style="font-size:16px;margin-right:4px">groups</span>50+ 预置人物
+      </span>
+      <span class="chip bg-indigo-100 text-indigo-600" style="font-size:13px;padding:7px 14px;background:#E0E7FF;color:#4338CA">
+        <span class="mi" style="font-size:16px;margin-right:4px">auto_fix_high</span>风格滑块可调
+      </span>
+      <span class="chip" style="font-size:13px;padding:7px 14px;background:#FCE7F3;color:#9D174D">
+        <span class="mi" style="font-size:16px;margin-right:4px">graphic_eq</span>一键播客
+      </span>
+      <span class="chip bg-ink-100 text-ink-600" style="font-size:13px;padding:7px 14px;background:#F4F4F5;color:#52525B">
+        <span class="mi" style="font-size:16px;margin-right:4px">person_add</span>自建私有人格
+      </span>
+    </div>
+  </div>
+</header>
+
+<main class="px-10 pb-24">
+
+  <!-- ══════════ Tab 总览 · 底部导航 4 个 Tab 首页 ══════════ -->
+  <section class="mt-4">
+    <div class="flex items-baseline gap-3 mb-6">
+      <span class="flow-label">Tab 总览</span>
+      <h2 class="font-serif text-2xl font-bold">底部 4 个 Tab，各自的首页长什么样</h2>
+    </div>
+    <p class="text-sm opacity-60 max-w-2xl mb-8 leading-relaxed">
+      Resona 主导航是四个 Tab：改写 / 人物 / 播客 / 我的。下面是每个 Tab 直接点击进入时看到的"首页"状态，后续 Flow 中会以场景串联这些页面。
+    </p>
+
+    <div class="flex gap-10 flex-wrap">
+
+      <!-- ── Tab 1：改写（首页 · 历史与快捷） ── -->
+      <div class="animate__animated animate__fadeInUp" style="animation-delay:.05s">
+        <p class="label mb-3"><span style="color:#7C3AED;font-weight:700">●</span> Tab 1 · 改写</p>
+        <div class="phone shadow-phone">
+          <div class="statusbar">
+            <span>9:41</span>
+            <span class="flex items-center gap-1">
+              <span class="mi" style="font-size:14px">signal_cellular_alt</span>
+              <span class="mi" style="font-size:14px">wifi</span>
+              <span class="mi" style="font-size:14px">battery_full</span>
+            </span>
+          </div>
+          <div class="screen">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <div class="font-serif font-bold text-lg leading-tight">改写工作台</div>
+                <div class="text-[11px] opacity-50">从草稿开始，或继续未完成的</div>
+              </div>
+            </div>
+
+            <!-- 快捷开始 -->
+            <div class="rounded-2xl p-3.5 mb-3" style="background:linear-gradient(135deg,#EDE9FE,#F1ECFA);border:1px solid rgba(124,58,237,.15)">
+              <div class="text-[10px] font-semibold tracking-wider mb-2" style="color:#5B21B6">QUICK START</div>
+              <div class="flex items-center gap-2 mb-2">
+                <span class="mi" style="font-size:18px;color:#7C3AED">edit_note</span>
+                <div class="text-[12.5px] flex-1 opacity-50">粘贴或写下你的草稿…</div>
+              </div>
+              <div class="flex gap-1.5">
+                <span class="tag" style="background:white;color:#5B21B6;font-size:10px;border:1px solid rgba(124,58,237,.2)">改写</span>
+                <span class="tag" style="background:white;color:#5B21B6;font-size:10px;border:1px solid rgba(124,58,237,.2)">扩写</span>
+                <span class="tag" style="background:white;color:#5B21B6;font-size:10px;border:1px solid rgba(124,58,237,.2)">缩写</span>
+                <span class="tag" style="background:white;color:#5B21B6;font-size:10px;border:1px solid rgba(124,58,237,.2)">续写</span>
+              </div>
+            </div>
+
+            <!-- 模板入口 -->
+            <div class="text-[10px] font-semibold opacity-50 mb-2 tracking-wider">场景模板</div>
+            <div class="grid grid-cols-3 gap-2 mb-3">
+              <div class="rounded-xl p-2 flex flex-col items-center text-center" style="background:#F4F4F5">
+                <span class="mi opacity-70" style="font-size:18px">forum</span>
+                <div class="text-[10px] mt-1">朋友圈</div>
+              </div>
+              <div class="rounded-xl p-2 flex flex-col items-center text-center" style="background:#F4F4F5">
+                <span class="mi opacity-70" style="font-size:18px">photo_library</span>
+                <div class="text-[10px] mt-1">小红书</div>
+              </div>
+              <div class="rounded-xl p-2 flex flex-col items-center text-center" style="background:#F4F4F5">
+                <span class="mi opacity-70" style="font-size:18px">article</span>
+                <div class="text-[10px] mt-1">公众号</div>
+              </div>
+            </div>
+
+            <!-- 历史草稿 -->
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-[10px] font-semibold opacity-50 tracking-wider">最近草稿</div>
+              <div class="text-[10px] opacity-40">查看全部</div>
+            </div>
+            <div class="space-y-2 overflow-hidden">
+              <div class="rounded-xl p-2.5 flex gap-2.5 items-center" style="background:white;box-shadow:0 2px 8px rgba(0,0,0,.04)">
+                <div class="persona-avatar" style="background:linear-gradient(135deg,#A5B4FC,#4338CA);width:30px;height:30px;font-size:13px;border-radius:9px">村</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[11.5px] font-semibold truncate">加班的猫</div>
+                  <div class="text-[10px] opacity-50">10 分钟前 · 已生成 3 候选</div>
+                </div>
+                <span class="mi opacity-30" style="font-size:16px">arrow_forward_ios</span>
+              </div>
+              <div class="rounded-xl p-2.5 flex gap-2.5 items-center" style="background:white;box-shadow:0 2px 8px rgba(0,0,0,.04)">
+                <div class="persona-avatar" style="background:linear-gradient(135deg,#FCD34D,#B45309);width:30px;height:30px;font-size:13px;border-radius:9px">K</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[11.5px] font-semibold truncate">周末团建吐槽</div>
+                  <div class="text-[10px] opacity-50">昨天 · 草稿</div>
+                </div>
+                <span class="mi opacity-30" style="font-size:16px">arrow_forward_ios</span>
+              </div>
+              <div class="rounded-xl p-2.5 flex gap-2.5 items-center" style="background:white;box-shadow:0 2px 8px rgba(0,0,0,.04)">
+                <div class="persona-avatar" style="background:linear-gradient(135deg,#FDA4AF,#9D174D);width:30px;height:30px;font-size:13px;border-radius:9px">林</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[11.5px] font-semibold truncate">咖啡馆下午</div>
+                  <div class="text-[10px] opacity-50">5 月 26 日 · 已导出</div>
+                </div>
+                <span class="mi opacity-30" style="font-size:16px">arrow_forward_ios</span>
+              </div>
+            </div>
+
+            <div class="bottom-nav mt-auto -mx-[18px] -mb-[20px]">
+              <div class="nav-item active"><span class="mi">edit_note</span>改写</div>
+              <div class="nav-item"><span class="mi">groups</span>人物</div>
+              <div class="nav-item"><span class="mi">graphic_eq</span>播客</div>
+              <div class="nav-item"><span class="mi">person</span>我的</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Tab 2：人物（首页 · 默认状态） ── -->
+      <div class="animate__animated animate__fadeInUp" style="animation-delay:.15s">
+        <p class="label mb-3"><span style="color:#7C3AED;font-weight:700">●</span> Tab 2 · 人物</p>
+        <div class="phone shadow-phone">
+          <div class="statusbar">
+            <span>9:41</span>
+            <span class="flex items-center gap-1">
+              <span class="mi" style="font-size:14px">signal_cellular_alt</span>
+              <span class="mi" style="font-size:14px">wifi</span>
+              <span class="mi" style="font-size:14px">battery_full</span>
+            </span>
+          </div>
+          <div class="screen">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <div class="font-serif font-bold text-lg leading-tight">人物库</div>
+                <div class="text-[11px] opacity-50">挑一支今天想用的笔</div>
+              </div>
+              <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:#F4F4F5">
+                <span class="mi opacity-60" style="font-size:18px">search</span>
+              </div>
+            </div>
+
+            <!-- 最近使用 -->
+            <div class="text-[10px] font-semibold opacity-50 mb-2 tracking-wider">最近使用</div>
+            <div class="flex gap-2 mb-4 overflow-x-auto" style="scrollbar-width:none">
+              <div class="flex flex-col items-center gap-1.5 shrink-0" style="width:54px">
+                <div class="persona-avatar" style="background:linear-gradient(135deg,#A5B4FC,#4338CA);width:48px;height:48px;font-size:18px;border-radius:14px">村</div>
+                <div class="text-[10px] truncate w-full text-center">村上风</div>
+              </div>
+              <div class="flex flex-col items-center gap-1.5 shrink-0" style="width:54px">
+                <div class="persona-avatar" style="background:linear-gradient(135deg,#FDA4AF,#9D174D);width:48px;height:48px;font-size:18px;border-radius:14px">林</div>
+                <div class="text-[10px] truncate w-full text-center">林沉</div>
+              </div>
+              <div class="flex flex-col items-center gap-1.5 shrink-0" style="width:54px">
+                <div class="persona-avatar" style="background:linear-gradient(135deg,#86EFAC,#15803D);width:48px;height:48px;font-size:18px;border-radius:14px">V</div>
+                <div class="text-[10px] truncate w-full text-center">Vega</div>
+              </div>
+              <div class="flex flex-col items-center gap-1.5 shrink-0" style="width:54px">
+                <div class="persona-avatar" style="background:linear-gradient(135deg,#FCD34D,#B45309);width:48px;height:48px;font-size:18px;border-radius:14px">K</div>
+                <div class="text-[10px] truncate w-full text-center">阿K</div>
+              </div>
+              <div class="flex flex-col items-center gap-1.5 shrink-0" style="width:54px">
+                <div class="w-12 h-12 rounded-2xl flex items-center justify-center" style="background:#F4F4F5;border:1.5px dashed rgba(0,0,0,.15)">
+                  <span class="mi opacity-40" style="font-size:20px">add</span>
+                </div>
+                <div class="text-[10px] opacity-50">自建</div>
+              </div>
+            </div>
+
+            <!-- 分类 -->
+            <div class="flex gap-1.5 mb-3">
+              <span class="tag" style="background:#7C3AED;color:white;font-size:10px">推荐</span>
+              <span class="tag" style="background:#F4F4F5;color:#52525B;font-size:10px">作家</span>
+              <span class="tag" style="background:#F4F4F5;color:#52525B;font-size:10px">创作者</span>
+              <span class="tag" style="background:#F4F4F5;color:#52525B;font-size:10px">原创</span>
+            </div>
+
+            <!-- 推荐人物 -->
+            <div class="grid grid-cols-2 gap-2 overflow-hidden">
+              <div class="rounded-xl p-2.5" style="background:white;box-shadow:0 2px 8px rgba(124,58,237,.08)">
+                <div class="persona-avatar mb-1.5" style="background:linear-gradient(135deg,#A5B4FC,#4338CA);width:32px;height:32px;font-size:14px;border-radius:10px">村</div>
+                <div class="text-[11px] font-semibold">村上风</div>
+                <div class="text-[9px] opacity-50 mt-0.5">克制 · 比喻</div>
+              </div>
+              <div class="rounded-xl p-2.5" style="background:white;box-shadow:0 2px 8px rgba(124,58,237,.08)">
+                <div class="persona-avatar mb-1.5" style="background:linear-gradient(135deg,#FDA4AF,#9D174D);width:32px;height:32px;font-size:14px;border-radius:10px">林</div>
+                <div class="text-[11px] font-semibold">林沉</div>
+                <div class="text-[9px] opacity-50 mt-0.5">深夜 · 长句</div>
+              </div>
+              <div class="rounded-xl p-2.5" style="background:white;box-shadow:0 2px 8px rgba(124,58,237,.08)">
+                <div class="persona-avatar mb-1.5" style="background:linear-gradient(135deg,#7DD3FC,#0369A1);width:32px;height:32px;font-size:14px;border-radius:10px">毛</div>
+                <div class="text-[11px] font-semibold">毛姆风</div>
+                <div class="text-[9px] opacity-50 mt-0.5">老派 · 冷峻</div>
+              </div>
+              <div class="rounded-xl p-2.5" style="background:white;box-shadow:0 2px 8px rgba(124,58,237,.08)">
+                <div class="persona-avatar mb-1.5" style="background:linear-gradient(135deg,#FCD34D,#B45309);width:32px;height:32px;font-size:14px;border-radius:10px">K</div>
+                <div class="text-[11px] font-semibold">阿K</div>
+                <div class="text-[9px] opacity-50 mt-0.5">毒舌 · 抛梗</div>
+              </div>
+            </div>
+
+            <div class="bottom-nav mt-auto -mx-[18px] -mb-[20px]">
+              <div class="nav-item"><span class="mi">edit_note</span>改写</div>
+              <div class="nav-item active"><span class="mi">groups</span>人物</div>
+              <div class="nav-item"><span class="mi">graphic_eq</span>播客</div>
+              <div class="nav-item"><span class="mi">person</span>我的</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Tab 3：播客（首页 · 我的节目） ── -->
+      <div class="animate__animated animate__fadeInUp" style="animation-delay:.25s">
+        <p class="label mb-3"><span style="color:#7C3AED;font-weight:700">●</span> Tab 3 · 播客</p>
+        <div class="phone shadow-phone">
+          <div class="statusbar">
+            <span>9:41</span>
+            <span class="flex items-center gap-1">
+              <span class="mi" style="font-size:14px">signal_cellular_alt</span>
+              <span class="mi" style="font-size:14px">wifi</span>
+              <span class="mi" style="font-size:14px">battery_full</span>
+            </span>
+          </div>
+          <div class="screen">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <div class="font-serif font-bold text-lg leading-tight">我的播客</div>
+                <div class="text-[11px] opacity-50">3 档节目 · 12 期</div>
+              </div>
+              <div class="w-8 h-8 rounded-xl flex items-center justify-center text-white" style="background:linear-gradient(135deg,#EC4899,#9D174D)">
+                <span class="mi" style="font-size:18px">add</span>
+              </div>
+            </div>
+
+            <!-- 正在合成 -->
+            <div class="rounded-2xl p-3 mb-3" style="background:linear-gradient(135deg,#FCE7F3,#FBCFE8);border:1px solid rgba(157,23,77,.15)">
+              <div class="flex items-center gap-2 mb-1.5">
+                <span class="mi pulse-dot" style="font-size:14px;color:#9D174D">graphic_eq</span>
+                <div class="text-[10px] font-semibold tracking-wider" style="color:#9D174D">正在合成 · 64%</div>
+              </div>
+              <div class="text-[12px] font-semibold mb-1.5">小而美 vs 独角兽 · EP01</div>
+              <div class="h-1 rounded-full overflow-hidden" style="background:rgba(157,23,77,.15)">
+                <div class="h-1 rounded-full" style="background:linear-gradient(90deg,#EC4899,#9D174D);width:64%"></div>
+              </div>
+            </div>
+
+            <!-- 节目列表 -->
+            <div class="text-[10px] font-semibold opacity-50 mb-2 tracking-wider">节目</div>
+            <div class="space-y-2 overflow-hidden">
+              <div class="rounded-2xl p-2.5 flex gap-2.5" style="background:white;box-shadow:0 2px 8px rgba(0,0,0,.05)">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0" style="background:linear-gradient(135deg,#A78BFA,#6D28D9)">
+                  <span class="mi" style="font-size:20px">forum</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[12px] font-semibold truncate">两个理性的人</div>
+                  <div class="text-[10px] opacity-50">Vega × Naval · 5 期</div>
+                  <div class="flex items-center gap-1 mt-1">
+                    <span class="mi" style="font-size:11px;color:#22C55E">play_circle</span>
+                    <span class="text-[10px] opacity-60">最新：理性人也会冲动吗</span>
+                  </div>
+                </div>
+              </div>
+              <div class="rounded-2xl p-2.5 flex gap-2.5" style="background:white;box-shadow:0 2px 8px rgba(0,0,0,.05)">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0" style="background:linear-gradient(135deg,#F472B6,#9D174D)">
+                  <span class="mi" style="font-size:20px">nights_stay</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[12px] font-semibold truncate">深夜电台 · 林沉</div>
+                  <div class="text-[10px] opacity-50">独白 · 4 期</div>
+                  <div class="flex items-center gap-1 mt-1">
+                    <span class="mi opacity-50" style="font-size:11px">schedule</span>
+                    <span class="text-[10px] opacity-60">3 天前更新</span>
+                  </div>
+                </div>
+              </div>
+              <div class="rounded-2xl p-2.5 flex gap-2.5" style="background:white;box-shadow:0 2px 8px rgba(0,0,0,.05)">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0" style="background:linear-gradient(135deg,#FBBF24,#B45309)">
+                  <span class="mi" style="font-size:20px">campaign</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[12px] font-semibold truncate">阿K 锐评</div>
+                  <div class="text-[10px] opacity-50">独白 · 3 期</div>
+                  <div class="flex items-center gap-1 mt-1">
+                    <span class="mi opacity-50" style="font-size:11px">schedule</span>
+                    <span class="text-[10px] opacity-60">本周更新</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bottom-nav mt-auto -mx-[18px] -mb-[20px]">
+              <div class="nav-item"><span class="mi">edit_note</span>改写</div>
+              <div class="nav-item"><span class="mi">groups</span>人物</div>
+              <div class="nav-item active"><span class="mi">graphic_eq</span>播客</div>
+              <div class="nav-item"><span class="mi">person</span>我的</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Tab 4：我的（首页 · 个人中心） ── -->
+      <div class="animate__animated animate__fadeInUp" style="animation-delay:.35s">
+        <p class="label mb-3"><span style="color:#7C3AED;font-weight:700">●</span> Tab 4 · 我的</p>
+        <div class="phone shadow-phone">
+          <div class="statusbar">
+            <span>9:41</span>
+            <span class="flex items-center gap-1">
+              <span class="mi" style="font-size:14px">signal_cellular_alt</span>
+              <span class="mi" style="font-size:14px">wifi</span>
+              <span class="mi" style="font-size:14px">battery_full</span>
+            </span>
+          </div>
+          <div class="screen">
+            <!-- 用户头部 -->
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-serif font-bold text-xl" style="background:linear-gradient(135deg,#A78BFA,#6D28D9)">J</div>
+              <div class="flex-1 min-w-0">
+                <div class="text-base font-semibold">Jooper</div>
+                <div class="text-[11px] opacity-50">已加入 38 天 · 改写 142 次</div>
+              </div>
+              <span class="mi opacity-40" style="font-size:18px">settings</span>
+            </div>
+
+            <!-- 会员卡 -->
+            <div class="rounded-2xl p-3.5 mb-3 text-white" style="background:linear-gradient(135deg,#6D28D9,#18181B);box-shadow:0 12px 32px -12px rgba(124,58,237,.45)">
+              <div class="flex items-center justify-between mb-1.5">
+                <div class="text-[10px] tracking-wider opacity-80">CREATOR · 创作者会员</div>
+                <span class="mi" style="font-size:14px">workspace_premium</span>
+              </div>
+              <div class="font-serif text-base mb-1">还有 26 天到期</div>
+              <div class="text-[10px] opacity-70">本月已用：改写 142/∞ · 播客 4/10</div>
+            </div>
+
+            <!-- 数据 -->
+            <div class="grid grid-cols-3 gap-2 mb-3">
+              <div class="rounded-xl py-2.5 text-center" style="background:white;box-shadow:0 2px 8px rgba(0,0,0,.04)">
+                <div class="font-serif font-bold text-base text-violet-700">142</div>
+                <div class="text-[9px] opacity-50 mt-0.5">改写</div>
+              </div>
+              <div class="rounded-xl py-2.5 text-center" style="background:white;box-shadow:0 2px 8px rgba(0,0,0,.04)">
+                <div class="font-serif font-bold text-base" style="color:#9D174D">12</div>
+                <div class="text-[9px] opacity-50 mt-0.5">播客</div>
+              </div>
+              <div class="rounded-xl py-2.5 text-center" style="background:white;box-shadow:0 2px 8px rgba(0,0,0,.04)">
+                <div class="font-serif font-bold text-base" style="color:#4338CA">3</div>
+                <div class="text-[9px] opacity-50 mt-0.5">私有人格</div>
+              </div>
+            </div>
+
+            <!-- 菜单 -->
+            <div class="rounded-2xl overflow-hidden" style="background:white;box-shadow:0 2px 8px rgba(0,0,0,.04)">
+              <div class="flex items-center gap-2.5 px-3 py-2.5" style="border-bottom:1px solid rgba(0,0,0,.05)">
+                <span class="mi" style="font-size:18px;color:#7C3AED">person_add</span>
+                <div class="flex-1 text-[12px]">我的私有人格</div>
+                <span class="text-[10px] opacity-50">3 个</span>
+                <span class="mi opacity-30" style="font-size:14px">arrow_forward_ios</span>
+              </div>
+              <div class="flex items-center gap-2.5 px-3 py-2.5" style="border-bottom:1px solid rgba(0,0,0,.05)">
+                <span class="mi" style="font-size:18px;color:#7C3AED">bookmark</span>
+                <div class="flex-1 text-[12px]">收藏的人物</div>
+                <span class="text-[10px] opacity-50">8 个</span>
+                <span class="mi opacity-30" style="font-size:14px">arrow_forward_ios</span>
+              </div>
+              <div class="flex items-center gap-2.5 px-3 py-2.5" style="border-bottom:1px solid rgba(0,0,0,.05)">
+                <span class="mi" style="font-size:18px;color:#7C3AED">tune</span>
+                <div class="flex-1 text-[12px]">默认风格偏好</div>
+                <span class="mi opacity-30" style="font-size:14px">arrow_forward_ios</span>
+              </div>
+              <div class="flex items-center gap-2.5 px-3 py-2.5">
+                <span class="mi" style="font-size:18px;color:#7C3AED">help_outline</span>
+                <div class="flex-1 text-[12px]">帮助与反馈</div>
+                <span class="mi opacity-30" style="font-size:14px">arrow_forward_ios</span>
+              </div>
+            </div>
+
+            <div class="bottom-nav mt-auto -mx-[18px] -mb-[20px]">
+              <div class="nav-item"><span class="mi">edit_note</span>改写</div>
+              <div class="nav-item"><span class="mi">groups</span>人物</div>
+              <div class="nav-item"><span class="mi">graphic_eq</span>播客</div>
+              <div class="nav-item active"><span class="mi">person</span>我的</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════ FLOW 01 · 文案改写 ══════════ -->
+  <section class="mt-24">
+    <div class="flex items-baseline gap-3 mb-6">
+      <span class="flow-label">Flow 01</span>
+      <h2 class="font-serif text-2xl font-bold">从一段干巴巴的草稿，到「他/她」会写的样子</h2>
+    </div>
+
+    <div class="flex gap-10 flex-wrap">
+
+      <!-- ── Phone 1：人物墙 ── -->
+      <div class="animate__animated animate__fadeInUp" style="animation-delay:.05s">
+        <p class="label mb-3">① 选一支笔</p>
+        <div class="phone shadow-phone">
+          <div class="statusbar">
+            <span>9:41</span>
+            <span class="flex items-center gap-1">
+              <span class="mi" style="font-size:14px">signal_cellular_alt</span>
+              <span class="mi" style="font-size:14px">wifi</span>
+              <span class="mi" style="font-size:14px">battery_full</span>
+            </span>
+          </div>
+          <div class="screen">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <div class="font-serif font-bold text-lg leading-tight">人物库</div>
+                <div class="text-[11px] opacity-50">今天想用谁的笔？</div>
+              </div>
+              <span class="mi opacity-50">search</span>
+            </div>
+
+            <!-- tabs -->
+            <div class="flex gap-2 mb-4 overflow-x-auto" style="scrollbar-width:none">
+              <span class="tag" style="background:#7C3AED;color:white">推荐</span>
+              <span class="tag bg-ink-100" style="background:#F4F4F5;color:#52525B">作家</span>
+              <span class="tag bg-ink-100" style="background:#F4F4F5;color:#52525B">创作者</span>
+              <span class="tag bg-ink-100" style="background:#F4F4F5;color:#52525B">原创</span>
+              <span class="tag bg-ink-100" style="background:#F4F4F5;color:#52525B">我的</span>
+            </div>
+
+            <div class="flex flex-col gap-2.5 overflow-hidden">
+              <div class="persona-card">
+                <div class="flex items-center gap-2.5">
+                  <div class="persona-avatar" style="background:linear-gradient(135deg,#FDA4AF,#9D174D)">林</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-semibold flex items-center gap-1.5">林沉 <span class="tag" style="background:#FCE7F3;color:#9D174D;font-size:10px;padding:1px 6px">原创</span></div>
+                    <div class="text-[11px] opacity-50 truncate">深夜电台 · 长句 · 留白</div>
+                  </div>
+                  <span class="mi text-violet-600" style="font-size:18px">bookmark</span>
+                </div>
+              </div>
+              <div class="persona-card" style="border:1.5px solid #A78BFA">
+                <div class="flex items-center gap-2.5">
+                  <div class="persona-avatar" style="background:linear-gradient(135deg,#A5B4FC,#4338CA)">村</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-semibold flex items-center gap-1.5">村上风 <span class="tag" style="background:#EDE9FE;color:#5B21B6;font-size:10px;padding:1px 6px">已选</span></div>
+                    <div class="text-[11px] opacity-50 truncate">克制 · 比喻 · 现实与梦境交错</div>
+                  </div>
+                  <span class="mi text-violet-600" style="font-size:18px">check_circle</span>
+                </div>
+              </div>
+              <div class="persona-card">
+                <div class="flex items-center gap-2.5">
+                  <div class="persona-avatar" style="background:linear-gradient(135deg,#FCD34D,#B45309)">K</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-semibold flex items-center gap-1.5">阿K <span class="tag" style="background:#FCE7F3;color:#9D174D;font-size:10px;padding:1px 6px">原创</span></div>
+                    <div class="text-[11px] opacity-50 truncate">毒舌 · 短句 · 抛梗反转</div>
+                  </div>
+                  <span class="mi opacity-30" style="font-size:18px">bookmark_border</span>
+                </div>
+              </div>
+              <div class="persona-card">
+                <div class="flex items-center gap-2.5">
+                  <div class="persona-avatar" style="background:linear-gradient(135deg,#86EFAC,#15803D)">V</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-semibold flex items-center gap-1.5">Vega <span class="tag" style="background:#FCE7F3;color:#9D174D;font-size:10px;padding:1px 6px">原创</span></div>
+                    <div class="text-[11px] opacity-50 truncate">理性投资人 · 数据驱动</div>
+                  </div>
+                  <span class="mi opacity-30" style="font-size:18px">bookmark_border</span>
+                </div>
+              </div>
+              <div class="persona-card">
+                <div class="flex items-center gap-2.5">
+                  <div class="persona-avatar" style="background:linear-gradient(135deg,#7DD3FC,#0369A1)">毛</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-semibold">毛姆风</div>
+                    <div class="text-[11px] opacity-50 truncate">老派叙述 · 冷峻 · 世态</div>
+                  </div>
+                  <span class="mi opacity-30" style="font-size:18px">bookmark_border</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bottom-nav mt-auto -mx-[18px] -mb-[20px]">
+              <div class="nav-item"><span class="mi">edit_note</span>改写</div>
+              <div class="nav-item active"><span class="mi">groups</span>人物</div>
+              <div class="nav-item"><span class="mi">graphic_eq</span>播客</div>
+              <div class="nav-item"><span class="mi">person</span>我的</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Phone 2：改写编辑器 ── -->
+      <div class="animate__animated animate__fadeInUp" style="animation-delay:.15s">
+        <p class="label mb-3">② 写下要点 · 调节风格</p>
+        <div class="phone shadow-phone">
+          <div class="statusbar">
+            <span>9:41</span>
+            <span class="flex items-center gap-1">
+              <span class="mi" style="font-size:14px">signal_cellular_alt</span>
+              <span class="mi" style="font-size:14px">wifi</span>
+              <span class="mi" style="font-size:14px">battery_full</span>
+            </span>
+          </div>
+          <div class="screen">
+            <div class="flex items-center justify-between mb-4">
+              <span class="mi opacity-60">arrow_back_ios</span>
+              <div class="flex items-center gap-2">
+                <div class="persona-avatar" style="background:linear-gradient(135deg,#A5B4FC,#4338CA);width:24px;height:24px;font-size:12px;border-radius:8px">村</div>
+                <div class="text-sm font-semibold">村上风</div>
+                <span class="mi opacity-40" style="font-size:16px">expand_more</span>
+              </div>
+              <span class="mi opacity-60">more_horiz</span>
+            </div>
+
+            <!-- 原文 -->
+            <div class="rounded-2xl p-3 mb-3" style="background:#F4F4F5">
+              <div class="text-[10px] font-semibold opacity-50 mb-1.5 tracking-wider">原文 · 你的草稿</div>
+              <div class="text-[12px] leading-relaxed opacity-80">
+                今天加班到很晚才回家，路上看到一只猫，突然觉得有点孤单，但又说不上来为什么。
+              </div>
+            </div>
+
+            <!-- 风格滑块 -->
+            <div class="rounded-2xl p-3 mb-3" style="background:white;border:1px solid rgba(124,58,237,.12)">
+              <div class="text-[10px] font-semibold opacity-50 mb-2 tracking-wider">风格微调</div>
+              <div class="space-y-2.5">
+                <div>
+                  <div class="flex justify-between text-[10px] opacity-60 mb-1"><span>克制</span><span>张扬</span></div>
+                  <div class="h-1 rounded-full relative" style="background:#EDE9FE">
+                    <div class="absolute h-1 rounded-full" style="background:linear-gradient(90deg,#A78BFA,#6D28D9);width:28%"></div>
+                    <div class="absolute w-3 h-3 rounded-full bg-violet-600 -top-1" style="left:26%;box-shadow:0 2px 6px rgba(124,58,237,.4)"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-[10px] opacity-60 mb-1"><span>书面</span><span>口语</span></div>
+                  <div class="h-1 rounded-full relative" style="background:#EDE9FE">
+                    <div class="absolute h-1 rounded-full" style="background:linear-gradient(90deg,#A78BFA,#6D28D9);width:55%"></div>
+                    <div class="absolute w-3 h-3 rounded-full bg-violet-600 -top-1" style="left:53%;box-shadow:0 2px 6px rgba(124,58,237,.4)"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-[10px] opacity-60 mb-1"><span>严肃</span><span>玩梗</span></div>
+                  <div class="h-1 rounded-full relative" style="background:#EDE9FE">
+                    <div class="absolute h-1 rounded-full" style="background:linear-gradient(90deg,#A78BFA,#6D28D9);width:18%"></div>
+                    <div class="absolute w-3 h-3 rounded-full bg-violet-600 -top-1" style="left:16%;box-shadow:0 2px 6px rgba(124,58,237,.4)"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 动作 -->
+            <div class="grid grid-cols-4 gap-2 mb-3">
+              <div class="flex flex-col items-center gap-1 py-2 rounded-xl" style="background:#7C3AED;color:white">
+                <span class="mi" style="font-size:18px">auto_fix_high</span>
+                <span class="text-[10px] font-semibold">改写</span>
+              </div>
+              <div class="flex flex-col items-center gap-1 py-2 rounded-xl bg-ink-100" style="background:#F4F4F5">
+                <span class="mi opacity-60" style="font-size:18px">unfold_more</span>
+                <span class="text-[10px] opacity-60">扩写</span>
+              </div>
+              <div class="flex flex-col items-center gap-1 py-2 rounded-xl bg-ink-100" style="background:#F4F4F5">
+                <span class="mi opacity-60" style="font-size:18px">unfold_less</span>
+                <span class="text-[10px] opacity-60">缩写</span>
+              </div>
+              <div class="flex flex-col items-center gap-1 py-2 rounded-xl bg-ink-100" style="background:#F4F4F5">
+                <span class="mi opacity-60" style="font-size:18px">arrow_forward</span>
+                <span class="text-[10px] opacity-60">续写</span>
+              </div>
+            </div>
+
+            <!-- 生成按钮 -->
+            <div class="mt-auto rounded-2xl py-3 flex items-center justify-center gap-2"
+                 style="background:linear-gradient(135deg,#8B5CF6,#6D28D9);box-shadow:0 8px 24px -8px rgba(124,58,237,.5)">
+              <span class="mi text-white" style="font-size:18px">auto_awesome</span>
+              <span class="text-white font-semibold text-sm">生成 3 个候选</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Phone 3：候选与 diff ── -->
+      <div class="animate__animated animate__fadeInUp" style="animation-delay:.25s">
+        <p class="label mb-3">③ 三选一 · 看见改了什么</p>
+        <div class="phone shadow-phone">
+          <div class="statusbar">
+            <span>9:41</span>
+            <span class="flex items-center gap-1">
+              <span class="mi" style="font-size:14px">signal_cellular_alt</span>
+              <span class="mi" style="font-size:14px">wifi</span>
+              <span class="mi" style="font-size:14px">battery_full</span>
+            </span>
+          </div>
+          <div class="screen">
+            <div class="flex items-center justify-between mb-4">
+              <span class="mi opacity-60">arrow_back_ios</span>
+              <div class="text-sm font-semibold">候选结果</div>
+              <span class="mi opacity-60">ios_share</span>
+            </div>
+
+            <!-- 候选切换 -->
+            <div class="flex gap-1.5 mb-3">
+              <div class="flex-1 py-1.5 rounded-lg text-center text-[11px] font-semibold" style="background:#7C3AED;color:white">候选 1</div>
+              <div class="flex-1 py-1.5 rounded-lg text-center text-[11px] opacity-60" style="background:#F4F4F5">候选 2</div>
+              <div class="flex-1 py-1.5 rounded-lg text-center text-[11px] opacity-60" style="background:#F4F4F5">候选 3</div>
+            </div>
+
+            <!-- 改写结果 -->
+            <div class="rounded-2xl p-3.5 mb-3" style="background:white;border:1px solid rgba(124,58,237,.18);box-shadow:0 4px 16px -8px rgba(124,58,237,.25)">
+              <div class="flex items-center gap-1.5 mb-2">
+                <span class="tag" style="background:#EDE9FE;color:#5B21B6;font-size:10px">以 村上风 改写</span>
+              </div>
+              <div class="text-[12.5px] leading-relaxed font-serif">
+                那是个加班到很晚的夜晚。回家的路上，
+                <span class="diff-add">一只猫在路灯下停了一会儿，又像什么也没发生似的走开了。</span>
+                我站在原地，
+                <span class="diff-add">突然觉得自己像是被什么人轻轻地放下了——</span>
+                说不出原因，但确实如此。
+              </div>
+            </div>
+
+            <!-- 风格分析 -->
+            <div class="rounded-2xl p-3 mb-3" style="background:#FAF7FE">
+              <div class="text-[10px] font-semibold opacity-50 mb-2 tracking-wider">风格命中</div>
+              <div class="flex flex-wrap gap-1.5">
+                <span class="tag" style="background:white;color:#5B21B6;font-size:10px;border:1px solid rgba(124,58,237,.2)">长句 +1</span>
+                <span class="tag" style="background:white;color:#5B21B6;font-size:10px;border:1px solid rgba(124,58,237,.2)">现实/梦境</span>
+                <span class="tag" style="background:white;color:#5B21B6;font-size:10px;border:1px solid rgba(124,58,237,.2)">克制比喻</span>
+                <span class="tag" style="background:white;color:#5B21B6;font-size:10px;border:1px solid rgba(124,58,237,.2)">留白</span>
+              </div>
+            </div>
+
+            <!-- 操作栏 -->
+            <div class="mt-auto flex gap-2">
+              <div class="flex-1 py-2.5 rounded-xl text-center text-[12px] font-semibold flex items-center justify-center gap-1.5"
+                   style="background:#F4F4F5;color:#52525B">
+                <span class="mi" style="font-size:16px">refresh</span>再生成
+              </div>
+              <div class="flex-1 py-2.5 rounded-xl text-center text-[12px] font-semibold text-white flex items-center justify-center gap-1.5"
+                   style="background:linear-gradient(135deg,#8B5CF6,#6D28D9)">
+                <span class="mi" style="font-size:16px">content_copy</span>复制 · 导出
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════ FLOW 02 · 播客生成 ══════════ -->
+  <section class="mt-24">
+    <div class="flex items-baseline gap-3 mb-6">
+      <span class="flow-label" style="background:#FCE7F3;color:#9D174D">Flow 02</span>
+      <h2 class="font-serif text-2xl font-bold">把一篇文章变成一档"他们会聊"的播客</h2>
+    </div>
+
+    <div class="flex gap-10 flex-wrap">
+
+      <!-- ── Phone 4：选嘉宾 ── -->
+      <div class="animate__animated animate__fadeInUp" style="animation-delay:.05s">
+        <p class="label mb-3">① 喂入素材 · 选嘉宾阵容</p>
+        <div class="phone shadow-phone">
+          <div class="statusbar">
+            <span>9:41</span>
+            <span class="flex items-center gap-1">
+              <span class="mi" style="font-size:14px">signal_cellular_alt</span>
+              <span class="mi" style="font-size:14px">wifi</span>
+              <span class="mi" style="font-size:14px">battery_full</span>
+            </span>
+          </div>
+          <div class="screen">
+            <div class="flex items-center justify-between mb-4">
+              <span class="mi opacity-60">arrow_back_ios</span>
+              <div class="text-sm font-semibold">新建播客</div>
+              <span class="mi opacity-60">help_outline</span>
+            </div>
+
+            <!-- 素材输入 -->
+            <div class="rounded-2xl p-3 mb-3" style="background:#F4F4F5">
+              <div class="flex items-center gap-1.5 mb-1.5">
+                <span class="mi opacity-60" style="font-size:14px">attach_file</span>
+                <span class="text-[10px] font-semibold opacity-60 tracking-wider">素材</span>
+              </div>
+              <div class="text-[12px] leading-relaxed">
+                《为什么"小而美"产品比独角兽更值得做》
+                <div class="text-[10px] opacity-40 mt-1">公众号文章 · 3,240 字</div>
+              </div>
+            </div>
+
+            <!-- 形态 -->
+            <div class="text-[10px] font-semibold opacity-50 mb-2 tracking-wider">节目形态</div>
+            <div class="grid grid-cols-3 gap-2 mb-3">
+              <div class="rounded-xl p-2 text-center" style="background:#F4F4F5">
+                <span class="mi opacity-50" style="font-size:18px">person</span>
+                <div class="text-[10px] opacity-60 mt-0.5">独白</div>
+              </div>
+              <div class="rounded-xl p-2 text-center" style="background:linear-gradient(135deg,#FCE7F3,#FBCFE8);border:1.5px solid #DB2777">
+                <span class="mi" style="font-size:18px;color:#9D174D">groups_2</span>
+                <div class="text-[10px] mt-0.5 font-semibold" style="color:#9D174D">双人对谈</div>
+              </div>
+              <div class="rounded-xl p-2 text-center" style="background:#F4F4F5">
+                <span class="mi opacity-50" style="font-size:18px">groups</span>
+                <div class="text-[10px] opacity-60 mt-0.5">圆桌</div>
+              </div>
+            </div>
+
+            <!-- 嘉宾 -->
+            <div class="text-[10px] font-semibold opacity-50 mb-2 tracking-wider">嘉宾阵容</div>
+            <div class="space-y-2 mb-3">
+              <div class="persona-card flex items-center gap-2.5">
+                <div class="persona-avatar" style="background:linear-gradient(135deg,#86EFAC,#15803D)">V</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[12px] font-semibold flex items-center gap-1.5">Vega <span class="tag" style="background:#FCE7F3;color:#9D174D;font-size:9px;padding:1px 5px">主理人</span></div>
+                  <div class="text-[10px] opacity-50">理性投资人 · 立场：支持</div>
+                </div>
+                <span class="mi opacity-40" style="font-size:16px">drag_indicator</span>
+              </div>
+              <div class="persona-card flex items-center gap-2.5">
+                <div class="persona-avatar" style="background:linear-gradient(135deg,#FCD34D,#B45309)">K</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[12px] font-semibold">阿K</div>
+                  <div class="text-[10px] opacity-50">毒舌选手 · 立场：质疑</div>
+                </div>
+                <span class="mi opacity-40" style="font-size:16px">drag_indicator</span>
+              </div>
+            </div>
+
+            <!-- 生成 -->
+            <div class="mt-auto rounded-2xl py-3 flex items-center justify-center gap-2"
+                 style="background:linear-gradient(135deg,#EC4899,#9D174D);box-shadow:0 8px 24px -8px rgba(157,23,77,.45)">
+              <span class="mi text-white" style="font-size:18px">graphic_eq</span>
+              <span class="text-white font-semibold text-sm">生成脚本</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Phone 5：脚本时间线 ── -->
+      <div class="animate__animated animate__fadeInUp" style="animation-delay:.15s">
+        <p class="label mb-3">② 脚本逐段可改</p>
+        <div class="phone shadow-phone">
+          <div class="statusbar">
+            <span>9:41</span>
+            <span class="flex items-center gap-1">
+              <span class="mi" style="font-size:14px">signal_cellular_alt</span>
+              <span class="mi" style="font-size:14px">wifi</span>
+              <span class="mi" style="font-size:14px">battery_full</span>
+            </span>
+          </div>
+          <div class="screen">
+            <div class="flex items-center justify-between mb-3">
+              <span class="mi opacity-60">arrow_back_ios</span>
+              <div class="text-center">
+                <div class="text-[13px] font-semibold leading-tight">小而美 vs 独角兽</div>
+                <div class="text-[10px] opacity-50">EP01 · 双人对谈 · 18:42</div>
+              </div>
+              <span class="mi opacity-60">more_horiz</span>
+            </div>
+
+            <!-- 节目结构 -->
+            <div class="flex gap-1 mb-3 text-[9px] font-semibold">
+              <div class="flex-1 py-1 rounded text-center" style="background:#FCE7F3;color:#9D174D">开场</div>
+              <div class="flex-1 py-1 rounded text-center" style="background:#FCE7F3;color:#9D174D">议题</div>
+              <div class="flex-1 py-1 rounded text-center" style="background:linear-gradient(135deg,#EC4899,#9D174D);color:white">冲突 ▸</div>
+              <div class="flex-1 py-1 rounded text-center opacity-40" style="background:#F4F4F5">故事</div>
+              <div class="flex-1 py-1 rounded text-center opacity-40" style="background:#F4F4F5">收束</div>
+            </div>
+
+            <!-- 台词 -->
+            <div class="space-y-2.5 overflow-hidden">
+              <div class="flex gap-2 items-start">
+                <div class="persona-avatar" style="background:linear-gradient(135deg,#86EFAC,#15803D);width:28px;height:28px;font-size:13px;border-radius:9px">V</div>
+                <div class="flex-1 rounded-2xl rounded-tl-sm p-2.5" style="background:#F0FDF4">
+                  <div class="text-[10px] font-semibold opacity-60 mb-0.5">Vega · 03:21</div>
+                  <div class="text-[11.5px] leading-relaxed">数据说话——一家年营收 3000 万的小公司，毛利率往往比独角兽高一倍以上。</div>
+                </div>
+              </div>
+              <div class="flex gap-2 items-start">
+                <div class="persona-avatar" style="background:linear-gradient(135deg,#FCD34D,#B45309);width:28px;height:28px;font-size:13px;border-radius:9px">K</div>
+                <div class="flex-1 rounded-2xl rounded-tl-sm p-2.5" style="background:#FFFBEB">
+                  <div class="text-[10px] font-semibold opacity-60 mb-0.5">阿K · 03:48</div>
+                  <div class="text-[11.5px] leading-relaxed"><span style="color:#A1A1AA;font-style:italic">（笑）</span>得了吧 Vega，VC 朋友听到这话当场把咖啡喷桌上。</div>
+                </div>
+              </div>
+              <div class="flex gap-2 items-start">
+                <div class="persona-avatar" style="background:linear-gradient(135deg,#86EFAC,#15803D);width:28px;height:28px;font-size:13px;border-radius:9px">V</div>
+                <div class="flex-1 rounded-2xl rounded-tl-sm p-2.5" style="background:#F0FDF4;border:1.5px dashed #DB2777">
+                  <div class="flex items-center justify-between mb-0.5">
+                    <div class="text-[10px] font-semibold opacity-60">Vega · 04:02</div>
+                    <span class="tag" style="background:#FCE7F3;color:#9D174D;font-size:9px;padding:1px 5px">编辑中</span>
+                  </div>
+                  <div class="text-[11.5px] leading-relaxed">那是因为他们的 IRR 模型只奖励上限，不惩罚归零…</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 编辑工具栏 -->
+            <div class="mt-auto rounded-2xl p-2 flex items-center gap-1.5" style="background:white;border:1px solid rgba(24,24,27,.08);box-shadow:0 4px 12px -4px rgba(24,24,27,.08)">
+              <div class="flex items-center gap-1 px-2 py-1.5 rounded-lg" style="background:#FCE7F3;color:#9D174D">
+                <span class="mi" style="font-size:14px">tune</span>
+                <span class="text-[10px] font-semibold">激进些</span>
+              </div>
+              <div class="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-ink-100" style="background:#F4F4F5">
+                <span class="mi opacity-60" style="font-size:14px">swap_horiz</span>
+                <span class="text-[10px] opacity-60">换人</span>
+              </div>
+              <div class="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-ink-100" style="background:#F4F4F5">
+                <span class="mi opacity-60" style="font-size:14px">refresh</span>
+                <span class="text-[10px] opacity-60">重写</span>
+              </div>
+              <div class="ml-auto mi opacity-50" style="font-size:18px">play_circle</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Phone 6：合成导出 ── -->
+      <div class="animate__animated animate__fadeInUp" style="animation-delay:.25s">
+        <p class="label mb-3">③ 合成音频 · 一键导出</p>
+        <div class="phone shadow-phone">
+          <div class="statusbar">
+            <span>9:41</span>
+            <span class="flex items-center gap-1">
+              <span class="mi" style="font-size:14px">signal_cellular_alt</span>
+              <span class="mi" style="font-size:14px">wifi</span>
+              <span class="mi" style="font-size:14px">battery_full</span>
+            </span>
+          </div>
+          <div class="screen">
+            <div class="flex items-center justify-between mb-4">
+              <span class="mi opacity-60">arrow_back_ios</span>
+              <div class="text-sm font-semibold">合成音频</div>
+              <span class="mi opacity-60">tune</span>
+            </div>
+
+            <!-- 封面 -->
+            <div class="rounded-3xl p-5 mb-3 float" style="background:linear-gradient(135deg,#A78BFA,#EC4899);box-shadow:0 16px 40px -12px rgba(124,58,237,.45)">
+              <div class="flex items-center gap-3 mb-3">
+                <div class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center backdrop-blur">
+                  <span class="mi text-white" style="font-size:24px">graphic_eq</span>
+                </div>
+                <div class="flex-1 min-w-0 text-white">
+                  <div class="text-[10px] opacity-80 tracking-wider">EP01 · 18:42</div>
+                  <div class="font-serif font-bold text-base leading-tight">小而美 vs 独角兽</div>
+                </div>
+              </div>
+              <!-- 波形 -->
+              <div class="flex items-end gap-0.5 h-8 mb-2">
+                <div class="w-1 bg-white/70 rounded-full" style="height:30%"></div>
+                <div class="w-1 bg-white/70 rounded-full" style="height:60%"></div>
+                <div class="w-1 bg-white/70 rounded-full" style="height:45%"></div>
+                <div class="w-1 bg-white/70 rounded-full" style="height:80%"></div>
+                <div class="w-1 bg-white/70 rounded-full" style="height:35%"></div>
+                <div class="w-1 bg-white/70 rounded-full" style="height:70%"></div>
+                <div class="w-1 bg-white/90 rounded-full" style="height:90%"></div>
+                <div class="w-1 bg-white/70 rounded-full" style="height:55%"></div>
+                <div class="w-1 bg-white/70 rounded-full" style="height:40%"></div>
+                <div class="w-1 bg-white/70 rounded-full" style="height:65%"></div>
+                <div class="w-1 bg-white/70 rounded-full" style="height:30%"></div>
+                <div class="w-1 bg-white/40 rounded-full" style="height:50%"></div>
+                <div class="w-1 bg-white/40 rounded-full" style="height:35%"></div>
+                <div class="w-1 bg-white/40 rounded-full" style="height:60%"></div>
+                <div class="w-1 bg-white/40 rounded-full" style="height:25%"></div>
+                <div class="w-1 bg-white/40 rounded-full" style="height:45%"></div>
+                <div class="w-1 bg-white/40 rounded-full" style="height:70%"></div>
+                <div class="w-1 bg-white/40 rounded-full" style="height:30%"></div>
+                <div class="w-1 bg-white/40 rounded-full" style="height:50%"></div>
+                <div class="w-1 bg-white/40 rounded-full" style="height:65%"></div>
+              </div>
+              <div class="flex justify-between text-white/80 text-[10px] font-semibold">
+                <span>06:24</span>
+                <span>18:42</span>
+              </div>
+            </div>
+
+            <!-- 音色 -->
+            <div class="rounded-2xl p-3 mb-3" style="background:white;border:1px solid rgba(24,24,27,.06)">
+              <div class="text-[10px] font-semibold opacity-50 mb-2 tracking-wider">人物 → 音色映射</div>
+              <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                  <div class="persona-avatar" style="background:linear-gradient(135deg,#86EFAC,#15803D);width:24px;height:24px;font-size:12px;border-radius:8px">V</div>
+                  <div class="text-[11px] flex-1">Vega</div>
+                  <span class="mi opacity-40" style="font-size:14px">arrow_forward</span>
+                  <div class="text-[11px] font-semibold">中年男声 · 沉稳</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="persona-avatar" style="background:linear-gradient(135deg,#FCD34D,#B45309);width:24px;height:24px;font-size:12px;border-radius:8px">K</div>
+                  <div class="text-[11px] flex-1">阿K</div>
+                  <span class="mi opacity-40" style="font-size:14px">arrow_forward</span>
+                  <div class="text-[11px] font-semibold">青年男声 · 戏谑</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 导出 -->
+            <div class="mt-auto space-y-2">
+              <div class="grid grid-cols-3 gap-2">
+                <div class="rounded-xl py-2 text-center text-[10px] font-semibold" style="background:#F4F4F5;color:#52525B">脚本.md</div>
+                <div class="rounded-xl py-2 text-center text-[10px] font-semibold" style="background:#F4F4F5;color:#52525B">字幕.srt</div>
+                <div class="rounded-xl py-2 text-center text-[10px] font-semibold" style="background:#EDE9FE;color:#5B21B6">音频.mp3</div>
+              </div>
+              <div class="rounded-2xl py-3 flex items-center justify-center gap-2"
+                   style="background:linear-gradient(135deg,#EC4899,#7C3AED);box-shadow:0 8px 24px -8px rgba(124,58,237,.5)">
+                <span class="mi text-white" style="font-size:18px">file_download</span>
+                <span class="text-white font-semibold text-sm">合成并导出</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════ 核心价值 ══════════ -->
+  <section class="mt-24 max-w-5xl">
+    <div class="flex items-baseline gap-3 mb-10">
+      <span class="flow-label">核心价值</span>
+      <h2 class="font-serif text-2xl font-bold">为什么是 Resona</h2>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-6">
+
+      <div style="background:white;border-radius:22px;padding:24px;box-shadow:0 4px 20px -4px rgba(124,58,237,.10)">
+        <div style="width:44px;height:44px;border-radius:14px;
+                    background:linear-gradient(135deg,#A78BFA,#6D28D9);
+                    display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+          <span class="mi text-white" style="font-size:22px">groups</span>
+        </div>
+        <div class="font-serif" style="font-size:17px;font-weight:700;margin-bottom:8px">人物，是产品的灵魂</div>
+        <p style="font-size:13px;opacity:.6;line-height:1.7">
+          市面上的 AI 写作工具都在比"写得通顺"。我们比的是"写得像谁"——预置人物、原创人格、用户自建私有人格，
+          每一支笔都是有指纹的。
+        </p>
+      </div>
+
+      <div style="background:white;border-radius:22px;padding:24px;box-shadow:0 4px 20px -4px rgba(236,72,153,.10)">
+        <div style="width:44px;height:44px;border-radius:14px;
+                    background:linear-gradient(135deg,#F472B6,#9D174D);
+                    display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+          <span class="mi text-white" style="font-size:22px">tune</span>
+        </div>
+        <div class="font-serif" style="font-size:17px;font-weight:700;margin-bottom:8px">可控的不确定性</div>
+        <p style="font-size:13px;opacity:.6;line-height:1.7">
+          风格滑块 + 多候选 + 与原文的 diff 视图，把"AI 生成"变成"我在挑"。
+          创作权牢牢握在用户手里，AI 只是替你试穿不同声音的草稿。
+        </p>
+      </div>
+
+      <div style="background:white;border-radius:22px;padding:24px;box-shadow:0 4px 20px -4px rgba(99,102,241,.10)">
+        <div style="width:44px;height:44px;border-radius:14px;
+                    background:linear-gradient(135deg,#818CF8,#4338CA);
+                    display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+          <span class="mi text-white" style="font-size:22px">graphic_eq</span>
+        </div>
+        <div class="font-serif" style="font-size:17px;font-weight:700;margin-bottom:8px">从单段一路到播客</div>
+        <p style="font-size:13px;opacity:.6;line-height:1.7">
+          同一份草稿，可以是朋友圈一句话，也可以是一档双人对谈。
+          改写、扩写、播客脚本、配音导出——一条工作流贯通，无须切换工具。
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════ Design System · 配色与设计语言 ══════════ -->
+  <section class="mt-24 max-w-5xl">
+    <div class="flex items-baseline gap-3 mb-6">
+      <span class="label">Design System</span>
+      <h2 class="font-serif text-2xl font-bold">一支会"换笔触"的设计语言</h2>
+    </div>
+
+    <div class="grid md:grid-cols-4 gap-6">
+
+      <!-- Palette -->
+      <div class="rounded-3xl bg-white/70 backdrop-blur p-5" style="border:1px solid rgba(124,58,237,.10);box-shadow:0 10px 30px -12px rgba(124,58,237,.10)">
+        <div class="text-[11px] text-ink-500 tracking-wider uppercase mb-3">Palette</div>
+        <div class="flex gap-1.5 mb-3">
+          <span class="w-8 h-12 rounded-lg" style="background:#F1ECFA"></span>
+          <span class="w-8 h-12 rounded-lg" style="background:#C4B5FD"></span>
+          <span class="w-8 h-12 rounded-lg" style="background:#8B5CF6"></span>
+          <span class="w-8 h-12 rounded-lg" style="background:#6D28D9"></span>
+          <span class="w-8 h-12 rounded-lg" style="background:#EC4899"></span>
+          <span class="w-8 h-12 rounded-lg" style="background:#18181B"></span>
+        </div>
+        <div class="text-xs text-ink-600 leading-relaxed">
+          <b class="text-violet-700">暮色紫</b> 为主——创作、想象、有人格感的颜色。
+          <b style="color:#9D174D">玫粉</b> 为播客流的语义色，区分"声音"分支。
+          深墨用于文字与人物徽章，避免紫色喧宾夺主。
+        </div>
+      </div>
+
+      <!-- Typography -->
+      <div class="rounded-3xl bg-white/70 backdrop-blur p-5" style="border:1px solid rgba(124,58,237,.10);box-shadow:0 10px 30px -12px rgba(124,58,237,.10)">
+        <div class="text-[11px] text-ink-500 tracking-wider uppercase mb-3">Typography</div>
+        <div class="font-serif text-2xl leading-tight">借他人之笔</div>
+        <div class="text-sm text-ink-500 mt-1">Inter · Noto Serif SC</div>
+        <div class="text-xs text-ink-600 mt-3 leading-relaxed">
+          标题与改写结果用思源宋体，让"成稿文字"有印刷质感；UI 与说明用 Inter，
+          保持工具感与现代清爽。中英混排时刻意拉开字重对比。
+        </div>
+      </div>
+
+      <!-- Principles -->
+      <div class="rounded-3xl bg-white/70 backdrop-blur p-5" style="border:1px solid rgba(124,58,237,.10);box-shadow:0 10px 30px -12px rgba(124,58,237,.10)">
+        <div class="text-[11px] text-ink-500 tracking-wider uppercase mb-3">Principles</div>
+        <ul class="text-xs text-ink-700 space-y-2.5 leading-relaxed">
+          <li class="flex gap-2"><span class="mi text-violet-600" style="font-size:14px">looks_one</span>以人物为入口，不是以功能</li>
+          <li class="flex gap-2"><span class="mi text-violet-600" style="font-size:14px">looks_two</span>样张胜过描述，所见即所得</li>
+          <li class="flex gap-2"><span class="mi text-violet-600" style="font-size:14px">looks_3</span>三候选 + 滑块 = 可控的不确定性</li>
+          <li class="flex gap-2"><span class="mi text-violet-600" style="font-size:14px">looks_4</span>永远显式标注"以 XX 风格生成"</li>
+        </ul>
+      </div>
+
+      <!-- One Line -->
+      <div class="rounded-3xl text-white p-5" style="background:linear-gradient(135deg,#A78BFA,#6D28D9 60%,#9D174D);box-shadow:0 40px 80px -20px rgba(124,58,237,.35)">
+        <div class="text-[11px] opacity-80 tracking-wider uppercase mb-3">One Line</div>
+        <div class="font-serif text-xl leading-snug">
+          「不是帮你写得通顺的 AI，<br/>是帮你写得像"那个人"的笔。」
+        </div>
+        <div class="text-xs opacity-70 mt-4">— 笔替 Resona 产品一句话</div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<!-- ══════════ FOOTER ══════════ -->
+<footer style="padding:40px 40px 60px;border-top:1px solid rgba(24,24,27,.07);margin-top:40px">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:32px;height:32px;border-radius:10px;
+                  background:linear-gradient(135deg,#A78BFA,#6D28D9);
+                  display:flex;align-items:center;justify-content:center">
+        <span class="mi text-white" style="font-size:16px">draw</span>
+      </div>
+      <span class="font-serif" style="font-size:16px;font-weight:700">笔替 Resona</span>
+      <span style="font-size:12px;opacity:.4">Design Preview v0.1</span>
+    </div>
+    <div style="font-size:12px;opacity:.4">借他人之笔，写你想说的话</div>
+  </div>
+</footer>
+
+</body>
+</html>
