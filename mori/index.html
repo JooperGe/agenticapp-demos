@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>山野绘本 Mori · 把每一次出门，画成一张童话地图</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Serif+SC:wght@500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+<style>
+  :root{
+    --parchment:#F4FAF8;
+    --mist:#E5F1EB;
+    --sage:#9CC5B0;
+    --jade:#3F8B6E;
+    --jade-deep:#2A6149;
+    --bark:#5A4A3A;
+    --ink:#1F2A26;
+    --coral:#E8806B;
+    --gold:#D9B26A;
+    --cream:#FFF7E8;
+  }
+  *{ -webkit-font-smoothing:antialiased; }
+  body{
+    font-family:'Inter','Noto Serif SC',system-ui,sans-serif;
+    background:var(--parchment);
+    color:var(--ink);
+    background-image:
+      radial-gradient(circle at 10% 10%, rgba(156,197,176,0.18) 0, transparent 40%),
+      radial-gradient(circle at 90% 30%, rgba(217,178,106,0.12) 0, transparent 40%),
+      radial-gradient(circle at 50% 90%, rgba(232,128,107,0.10) 0, transparent 50%);
+  }
+  .serif{ font-family:'Noto Serif SC',serif; }
+  .mi{ font-family:'Material Icons Round'; font-style:normal; }
+
+  /* phone mockup */
+  .phone{
+    position:relative;
+    width:340px; height:700px;
+    background:#0E1612;
+    border-radius:44px;
+    padding:14px;
+    box-shadow: 0 30px 60px -20px rgba(31,42,38,0.35), 0 10px 20px -10px rgba(31,42,38,0.25);
+  }
+  .phone::before{
+    content:'';
+    position:absolute; top:18px; left:50%; transform:translateX(-50%);
+    width:110px; height:28px; background:#0E1612; border-radius:20px; z-index:5;
+  }
+  .screen{
+    width:100%; height:100%; border-radius:32px; overflow:hidden;
+    background:var(--parchment); position:relative;
+  }
+  .statusbar{
+    height:36px; padding:0 22px; display:flex; align-items:center; justify-content:space-between;
+    font-size:13px; font-weight:600; color:var(--ink); padding-top:14px;
+  }
+  .scroll-fade{ -webkit-mask-image:linear-gradient(to bottom, black 80%, transparent 100%); mask-image:linear-gradient(to bottom, black 80%, transparent 100%); }
+  .chip{ display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; font-size:12px; font-weight:500; }
+  .float{ animation: float 6s ease-in-out infinite; }
+  @keyframes float{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-8px); } }
+
+  .ghibli-bg{
+    background:
+      linear-gradient(180deg, #BDE0CF 0%, #E5F1EB 50%, #FFF7E8 100%);
+  }
+  .map-bg{
+    background:
+      radial-gradient(circle at 20% 30%, #C9E4D5 0%, transparent 35%),
+      radial-gradient(circle at 75% 60%, #A9D2BC 0%, transparent 40%),
+      linear-gradient(160deg, #DCEFE3 0%, #F4FAF8 100%);
+  }
+  .dotted{ background-image: radial-gradient(rgba(63,139,110,0.35) 1px, transparent 1px); background-size: 6px 6px; }
+
+  /* trail dashed line */
+  .trail{
+    stroke:var(--jade); stroke-width:3; fill:none;
+    stroke-dasharray: 6 6;
+    animation: trail 1.5s linear infinite;
+  }
+  @keyframes trail{ to{ stroke-dashoffset:-24; } }
+
+  .section-title{ font-family:'Noto Serif SC',serif; font-weight:700; }
+  .num-tag{
+    width:36px; height:36px; border-radius:50%;
+    display:inline-flex; align-items:center; justify-content:center;
+    background:var(--jade); color:white; font-weight:700; font-family:'Noto Serif SC',serif;
+  }
+  .leaf-card{
+    background:white; border-radius:24px; padding:24px;
+    border:1px solid rgba(63,139,110,0.12);
+    box-shadow: 0 8px 24px -12px rgba(31,42,38,0.08);
+  }
+  .swatch{ width:100%; height:64px; border-radius:14px; border:1px solid rgba(0,0,0,0.06); }
+  .footer-leaf{ background:linear-gradient(180deg, #2A6149 0%, #1F2A26 100%); color:#E5F1EB; }
+
+  /* Cloud decoration */
+  .cloud{
+    position:absolute; background:white; border-radius:50%;
+    box-shadow: 28px 0 0 -2px white, 56px 0 0 -6px white, -22px 0 0 -2px white, -45px 0 0 -8px white;
+    opacity:0.8;
+  }
+
+  /* ===== Ideas right panel (跟 nudge 同款) ===== */
+  #page-wrapper{ display:flex; align-items:flex-start; min-width:1720px; }
+  #main-col{ flex:1 1 auto; min-width:0; }
+  #ideas-col{
+    flex: 0 0 420px;
+    position: sticky; top: 0;
+    height: 100vh;
+    display: flex; flex-direction: column;
+    border-left: 1px solid rgba(31,42,38,0.08);
+    background: linear-gradient(160deg,#FFFBF6 0%, #FFF4EC 60%, #F4FAF8 100%);
+    overflow: hidden;
+    z-index: 50;
+  }
+  .ideas-strip{
+    display:flex; overflow-x:auto; flex:1;
+    scroll-snap-type: x mandatory;
+    scrollbar-width:none; -ms-overflow-style:none;
+    padding: 0 1.5rem 1.5rem;
+  }
+  .ideas-strip::-webkit-scrollbar{ display:none; }
+  .idea-slot{
+    flex: 0 0 100%; scroll-snap-align:start;
+    box-sizing:border-box; padding-right: 1rem;
+  }
+  .ideas-dots{ display:flex; gap:6px; justify-content:center; padding:12px 0; }
+  .ideas-dots span{ width:6px; height:6px; border-radius:999px; background:rgba(31,42,38,0.15); transition:all .2s; }
+  .ideas-dots span.active{ width:18px; background:var(--coral); }
+</style>
+</head>
+<body>
+<div id="page-wrapper">
+<div id="main-col">
+
+<!-- ============ HEADER ============ -->
+<header class="relative overflow-hidden">
+  <div class="absolute inset-0 ghibli-bg opacity-70"></div>
+  <div class="cloud float" style="top:80px; left:8%; width:36px; height:24px;"></div>
+  <div class="cloud float" style="top:140px; right:12%; width:28px; height:18px; animation-delay:-2s;"></div>
+  <div class="cloud float" style="top:240px; left:55%; width:40px; height:26px; animation-delay:-4s;"></div>
+
+  <div class="relative max-w-6xl mx-auto px-6 pt-10 pb-20">
+    <nav class="flex items-center justify-between mb-20">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl bg-white/80 backdrop-blur flex items-center justify-center shadow-sm">
+          <span class="mi text-2xl" style="color:var(--jade-deep);">forest</span>
+        </div>
+        <div>
+          <div class="serif font-bold text-lg leading-tight" style="color:var(--ink);">山野绘本</div>
+          <div class="text-xs tracking-[0.2em] font-medium" style="color:var(--jade-deep);">M · O · R · I</div>
+        </div>
+      </div>
+      <div class="hidden md:flex items-center gap-8 text-sm" style="color:var(--ink);">
+        <a class="hover:opacity-60" href="#discover">发现</a>
+        <a class="hover:opacity-60" href="#track">记录</a>
+        <a class="hover:opacity-60" href="#gear">装备</a>
+        <a class="hover:opacity-60" href="#safety">守护</a>
+        <a class="hover:opacity-60" href="#derivatives">衍生</a>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="chip" style="background:rgba(255,255,255,0.7); color:var(--jade-deep);">PRD v0.1</span>
+      </div>
+    </nav>
+
+    <div class="grid md:grid-cols-12 gap-12 items-center">
+      <div class="md:col-span-7">
+        <div class="chip mb-5" style="background:rgba(255,255,255,0.7); color:var(--bark); backdrop-filter:blur(4px);">
+          <span class="mi text-sm">auto_awesome</span> 吉卜力风 · 家庭轻户外 · 2026 夏首发
+        </div>
+        <h1 class="serif font-black text-5xl md:text-6xl leading-[1.15] mb-6" style="color:var(--ink);">
+          把每一次出门，<br/>
+          画成一张<span style="color:var(--jade-deep);">童话地图</span>。
+        </h1>
+        <p class="text-base md:text-lg leading-relaxed mb-8 max-w-xl" style="color:#3D4A45;">
+          山野绘本 Mori 是一款面向家庭与入门级户外爱好者的山野探索 App。
+          我们把真实地形 + 三方种草视频 + 装备打包 + 哨子守护，编织成一张会生长的童话地图，
+          让小探客 Pathkin 陪你走完每一段山野时光。
+        </p>
+        <div class="flex flex-wrap gap-3 mb-10">
+          <span class="chip" style="background:white; color:var(--jade-deep); border:1px solid rgba(63,139,110,0.2);"><span class="mi text-sm">play_circle</span> 三方视频聚合</span>
+          <span class="chip" style="background:white; color:var(--jade-deep); border:1px solid rgba(63,139,110,0.2);"><span class="mi text-sm">terrain</span> 3D 童话地图</span>
+          <span class="chip" style="background:white; color:var(--jade-deep); border:1px solid rgba(63,139,110,0.2);"><span class="mi text-sm">backpack</span> 场景化装备包</span>
+          <span class="chip" style="background:white; color:var(--jade-deep); border:1px solid rgba(63,139,110,0.2);"><span class="mi text-sm">shield_moon</span> 哨子守护</span>
+        </div>
+        <div class="flex items-center gap-6 text-sm" style="color:var(--bark);">
+          <div class="flex items-center gap-2"><span class="mi text-base" style="color:var(--coral);">place</span> 杭州首发</div>
+          <div class="flex items-center gap-2"><span class="mi text-base" style="color:var(--gold);">water_drop</span> 夏季水系场景</div>
+          <div class="flex items-center gap-2"><span class="mi text-base" style="color:var(--jade);">family_restroom</span> 全家可玩</div>
+        </div>
+      </div>
+
+      <div class="md:col-span-5 flex justify-center">
+        <div class="phone animate__animated animate__fadeInUp">
+          <div class="screen map-bg">
+            <div class="statusbar">
+              <span>9:41</span>
+              <div class="flex items-center gap-1">
+                <span class="mi text-sm">network_wifi</span>
+                <span class="mi text-sm">battery_full</span>
+              </div>
+            </div>
+            <!-- hero map -->
+            <div class="px-5 pt-2">
+              <div class="text-xs tracking-widest font-semibold mb-1" style="color:var(--jade-deep);">MORI · 童话地图</div>
+              <div class="serif font-bold text-xl mb-3" style="color:var(--ink);">今天的山野，<br/>正在等你画下一页</div>
+            </div>
+            <!-- map area -->
+            <div class="relative mx-4 rounded-3xl overflow-hidden" style="height:380px; background:linear-gradient(160deg,#A9D2BC,#DCEFE3 60%, #FFF7E8);">
+              <!-- mountains -->
+              <svg viewBox="0 0 300 380" class="w-full h-full">
+                <path d="M0 280 Q60 200 120 240 Q180 290 240 220 Q280 180 300 240 L300 380 L0 380 Z" fill="#7FB89A" opacity="0.85"/>
+                <path d="M0 320 Q80 270 140 300 Q210 340 300 290 L300 380 L0 380 Z" fill="#5FA07F"/>
+                <!-- river -->
+                <path d="M40 360 Q90 320 130 340 Q180 360 230 320 Q270 290 290 310" stroke="#6FB6E0" stroke-width="6" fill="none" stroke-linecap="round"/>
+                <!-- trees -->
+                <g fill="#3F8B6E">
+                  <circle cx="60" cy="270" r="10"/><rect x="58" y="270" width="4" height="10" fill="#5A4A3A"/>
+                  <circle cx="200" cy="240" r="14"/><rect x="198" y="240" width="4" height="14" fill="#5A4A3A"/>
+                  <circle cx="240" cy="280" r="9"/><rect x="238" y="280" width="3" height="9" fill="#5A4A3A"/>
+                </g>
+                <!-- trail -->
+                <path class="trail" d="M50 350 Q100 310 140 320 Q190 330 220 280 Q240 250 270 230"/>
+                <!-- character -->
+                <g transform="translate(135,310)">
+                  <circle r="11" fill="#E8806B"/>
+                  <circle cx="-3" cy="-2" r="2" fill="white"/><circle cx="3" cy="-2" r="2" fill="white"/>
+                  <circle cx="-3" cy="-2" r="1" fill="#1F2A26"/><circle cx="3" cy="-2" r="1" fill="#1F2A26"/>
+                  <path d="M-7 -8 L-4 -4 M7 -8 L4 -4" stroke="#E8806B" stroke-width="3"/>
+                </g>
+              </svg>
+
+              <!-- floating tags -->
+              <div class="absolute top-4 left-4 chip animate__animated animate__fadeInDown" style="background:white; color:var(--jade-deep);">
+                <span class="mi text-sm" style="color:var(--coral);">photo_camera</span> 萤火虫驿站 · 250m
+              </div>
+              <div class="absolute bottom-16 right-3 chip animate__animated animate__fadeInUp" style="background:var(--cream); color:var(--bark);">
+                <span class="mi text-sm" style="color:var(--gold);">collections</span> 拾到 1 片银杏叶
+              </div>
+            </div>
+            <!-- bottom card -->
+            <div class="absolute bottom-5 left-4 right-4 bg-white rounded-2xl p-4 shadow-lg">
+              <div class="flex items-center justify-between mb-2">
+                <div>
+                  <div class="text-xs" style="color:var(--bark);">今日小探客 · 小狐狸 Pathkin</div>
+                  <div class="serif font-bold" style="color:var(--ink);">青山岙水系徒步</div>
+                </div>
+                <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:var(--jade);">
+                  <span class="mi text-white">play_arrow</span>
+                </div>
+              </div>
+              <div class="flex gap-3 text-xs" style="color:var(--bark);">
+                <span class="flex items-center gap-1"><span class="mi text-sm" style="color:var(--jade);">straighten</span> 4.2 km</span>
+                <span class="flex items-center gap-1"><span class="mi text-sm" style="color:var(--coral);">timer</span> 1h 30m</span>
+                <span class="flex items-center gap-1"><span class="mi text-sm" style="color:var(--gold);">stars</span> +12 经验</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ FLOW SECTION 01 · 发现 ============ -->
+<section id="discover" class="py-24 relative">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="grid md:grid-cols-12 gap-12 items-center">
+      <div class="md:col-span-6 order-2 md:order-1 flex justify-center">
+        <div class="phone">
+          <div class="screen" style="background:var(--parchment);">
+            <div class="statusbar"><span>9:41</span><div class="flex gap-1"><span class="mi text-sm">network_wifi</span><span class="mi text-sm">battery_full</span></div></div>
+            <div class="px-5">
+              <div class="flex items-center justify-between mb-3">
+                <div class="serif font-bold text-xl">发现</div>
+                <span class="chip" style="background:var(--mist); color:var(--jade-deep);"><span class="mi text-sm">water_drop</span> 夏季</span>
+              </div>
+              <!-- search -->
+              <div class="flex items-center gap-2 px-3 py-2 rounded-2xl mb-4" style="background:white; border:1px solid var(--mist);">
+                <span class="mi text-base" style="color:var(--bark);">search</span>
+                <span class="text-xs" style="color:#9AAAA3;">想去溯溪 / 萤火虫 / 露营 ...</span>
+              </div>
+              <!-- categories -->
+              <div class="grid grid-cols-4 gap-2 mb-4 text-center">
+                <div><div class="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center" style="background:#CFE7F4;"><span class="mi" style="color:#3A7CA8;">kayaking</span></div><div class="text-[10px] mt-1">溯溪</div></div>
+                <div><div class="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center" style="background:#E5F1EB;"><span class="mi" style="color:var(--jade-deep);">hiking</span></div><div class="text-[10px] mt-1">轻徒步</div></div>
+                <div><div class="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center" style="background:#FFF1D8;"><span class="mi" style="color:var(--gold);">cottage</span></div><div class="text-[10px] mt-1">营地</div></div>
+                <div><div class="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center" style="background:#F8DCD3;"><span class="mi" style="color:var(--coral);">nightlight</span></div><div class="text-[10px] mt-1">萤火虫</div></div>
+              </div>
+              <!-- video card 1 -->
+              <div class="rounded-2xl overflow-hidden mb-3 shadow-sm" style="background:white;">
+                <div class="h-32 relative" style="background:linear-gradient(135deg,#7FB89A,#CFE7F4);">
+                  <div class="absolute inset-0 flex items-center justify-center">
+                    <div class="w-12 h-12 rounded-full flex items-center justify-center bg-white/85"><span class="mi" style="color:var(--jade-deep);">play_arrow</span></div>
+                  </div>
+                  <span class="absolute bottom-2 left-2 chip" style="background:rgba(0,0,0,0.55); color:white;">小红书 · 02:34</span>
+                </div>
+                <div class="p-3">
+                  <div class="text-sm font-semibold mb-1">青山湖溯溪｜带娃也能玩的清凉路线</div>
+                  <div class="text-xs flex items-center gap-2" style="color:var(--bark);">
+                    <span class="mi text-sm" style="color:var(--coral);">favorite</span> 1.2w
+                    <span class="mi text-sm" style="color:var(--jade);">place</span> 杭州 · 临安
+                  </div>
+                </div>
+              </div>
+              <!-- video card 2 -->
+              <div class="rounded-2xl overflow-hidden shadow-sm" style="background:white;">
+                <div class="h-24 relative" style="background:linear-gradient(135deg,#FFD79A,#F8DCD3);">
+                  <span class="absolute bottom-2 left-2 chip" style="background:rgba(0,0,0,0.55); color:white;">抖音 · 01:12</span>
+                </div>
+                <div class="p-3">
+                  <div class="text-sm font-semibold">天目山萤火虫秘境</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="md:col-span-6 order-1 md:order-2">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="num-tag">01</span>
+          <div class="text-xs tracking-[0.2em] font-semibold" style="color:var(--jade-deep);">DISCOVER · 发现</div>
+        </div>
+        <h2 class="serif font-bold text-4xl mb-5" style="color:var(--ink);">
+          季节场景库 +<br/>三方视频聚合<span style="color:var(--jade-deep);">.</span>
+        </h2>
+        <p class="leading-relaxed mb-8" style="color:#3D4A45;">
+          按季节聚焦，2026 夏首发以水系为核心：溯溪、轻徒步、营地、萤火虫。
+          聚合小红书、抖音、B 站等平台的优质种草内容（深链跳转，不转码、不商用），
+          让用户「先被故事吸引，再被路线带走」。
+        </p>
+        <div class="space-y-4">
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:var(--mist);"><span class="mi" style="color:var(--jade-deep);">filter_drama</span></div>
+            <div><div class="font-semibold mb-1">季节皮肤</div><div class="text-sm" style="color:var(--bark);">春樱 / 夏溪 / 秋枫 / 冬霜，UI 与地图随季节切换</div></div>
+          </div>
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:var(--mist);"><span class="mi" style="color:var(--jade-deep);">video_library</span></div>
+            <div><div class="font-semibold mb-1">深链聚合，不碰版权</div><div class="text-sm" style="color:var(--bark);">点击跳转原平台播放，规避转码与二次分发风险</div></div>
+          </div>
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:var(--mist);"><span class="mi" style="color:var(--jade-deep);">verified</span></div>
+            <div><div class="font-semibold mb-1">守林人认证创作者</div><div class="text-sm" style="color:var(--bark);">M3 起逐步引入官方达人，对内容打标 + 路线绑定</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FLOW SECTION 02 · 记录 ============ -->
+<section id="track" class="py-24 relative" style="background:linear-gradient(180deg, transparent, var(--mist), transparent);">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="grid md:grid-cols-12 gap-12 items-center">
+      <div class="md:col-span-6">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="num-tag">02</span>
+          <div class="text-xs tracking-[0.2em] font-semibold" style="color:var(--jade-deep);">TRACK · 记录</div>
+        </div>
+        <h2 class="serif font-bold text-4xl mb-5" style="color:var(--ink);">
+          GPS 轨迹 + 3D 童话地图，<br/>每一步都在<span style="color:var(--coral);">画绘本</span>。
+        </h2>
+        <p class="leading-relaxed mb-8" style="color:#3D4A45;">
+          离线下载等高线，记录真实 GPS 轨迹；服务端基于 DEM + Cel-Shading 离线烘焙渲染，
+          为每段旅程生成一张吉卜力风的 3D 童话地图视频。小探客 Pathkin 在地图上同步成长，
+          路上拾到的银杏、松果、星砂会被收进随身卷轴。
+        </p>
+        <div class="grid grid-cols-2 gap-4 mb-6">
+          <div class="leaf-card !p-5">
+            <div class="text-xs" style="color:var(--bark);">差异化亮点 A</div>
+            <div class="serif font-bold mt-1">地形拟人化</div>
+            <div class="text-sm mt-1" style="color:var(--bark);">山有眉眼、河有歌</div>
+          </div>
+          <div class="leaf-card !p-5">
+            <div class="text-xs" style="color:var(--bark);">差异化亮点 B</div>
+            <div class="serif font-bold mt-1">动态生长</div>
+            <div class="text-sm mt-1" style="color:var(--bark);">每走一步，绘本多一笔</div>
+          </div>
+          <div class="leaf-card !p-5">
+            <div class="text-xs" style="color:var(--bark);">差异化亮点 E</div>
+            <div class="serif font-bold mt-1">双视角切换</div>
+            <div class="text-sm mt-1" style="color:var(--bark);">真实卫星 ↔ 童话绘本</div>
+          </div>
+          <div class="leaf-card !p-5">
+            <div class="text-xs" style="color:var(--bark);">差异化亮点 F</div>
+            <div class="serif font-bold mt-1">AI 童话日记</div>
+            <div class="text-sm mt-1" style="color:var(--bark);">轨迹自动生成绘本叙事</div>
+          </div>
+        </div>
+        <div class="text-xs" style="color:var(--bark);">
+          技术栈 · Three.js + Mapbox/高德 DEM · 服务端 Unity/UE 离线烘焙 · iOS SceneKit / Android Filament
+        </div>
+      </div>
+
+      <div class="md:col-span-6 flex justify-center">
+        <div class="phone">
+          <div class="screen" style="background:#0E1612;">
+            <div class="statusbar" style="color:white;"><span>9:41</span><div class="flex gap-1"><span class="mi text-sm">network_wifi</span><span class="mi text-sm">battery_full</span></div></div>
+            <div class="absolute inset-x-0 top-9 bottom-0">
+              <!-- 3D map -->
+              <div class="h-[58%] relative overflow-hidden" style="background:linear-gradient(180deg,#3F6E84 0%, #6FA48C 60%, #C9DCB8 100%);">
+                <svg viewBox="0 0 340 380" class="w-full h-full">
+                  <!-- distant peaks -->
+                  <path d="M0 200 L60 120 L120 180 L180 100 L240 170 L300 130 L340 180 L340 250 L0 250 Z" fill="#5A7A92" opacity="0.7"/>
+                  <path d="M0 240 L80 170 L160 220 L240 160 L340 220 L340 300 L0 300 Z" fill="#6F8B6E"/>
+                  <path d="M0 290 L100 240 L200 280 L320 240 L340 260 L340 380 L0 380 Z" fill="#3F8B6E"/>
+                  <!-- river -->
+                  <path d="M20 360 Q80 320 140 340 Q200 360 260 320 Q300 290 340 310" stroke="#A8D5E8" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.85"/>
+                  <!-- trail -->
+                  <path class="trail" d="M40 350 Q100 320 150 330 Q210 340 250 290 Q280 250 310 220" stroke="#FFD79A"/>
+                  <!-- pin character -->
+                  <g transform="translate(150,330)">
+                    <circle r="14" fill="white" opacity="0.95"/>
+                    <circle r="9" fill="#E8806B"/>
+                    <text y="3" text-anchor="middle" font-size="10" fill="white">🦊</text>
+                  </g>
+                  <!-- collected pin -->
+                  <g transform="translate(250,290)">
+                    <circle r="10" fill="#FFF7E8" stroke="#D9B26A" stroke-width="2"/>
+                    <text y="3" text-anchor="middle" font-size="10">🍂</text>
+                  </g>
+                </svg>
+                <!-- toggle -->
+                <div class="absolute top-3 right-3 flex p-1 rounded-full bg-black/40 backdrop-blur">
+                  <span class="px-3 py-1 rounded-full text-[10px] font-semibold" style="background:white; color:var(--ink);">绘本</span>
+                  <span class="px-3 py-1 rounded-full text-[10px] font-semibold" style="color:white;">卫星</span>
+                </div>
+                <div class="absolute top-3 left-3 chip" style="background:rgba(255,255,255,0.85); color:var(--jade-deep);"><span class="mi text-sm">3d_rotation</span> 3D 童话视图</div>
+              </div>
+              <!-- info panel -->
+              <div class="bg-white p-4 h-[42%] rounded-t-3xl -mt-4 relative">
+                <div class="flex items-center justify-between mb-3">
+                  <div>
+                    <div class="text-xs" style="color:var(--bark);">小探客 · Lv.4 小狐狸</div>
+                    <div class="serif font-bold text-lg">青山溯溪 · 第 3 页</div>
+                  </div>
+                  <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:var(--coral);">
+                    <span class="mi text-white">stop</span>
+                  </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 mb-3 text-center">
+                  <div class="p-2 rounded-xl" style="background:var(--mist);">
+                    <div class="serif font-bold" style="color:var(--jade-deep);">4.2</div>
+                    <div class="text-[10px]" style="color:var(--bark);">公里</div>
+                  </div>
+                  <div class="p-2 rounded-xl" style="background:var(--cream);">
+                    <div class="serif font-bold" style="color:var(--gold);">+82</div>
+                    <div class="text-[10px]" style="color:var(--bark);">海拔 m</div>
+                  </div>
+                  <div class="p-2 rounded-xl" style="background:#F8DCD3;">
+                    <div class="serif font-bold" style="color:var(--coral);">3</div>
+                    <div class="text-[10px]" style="color:var(--bark);">收集物</div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 p-2 rounded-xl" style="background:var(--parchment);">
+                  <span class="mi" style="color:var(--gold);">auto_stories</span>
+                  <div class="text-xs flex-1">
+                    <span style="color:var(--bark);">AI 童话日记 · </span>
+                    <span class="font-semibold">「小狐狸涉过青苔石阶...」</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FLOW SECTION 03 · 装备 ============ -->
+<section id="gear" class="py-24 relative">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="grid md:grid-cols-12 gap-12 items-center">
+      <div class="md:col-span-6 order-2 md:order-1 flex justify-center">
+        <div class="phone">
+          <div class="screen" style="background:var(--parchment);">
+            <div class="statusbar"><span>9:41</span><div class="flex gap-1"><span class="mi text-sm">network_wifi</span><span class="mi text-sm">battery_full</span></div></div>
+            <div class="px-5">
+              <div class="flex items-center justify-between mb-2">
+                <div class="serif font-bold text-xl">装备</div>
+                <span class="chip" style="background:var(--cream); color:var(--bark);">夏季水系</span>
+              </div>
+              <div class="text-xs mb-4" style="color:var(--bark);">为「青山湖溯溪」打包</div>
+              <!-- pack tabs -->
+              <div class="flex gap-2 mb-4">
+                <span class="chip" style="background:var(--mist); color:var(--jade-deep);">入门</span>
+                <span class="chip" style="background:var(--jade); color:white;">标准 ✓</span>
+                <span class="chip" style="background:white; color:var(--bark); border:1px solid var(--mist);">进阶</span>
+              </div>
+              <!-- gear items -->
+              <div class="space-y-3 mb-4">
+                <div class="flex items-center gap-3 p-3 rounded-2xl bg-white shadow-sm">
+                  <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:#CFE7F4;"><span class="mi" style="color:#3A7CA8;">water</span></div>
+                  <div class="flex-1">
+                    <div class="font-semibold text-sm">速干溯溪鞋 · 童趣款</div>
+                    <div class="text-xs" style="color:var(--bark);">小狐狸联名 · 防滑 5 级</div>
+                  </div>
+                  <div class="text-right"><div class="font-bold" style="color:var(--coral);">¥289</div></div>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-2xl bg-white shadow-sm">
+                  <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:#FFF1D8;"><span class="mi" style="color:var(--gold);">backpack</span></div>
+                  <div class="flex-1">
+                    <div class="font-semibold text-sm">15L 防水日包</div>
+                    <div class="text-xs" style="color:var(--bark);">含童话地图绣标</div>
+                  </div>
+                  <div class="text-right"><div class="font-bold" style="color:var(--coral);">¥168</div></div>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-2xl bg-white shadow-sm">
+                  <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:#E5F1EB;"><span class="mi" style="color:var(--jade-deep);">umbrella</span></div>
+                  <div class="flex-1">
+                    <div class="font-semibold text-sm">防晒衣 · 母女同款</div>
+                    <div class="text-xs" style="color:var(--bark);">UPF 50+ ／ 2 件</div>
+                  </div>
+                  <div class="text-right"><div class="font-bold" style="color:var(--coral);">¥358</div></div>
+                </div>
+              </div>
+              <!-- bundle bar -->
+              <div class="rounded-2xl p-4 flex items-center justify-between" style="background:var(--ink); color:white;">
+                <div>
+                  <div class="text-[10px] opacity-70">3 件标准包 · 守林人推荐</div>
+                  <div class="serif font-bold">¥736 <span class="text-xs line-through opacity-60 ml-1">¥815</span></div>
+                </div>
+                <div class="px-4 py-2 rounded-full text-sm font-semibold" style="background:var(--coral);">一键打包</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="md:col-span-6 order-1 md:order-2">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="num-tag" style="background:var(--coral);">03</span>
+          <div class="text-xs tracking-[0.2em] font-semibold" style="color:var(--coral);">GEAR · 装备</div>
+        </div>
+        <h2 class="serif font-bold text-4xl mb-5" style="color:var(--ink);">
+          按场景一键打包，<br/>不让新手在 SKU 海里迷路。
+        </h2>
+        <p class="leading-relaxed mb-8" style="color:#3D4A45;">
+          每一条路线都对应「入门 / 标准 / 进阶」三档装备包。我们与品牌方联合定制，
+          含童话地图 IP 绣标、亲子同款、儿童尺码，并提供租赁选项。
+          首年装备 GMV 占比 70%，是 Mori 的主营收支柱。
+        </p>
+        <div class="grid grid-cols-3 gap-4">
+          <div class="leaf-card !p-4 text-center"><div class="serif font-bold text-2xl" style="color:var(--jade-deep);">70%</div><div class="text-xs mt-1" style="color:var(--bark);">Y1 装备营收占比</div></div>
+          <div class="leaf-card !p-4 text-center"><div class="serif font-bold text-2xl" style="color:var(--coral);">¥1,100</div><div class="text-xs mt-1" style="color:var(--bark);">用户 LTV 目标</div></div>
+          <div class="leaf-card !p-4 text-center"><div class="serif font-bold text-2xl" style="color:var(--gold);">3</div><div class="text-xs mt-1" style="color:var(--bark);">入门/标准/进阶档</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FLOW SECTION 04 · 哨子守护 ============ -->
+<section id="safety" class="py-24 relative" style="background:linear-gradient(180deg, transparent, #FFF7E8, transparent);">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-12">
+      <div class="flex items-center justify-center gap-3 mb-4">
+        <span class="num-tag" style="background:var(--gold);">04</span>
+        <div class="text-xs tracking-[0.2em] font-semibold" style="color:var(--gold);">SAFETY · 哨子守护</div>
+      </div>
+      <h2 class="serif font-bold text-4xl mb-4" style="color:var(--ink);">
+        把救援，藏进童话里。
+      </h2>
+      <p class="max-w-2xl mx-auto leading-relaxed" style="color:#3D4A45;">
+        孩子不该被「SOS / 求救 / 报警」这些字眼吓到。我们把安全功能重命名为
+        哨子、留下足迹、随身卷轴、萤火虫、守林人——可爱、可记、关键时刻顶用。
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-12 gap-10 items-center">
+      <div class="md:col-span-7 grid grid-cols-2 gap-4">
+        <div class="leaf-card">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style="background:#F8DCD3;"><span class="mi text-2xl" style="color:var(--coral);">campaign</span></div>
+          <div class="serif font-bold mb-1">哨子</div>
+          <div class="text-sm" style="color:var(--bark);">长按一键吹响哨子，守林人 + 紧急联系人 5 秒同步收到位置。</div>
+        </div>
+        <div class="leaf-card">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style="background:var(--mist);"><span class="mi text-2xl" style="color:var(--jade-deep);">footprint</span></div>
+          <div class="serif font-bold mb-1">留下足迹</div>
+          <div class="text-sm" style="color:var(--bark);">出发前自动同步行程给家人；信号弱区每 5 分钟续写一段足迹。</div>
+        </div>
+        <div class="leaf-card">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style="background:#FFF1D8;"><span class="mi text-2xl" style="color:var(--gold);">menu_book</span></div>
+          <div class="serif font-bold mb-1">随身卷轴</div>
+          <div class="text-sm" style="color:var(--bark);">离线地图、急救图鉴、当地草木图谱，飞行模式也能翻。</div>
+        </div>
+        <div class="leaf-card">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style="background:#E0EAF8;"><span class="mi text-2xl" style="color:#5874A8;">nightlight</span></div>
+          <div class="serif font-bold mb-1">萤火虫</div>
+          <div class="text-sm" style="color:var(--bark);">基于北斗短报文，无信号区域也能发出微光（一句 70 字以内的求助）。</div>
+        </div>
+        <div class="leaf-card col-span-2 flex gap-4 items-start">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style="background:var(--jade); color:white;"><span class="mi text-2xl">forest</span></div>
+          <div>
+            <div class="serif font-bold mb-1">守林人</div>
+            <div class="text-sm" style="color:var(--bark);">7×24 在线人工值守 + 当地救援联动。家长端可订阅守林人日报，看孩子今天的童话地图。</div>
+          </div>
+        </div>
+      </div>
+      <div class="md:col-span-5 flex justify-center">
+        <div class="phone">
+          <div class="screen" style="background:linear-gradient(180deg, #1F2A26, #2A6149);">
+            <div class="statusbar" style="color:white;"><span>9:41</span><div class="flex gap-1"><span class="mi text-sm">signal_cellular_alt</span><span class="mi text-sm">battery_full</span></div></div>
+            <div class="px-6 pt-2 text-white">
+              <div class="text-xs opacity-70 mb-1">守护中 · 杭州临安</div>
+              <div class="serif font-bold text-2xl mb-6">长按吹响哨子</div>
+              <!-- whistle button -->
+              <div class="flex justify-center my-8">
+                <div class="relative">
+                  <div class="w-44 h-44 rounded-full absolute inset-0 animate-ping" style="background:rgba(232,128,107,0.3);"></div>
+                  <div class="w-44 h-44 rounded-full flex items-center justify-center relative" style="background:radial-gradient(circle at 30% 30%, #F4A893, #E8806B 70%, #C56652);">
+                    <span class="mi" style="font-size:64px; color:white;">campaign</span>
+                  </div>
+                </div>
+              </div>
+              <div class="text-center text-xs opacity-70 mb-6">松手取消 · 长按 3 秒触发萤火虫</div>
+              <div class="rounded-2xl p-4 mt-2" style="background:rgba(255,255,255,0.08); backdrop-filter:blur(8px);">
+                <div class="flex items-center gap-2 mb-2"><span class="mi text-sm" style="color:var(--gold);">satellite_alt</span><div class="text-xs">北斗短报文已就绪</div></div>
+                <div class="flex items-center gap-2"><span class="mi text-sm" style="color:var(--sage);">groups</span><div class="text-xs">3 位紧急联系人 · 守林人在线</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FLOW SECTION 05 · 衍生 ============ -->
+<section id="derivatives" class="py-24 relative">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="grid md:grid-cols-12 gap-12 items-center">
+      <div class="md:col-span-6">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="num-tag" style="background:var(--bark);">05</span>
+          <div class="text-xs tracking-[0.2em] font-semibold" style="color:var(--bark);">DERIVATIVES · 衍生</div>
+        </div>
+        <h2 class="serif font-bold text-4xl mb-5" style="color:var(--ink);">
+          一段山路，一本绘本，<br/>一只能抱着睡觉的小狐狸。
+        </h2>
+        <p class="leading-relaxed mb-8" style="color:#3D4A45;">
+          每段轨迹都可以一键下单成印刷版童话绘本（含 AI 日记 + 3D 地图剧照）；
+          小探客 Pathkin 的小狐狸、小熊、小獾推出毛绒/盲盒/护照本，
+          孩子收集真实徒步章，像收集童话碎片。
+        </p>
+        <div class="space-y-3">
+          <div class="flex items-center gap-3"><span class="mi" style="color:var(--coral);">menu_book</span><div class="text-sm">印刷绘本 · 起订 1 本，¥48 起</div></div>
+          <div class="flex items-center gap-3"><span class="mi" style="color:var(--gold);">toys</span><div class="text-sm">毛绒小探客 · 三兄妹联名款</div></div>
+          <div class="flex items-center gap-3"><span class="mi" style="color:var(--jade-deep);">workspace_premium</span><div class="text-sm">山野护照本 · 真实景区盖章</div></div>
+        </div>
+      </div>
+
+      <div class="md:col-span-6 flex justify-center">
+        <div class="phone">
+          <div class="screen" style="background:var(--cream);">
+            <div class="statusbar"><span>9:41</span><div class="flex gap-1"><span class="mi text-sm">network_wifi</span><span class="mi text-sm">battery_full</span></div></div>
+            <div class="px-5">
+              <div class="serif font-bold text-xl mb-1">我的绘本</div>
+              <div class="text-xs mb-4" style="color:var(--bark);">小探客 Lv.4 · 已收集 12 章</div>
+              <!-- big book card -->
+              <div class="rounded-3xl overflow-hidden mb-3 relative" style="background:linear-gradient(135deg,#F4A893,#D9B26A);">
+                <div class="h-48 relative">
+                  <svg viewBox="0 0 300 200" class="w-full h-full">
+                    <path d="M0 130 Q60 80 120 110 Q180 140 240 100 Q280 80 300 110 L300 200 L0 200 Z" fill="#FFF7E8" opacity="0.4"/>
+                    <circle cx="240" cy="50" r="22" fill="#FFF7E8" opacity="0.7"/>
+                    <text x="150" y="100" text-anchor="middle" font-size="28">🦊</text>
+                  </svg>
+                  <div class="absolute bottom-3 left-4 right-4 text-white">
+                    <div class="text-[10px] opacity-80">第 12 章 · 杭州临安</div>
+                    <div class="serif font-bold text-lg">青山溯溪奇遇</div>
+                  </div>
+                </div>
+              </div>
+              <!-- order row -->
+              <div class="rounded-2xl p-3 flex items-center gap-3 mb-3" style="background:white;">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:var(--mist);"><span class="mi" style="color:var(--jade-deep);">print</span></div>
+                <div class="flex-1">
+                  <div class="text-sm font-semibold">印成实体绘本</div>
+                  <div class="text-xs" style="color:var(--bark);">硬壳精装 · 16 页起 · 含 AI 童话日记</div>
+                </div>
+                <div class="px-3 py-1.5 text-xs font-semibold rounded-full" style="background:var(--coral); color:white;">¥48</div>
+              </div>
+              <!-- plush row -->
+              <div class="rounded-2xl p-3 flex items-center gap-3" style="background:white;">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:#F8DCD3;"><span class="mi" style="color:var(--coral);">toys</span></div>
+                <div class="flex-1">
+                  <div class="text-sm font-semibold">毛绒小狐狸 Pathkin</div>
+                  <div class="text-xs" style="color:var(--bark);">联名限量 · 含护照贴纸</div>
+                </div>
+                <div class="px-3 py-1.5 text-xs font-semibold rounded-full" style="background:var(--ink); color:white;">¥128</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TAB OVERVIEW ============ -->
+<section class="py-24 relative" style="background:linear-gradient(180deg, var(--mist), transparent);">
+  <div class="max-w-6xl mx-auto px-6 text-center mb-12">
+    <div class="text-xs tracking-[0.3em] font-semibold mb-3" style="color:var(--jade-deep);">FOUR TABS · 主导航总览</div>
+    <h2 class="serif font-bold text-4xl" style="color:var(--ink);">四个 Tab，一段山野旅程的全部。</h2>
+  </div>
+
+  <div class="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-6">
+
+    <!-- Tab 1 -->
+    <div class="text-center">
+      <div class="phone mx-auto" style="transform:scale(0.78); transform-origin:top center;">
+        <div class="screen" style="background:var(--parchment);">
+          <div class="statusbar"><span>9:41</span></div>
+          <div class="px-4">
+            <div class="serif font-bold text-lg mb-2">发现</div>
+            <div class="rounded-xl h-20 mb-2" style="background:linear-gradient(135deg,#7FB89A,#CFE7F4);"></div>
+            <div class="rounded-xl h-16 mb-2" style="background:linear-gradient(135deg,#FFD79A,#F8DCD3);"></div>
+            <div class="rounded-xl h-16" style="background:linear-gradient(135deg,#E5F1EB,#FFF7E8);"></div>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 bg-white border-t flex justify-around p-2">
+            <span class="mi text-xl" style="color:var(--jade);">explore</span>
+            <span class="mi text-xl opacity-30">timeline</span>
+            <span class="mi text-xl opacity-30">backpack</span>
+            <span class="mi text-xl opacity-30">person</span>
+          </div>
+        </div>
+      </div>
+      <div class="serif font-bold mt-2" style="color:var(--jade-deep);">发现</div>
+      <div class="text-xs" style="color:var(--bark);">Discover · 三方视频 + 路线</div>
+    </div>
+
+    <!-- Tab 2 -->
+    <div class="text-center">
+      <div class="phone mx-auto" style="transform:scale(0.78); transform-origin:top center;">
+        <div class="screen" style="background:#0E1612;">
+          <div class="statusbar" style="color:white;"><span>9:41</span></div>
+          <div class="absolute inset-x-0 top-9 bottom-12" style="background:linear-gradient(180deg,#3F6E84,#3F8B6E);">
+            <svg viewBox="0 0 300 300" class="w-full h-full">
+              <path d="M0 200 L150 100 L300 200 L300 300 L0 300 Z" fill="#5FA07F"/>
+              <path class="trail" d="M30 270 Q150 180 270 130" stroke="#FFD79A"/>
+            </svg>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 bg-white flex justify-around p-2">
+            <span class="mi text-xl opacity-30">explore</span>
+            <span class="mi text-xl" style="color:var(--coral);">timeline</span>
+            <span class="mi text-xl opacity-30">backpack</span>
+            <span class="mi text-xl opacity-30">person</span>
+          </div>
+        </div>
+      </div>
+      <div class="serif font-bold mt-2" style="color:var(--coral);">记录</div>
+      <div class="text-xs" style="color:var(--bark);">Track · 3D 童话地图</div>
+    </div>
+
+    <!-- Tab 3 -->
+    <div class="text-center">
+      <div class="phone mx-auto" style="transform:scale(0.78); transform-origin:top center;">
+        <div class="screen" style="background:var(--parchment);">
+          <div class="statusbar"><span>9:41</span></div>
+          <div class="px-4">
+            <div class="serif font-bold text-lg mb-2">装备</div>
+            <div class="flex gap-1 mb-2"><span class="chip text-[10px]" style="background:var(--jade); color:white;">标准</span><span class="chip text-[10px]" style="background:var(--mist);">入门</span></div>
+            <div class="rounded-xl h-12 mb-1 bg-white shadow-sm"></div>
+            <div class="rounded-xl h-12 mb-1 bg-white shadow-sm"></div>
+            <div class="rounded-xl h-12 bg-white shadow-sm"></div>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 bg-white border-t flex justify-around p-2">
+            <span class="mi text-xl opacity-30">explore</span>
+            <span class="mi text-xl opacity-30">timeline</span>
+            <span class="mi text-xl" style="color:var(--gold);">backpack</span>
+            <span class="mi text-xl opacity-30">person</span>
+          </div>
+        </div>
+      </div>
+      <div class="serif font-bold mt-2" style="color:var(--gold);">装备</div>
+      <div class="text-xs" style="color:var(--bark);">Gear · 场景化装备包</div>
+    </div>
+
+    <!-- Tab 4 -->
+    <div class="text-center">
+      <div class="phone mx-auto" style="transform:scale(0.78); transform-origin:top center;">
+        <div class="screen" style="background:var(--cream);">
+          <div class="statusbar"><span>9:41</span></div>
+          <div class="px-4 text-center">
+            <div class="w-14 h-14 mx-auto rounded-full flex items-center justify-center my-2" style="background:var(--coral);">
+              <span class="mi text-2xl text-white">person</span>
+            </div>
+            <div class="serif font-bold">小狐狸 Pathkin</div>
+            <div class="text-xs" style="color:var(--bark);">Lv.4 · 12 章绘本</div>
+            <div class="grid grid-cols-3 gap-1 mt-3 text-[10px]">
+              <div class="p-1 rounded bg-white">绘本</div>
+              <div class="p-1 rounded bg-white">护照</div>
+              <div class="p-1 rounded bg-white">商城</div>
+            </div>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 bg-white border-t flex justify-around p-2">
+            <span class="mi text-xl opacity-30">explore</span>
+            <span class="mi text-xl opacity-30">timeline</span>
+            <span class="mi text-xl opacity-30">backpack</span>
+            <span class="mi text-xl" style="color:var(--bark);">person</span>
+          </div>
+        </div>
+      </div>
+      <div class="serif font-bold mt-2" style="color:var(--bark);">我的</div>
+      <div class="text-xs" style="color:var(--bark);">Mine · 小探客成长 + 衍生</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ CORE VALUE / GO-TO-MARKET ============ -->
+<section class="py-24 relative">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-12">
+      <div class="text-xs tracking-[0.3em] font-semibold mb-3" style="color:var(--jade-deep);">VALUE & GO-TO-MARKET</div>
+      <h2 class="serif font-bold text-4xl" style="color:var(--ink);">一座城开始，一片山野铺开。</h2>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-6 mb-12">
+      <div class="leaf-card">
+        <div class="text-xs tracking-widest font-semibold mb-2" style="color:var(--jade-deep);">商业模式</div>
+        <div class="serif font-bold text-2xl mb-3">Y1 装备 70%</div>
+        <ul class="text-sm space-y-1" style="color:var(--bark);">
+          <li>• 装备零售 / 租赁 70%</li>
+          <li>• 月卡 19 / 年卡 168 · 10%</li>
+          <li>• 衍生绘本毛绒 5%</li>
+          <li>• B 端景区合作 10%</li>
+          <li>• 品牌广告 5%</li>
+        </ul>
+      </div>
+      <div class="leaf-card">
+        <div class="text-xs tracking-widest font-semibold mb-2" style="color:var(--coral);">单位经济</div>
+        <div class="serif font-bold text-2xl mb-3">CAC ¥60-100</div>
+        <div class="text-sm space-y-2" style="color:var(--bark);">
+          <div class="flex justify-between"><span>LTV 目标</span><span class="font-semibold" style="color:var(--ink);">¥1,100</span></div>
+          <div class="flex justify-between"><span>LTV / CAC</span><span class="font-semibold" style="color:var(--ink);">11x – 18x</span></div>
+          <div class="flex justify-between"><span>装备复购</span><span class="font-semibold" style="color:var(--ink);">2.4 次/年</span></div>
+        </div>
+      </div>
+      <div class="leaf-card">
+        <div class="text-xs tracking-widest font-semibold mb-2" style="color:var(--gold);">冷启动</div>
+        <div class="serif font-bold text-2xl mb-3">杭州 · 单城打透</div>
+        <div class="text-sm space-y-2" style="color:var(--bark);">
+          <div class="flex gap-2"><span class="chip" style="background:var(--mist); color:var(--jade-deep);">M1-M2</span> 杭州内测 1k 家庭</div>
+          <div class="flex gap-2"><span class="chip" style="background:var(--cream); color:var(--gold);">M3</span> 公测 + 守林人值守</div>
+          <div class="flex gap-2"><span class="chip" style="background:#F8DCD3; color:var(--coral);">M4-M6</span> 单城 1w DAU</div>
+          <div class="flex gap-2"><span class="chip" style="background:var(--ink); color:white;">M7-M9</span> 复制苏沪蓉</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- differentiation strip -->
+    <div class="rounded-3xl p-8" style="background:var(--ink); color:white;">
+      <div class="text-xs tracking-[0.3em] font-semibold mb-3" style="color:var(--gold);">SIX DIFFERENTIATIONS · 六点差异化</div>
+      <div class="grid md:grid-cols-6 gap-6">
+        <div><div class="text-2xl mb-1">🏔</div><div class="serif font-bold text-sm">A · 地形拟人化</div><div class="text-xs opacity-70 mt-1">山有眉眼河有歌</div></div>
+        <div><div class="text-2xl mb-1">🌱</div><div class="serif font-bold text-sm">B · 动态生长</div><div class="text-xs opacity-70 mt-1">绘本随脚步翻页</div></div>
+        <div><div class="text-2xl mb-1">🍂</div><div class="serif font-bold text-sm">C · 沿途收集物</div><div class="text-xs opacity-70 mt-1">银杏松果星砂</div></div>
+        <div><div class="text-2xl mb-1">🌸</div><div class="serif font-bold text-sm">D · 季节皮肤</div><div class="text-xs opacity-70 mt-1">春樱夏溪秋枫冬霜</div></div>
+        <div><div class="text-2xl mb-1">🛰</div><div class="serif font-bold text-sm">E · 双视角切换</div><div class="text-xs opacity-70 mt-1">卫星 ↔ 童话</div></div>
+        <div><div class="text-2xl mb-1">📖</div><div class="serif font-bold text-sm">F · AI 童话日记</div><div class="text-xs opacity-70 mt-1">轨迹自动叙事</div></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ DESIGN SYSTEM ============ -->
+<section class="py-24 relative" style="background:linear-gradient(180deg, transparent, var(--mist));">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-12">
+      <div class="text-xs tracking-[0.3em] font-semibold mb-3" style="color:var(--jade-deep);">DESIGN SYSTEM · 视觉语言</div>
+      <h2 class="serif font-bold text-4xl" style="color:var(--ink);">吉卜力风的克制与温度。</h2>
+    </div>
+
+    <div class="grid md:grid-cols-12 gap-8">
+      <div class="md:col-span-7">
+        <div class="leaf-card !p-8">
+          <div class="text-xs tracking-widest font-semibold mb-4" style="color:var(--bark);">COLOR PALETTE</div>
+          <div class="grid grid-cols-6 gap-3 mb-3">
+            <div><div class="swatch" style="background:#F4FAF8;"></div><div class="text-[10px] mt-1 font-mono">Parchment</div><div class="text-[10px] font-mono opacity-60">#F4FAF8</div></div>
+            <div><div class="swatch" style="background:#E5F1EB;"></div><div class="text-[10px] mt-1 font-mono">Mist</div><div class="text-[10px] font-mono opacity-60">#E5F1EB</div></div>
+            <div><div class="swatch" style="background:#9CC5B0;"></div><div class="text-[10px] mt-1 font-mono">Sage</div><div class="text-[10px] font-mono opacity-60">#9CC5B0</div></div>
+            <div><div class="swatch" style="background:#3F8B6E;"></div><div class="text-[10px] mt-1 font-mono">Jade</div><div class="text-[10px] font-mono opacity-60">#3F8B6E</div></div>
+            <div><div class="swatch" style="background:#E8806B;"></div><div class="text-[10px] mt-1 font-mono">Coral</div><div class="text-[10px] font-mono opacity-60">#E8806B</div></div>
+            <div><div class="swatch" style="background:#D9B26A;"></div><div class="text-[10px] mt-1 font-mono">Gold</div><div class="text-[10px] font-mono opacity-60">#D9B26A</div></div>
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <div><div class="swatch" style="background:#FFF7E8;"></div><div class="text-[10px] mt-1 font-mono">Cream</div><div class="text-[10px] font-mono opacity-60">#FFF7E8</div></div>
+            <div><div class="swatch" style="background:#5A4A3A;"></div><div class="text-[10px] mt-1 font-mono">Bark</div><div class="text-[10px] font-mono opacity-60">#5A4A3A</div></div>
+            <div><div class="swatch" style="background:#1F2A26;"></div><div class="text-[10px] mt-1 font-mono">Ink</div><div class="text-[10px] font-mono opacity-60">#1F2A26</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="md:col-span-5 space-y-4">
+        <div class="leaf-card !p-6">
+          <div class="text-xs tracking-widest font-semibold mb-2" style="color:var(--bark);">TYPOGRAPHY</div>
+          <div class="serif font-black text-3xl" style="color:var(--ink);">把每一次出门</div>
+          <div class="serif font-bold text-xl" style="color:var(--jade-deep);">画成一张童话地图</div>
+          <div class="text-sm mt-2 font-medium">Inter · 正文 / Noto Serif SC · 标题</div>
+        </div>
+        <div class="leaf-card !p-6">
+          <div class="text-xs tracking-widest font-semibold mb-2" style="color:var(--bark);">PRINCIPLES</div>
+          <ul class="text-sm space-y-1.5">
+            <li class="flex gap-2"><span style="color:var(--jade);">✦</span> 自然界比 UI 重要：少阴影，多笔触</li>
+            <li class="flex gap-2"><span style="color:var(--jade);">✦</span> 角色优先：小狐狸 / 小熊 / 小獾贯穿全局</li>
+            <li class="flex gap-2"><span style="color:var(--jade);">✦</span> 不用「警告 / 求救」字眼，用童话替代</li>
+            <li class="flex gap-2"><span style="color:var(--jade);">✦</span> 大圆角 24-32px，呼吸感留白</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center mt-16">
+      <div class="serif text-2xl md:text-3xl italic" style="color:var(--jade-deep);">「把每一次出门，画成一张童话地图。」</div>
+      <div class="text-xs mt-2 tracking-[0.3em]" style="color:var(--bark);">— MORI ONE LINE</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer-leaf">
+  <div class="max-w-6xl mx-auto px-6 py-16">
+    <div class="grid md:grid-cols-12 gap-10">
+      <div class="md:col-span-5">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-11 h-11 rounded-2xl bg-white/10 flex items-center justify-center">
+            <span class="mi text-2xl" style="color:var(--sage);">forest</span>
+          </div>
+          <div>
+            <div class="serif font-bold text-lg">山野绘本 Mori</div>
+            <div class="text-xs tracking-[0.2em] opacity-70">M · O · R · I</div>
+          </div>
+        </div>
+        <p class="text-sm opacity-80 leading-relaxed max-w-sm">
+          一个家庭轻户外品牌，一张会生长的童话地图，一只陪你走山野的小狐狸。
+          PRD v0.1 · 2026 夏季杭州首发。
+        </p>
+      </div>
+      <div class="md:col-span-3">
+        <div class="text-xs tracking-widest font-semibold mb-3 opacity-70">PRODUCT</div>
+        <ul class="space-y-2 text-sm">
+          <li><a class="opacity-80 hover:opacity-100" href="#discover">发现 Discover</a></li>
+          <li><a class="opacity-80 hover:opacity-100" href="#track">记录 Track</a></li>
+          <li><a class="opacity-80 hover:opacity-100" href="#gear">装备 Gear</a></li>
+          <li><a class="opacity-80 hover:opacity-100" href="#safety">守护 Safety</a></li>
+          <li><a class="opacity-80 hover:opacity-100" href="#derivatives">衍生 Derivatives</a></li>
+        </ul>
+      </div>
+      <div class="md:col-span-4">
+        <div class="text-xs tracking-widest font-semibold mb-3 opacity-70">NEXT MILESTONES</div>
+        <ul class="space-y-2 text-sm">
+          <li class="flex justify-between"><span>设计稿对齐</span><span class="opacity-60">2026 · M1</span></li>
+          <li class="flex justify-between"><span>装备 SKU 选型</span><span class="opacity-60">2026 · M1-M2</span></li>
+          <li class="flex justify-between"><span>3D 地图原型</span><span class="opacity-60">2026 · M2</span></li>
+          <li class="flex justify-between"><span>杭州内测开放</span><span class="opacity-60">2026 · M3</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="border-t border-white/10 mt-12 pt-6 flex flex-col md:flex-row justify-between text-xs opacity-60">
+      <span>© 2026 Mori 山野绘本 · 把每一次出门，画成一张童话地图。</span>
+      <span>Designed with Ghibli soul · Built with Tailwind</span>
+    </div>
+  </div>
+</footer>
+
+</div><!-- /main-col -->
+
+<!-- ============ IDEAS RIGHT PANEL ============ -->
+<div id="ideas-col">
+  <!-- Panel header -->
+  <div class="px-6 pt-8 pb-4 border-b shrink-0" style="border-color:rgba(31,42,38,0.08);">
+    <div class="flex items-center gap-2 mb-1">
+      <div class="w-7 h-7 rounded-xl flex items-center justify-center" style="background:var(--ink);">
+        <span class="mi text-white" style="font-size:14px;">lightbulb</span>
+      </div>
+      <span class="serif text-lg font-bold" style="color:var(--ink);">Ideas</span>
+      <span class="chip text-[10px] ml-1" style="background:rgba(232,128,107,0.15); color:var(--coral);">1 条</span>
+    </div>
+    <p class="text-[11px] leading-relaxed" style="color:var(--bark);">产品想法备忘 · 左右滑动查看</p>
+    <div class="flex items-center gap-1 mt-2 text-[10px]" style="color:var(--bark); opacity:0.6;">
+      <span class="mi" style="font-size:12px;">swipe</span>
+      <span>向左滑可以看更多</span>
+    </div>
+  </div>
+
+  <!-- Card carousel -->
+  <div class="ideas-strip" id="ideasStrip">
+
+    <!-- ── Idea #001 · AR 路标守护 ── -->
+    <div class="idea-slot">
+      <div class="rounded-3xl border bg-white/85 p-5 h-full overflow-y-auto" style="border-color:rgba(31,42,38,0.08); box-shadow:0 8px 24px -12px rgba(31,42,38,0.08); max-height:calc(100vh - 160px);">
+        <div class="flex items-start justify-between mb-3">
+          <div>
+            <div class="text-[10px] tracking-widest uppercase mb-1" style="color:var(--bark);">Idea #001 · AR / 路线认证</div>
+            <div class="serif text-[17px] font-bold leading-snug" style="color:var(--ink);">把小狐狸钉在岔路口，<br/>替你站岗、替你指路</div>
+          </div>
+          <span class="chip text-[10px] shrink-0 ml-2" style="background:#FFF1D8; color:var(--gold); border:1px solid rgba(217,178,106,0.4);">待评估</span>
+        </div>
+        <p class="text-[12px] leading-relaxed mb-4" style="color:#3D4A45;">
+          App 官方 / 守林人达人在<b style="color:var(--ink);">认证路线</b>时，可在线路的关键节点（岔路口、涉水点、急降坡、补给站）
+          利用 AR 技术对精准 GPS 位置打点，并放置一个 AR 形象，预置该点位的<b style="color:var(--ink);">指路话术</b>与<b style="color:var(--ink);">注意事项</b>。
+          用户路过时 AR 形象自动激活、轻量提醒，点击即可唤起摄像头查看现场指引。
+        </p>
+
+        <!-- mini demo -->
+        <div class="rounded-2xl border p-3 mb-4" style="background:rgba(244,250,248,0.6); border-color:rgba(31,42,38,0.06);">
+          <div class="text-[10px] tracking-wider uppercase mb-3" style="color:var(--bark);">交互流程</div>
+
+          <!-- step 1: 达人锚定 -->
+          <div class="flex items-start gap-2 mb-3">
+            <div class="w-6 h-6 rounded-full text-white flex items-center justify-center shrink-0 mt-0.5" style="background:var(--jade);">
+              <span class="mi" style="font-size:12px;">add_location_alt</span>
+            </div>
+            <div class="flex-1">
+              <div class="text-[9px] mb-1" style="color:var(--bark);">①  守林人达人</div>
+              <div class="rounded-xl bg-white border px-2.5 py-1.5 text-[11px]" style="border-color:rgba(31,42,38,0.08); color:var(--ink);">
+                在认证路线第 3 个岔路口锚定 <b>小狐狸</b>，录入语音「向左是溯溪线」
+              </div>
+            </div>
+          </div>
+
+          <!-- step 2: 接近自动唤醒 -->
+          <div class="flex items-start gap-2 mb-3">
+            <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5" style="background:rgba(31,42,38,0.06);">
+              <span class="mi" style="font-size:12px; color:var(--coral);">notifications_active</span>
+            </div>
+            <div class="flex-1">
+              <div class="text-[9px] mb-1" style="color:var(--bark);">②  用户接近 30m</div>
+              <div class="rounded-xl bg-white border px-2.5 py-1.5 text-[11px] flex items-center gap-2" style="border-color:rgba(31,42,38,0.08); color:var(--ink);">
+                <span style="font-size:14px;">🦊</span>
+                <span>小狐狸在闪光：<b>「点我看一眼？」</b></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- step 3: AR 现场 -->
+          <div class="flex items-start gap-2">
+            <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5" style="background:rgba(31,42,38,0.06);">
+              <span class="mi" style="font-size:12px; color:var(--gold);">view_in_ar</span>
+            </div>
+            <div class="flex-1">
+              <div class="text-[9px] mb-1" style="color:var(--bark);">③  唤起摄像头</div>
+              <div class="rounded-xl border-2 p-2" style="border-color:rgba(63,139,110,0.5); background:linear-gradient(135deg, #E5F1EB, #FFF7E8);">
+                <div class="flex items-center gap-2 mb-1">
+                  <span style="font-size:18px;">🦊</span>
+                  <div class="text-[10px] font-semibold" style="color:var(--coral);">岔路口已激活</div>
+                </div>
+                <div class="text-[10px]" style="color:var(--ink);">「向左是溯溪线，右边路滑请抓紧栏杆 🍃」</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- pros / cons -->
+        <div class="grid grid-cols-2 gap-2">
+          <div class="rounded-xl border p-2.5" style="background:rgba(229,241,235,0.5); border-color:rgba(63,139,110,0.2);">
+            <div class="text-[9px] font-medium mb-1.5 flex items-center gap-1" style="color:var(--jade-deep);"><span class="mi" style="font-size:11px;">thumb_up</span>亮点</div>
+            <ul class="text-[10px] space-y-1 leading-relaxed" style="color:#3D4A45;">
+              <li>· 给认证路线加上"灵魂"</li>
+              <li>· 比文字注释更直观可记</li>
+              <li>· 守林人/达人天然激励</li>
+              <li>· 强化小探客 IP 触达</li>
+            </ul>
+          </div>
+          <div class="rounded-xl border p-2.5" style="background:rgba(248,220,211,0.4); border-color:rgba(232,128,107,0.25);">
+            <div class="text-[9px] font-medium mb-1.5 flex items-center gap-1" style="color:var(--coral);"><span class="mi" style="font-size:11px;">warning_amber</span>待解决</div>
+            <ul class="text-[10px] space-y-1 leading-relaxed" style="color:#3D4A45;">
+              <li>· 林地 GPS 漂移精度</li>
+              <li>· 离线缓存 AR 包大小</li>
+              <li>· 树叶反光下视觉锚点</li>
+              <li>· 老旧机型 ARKit 降级</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- tech stack chip -->
+        <div class="mt-3 text-[10px] px-3 py-2 rounded-lg" style="background:rgba(31,42,38,0.04); color:var(--bark);">
+          <span style="color:var(--ink); font-weight:600;">技术栈 ·</span> ARKit / ARCore + 高精度 GPS + VPS 视觉锚点 · 离线缓存
+        </div>
+      </div>
+    </div><!-- /idea-slot #001 -->
+
+  </div><!-- /ideas-strip -->
+
+  <!-- dot indicator -->
+  <div class="ideas-dots shrink-0" id="ideaDots">
+    <span class="active"></span>
+  </div>
+</div><!-- /ideas-col -->
+
+</div><!-- /page-wrapper -->
+
+<script>
+  // Dot indicator syncs with horizontal scroll of the ideas strip
+  const strip = document.getElementById('ideasStrip');
+  const dots  = document.querySelectorAll('#ideaDots span');
+  if (strip && dots.length) {
+    strip.addEventListener('scroll', () => {
+      const idx = Math.round(strip.scrollLeft / strip.clientWidth);
+      dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+    });
+  }
+</script>
+
+</body>
+</html>
