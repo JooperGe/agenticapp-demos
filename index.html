@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Samples · 产品演示集</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Serif+SC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+<style>
+  :root{
+    --bg:#0e0d12;
+    --bg-soft:#15141b;
+    --ink:#f5f3ee;
+    --ink-dim:#a9a5b3;
+    --line:rgba(255,255,255,.08);
+  }
+  *{ -webkit-font-smoothing:antialiased; }
+  html,body{ background:var(--bg); color:var(--ink); font-family:'Inter','Noto Serif SC',system-ui,sans-serif; }
+  .serif{ font-family:'Noto Serif SC',serif; }
+  .material-icons-round{ font-family:'Material Icons Round'; }
+
+  /* ambient background */
+  .ambient{
+    position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none;
+  }
+  .ambient::before,
+  .ambient::after{
+    content:""; position:absolute; border-radius:50%; filter:blur(120px); opacity:.45;
+  }
+  .ambient::before{
+    width:600px; height:600px; left:-180px; top:-160px;
+    background:radial-gradient(circle, #c9a36b 0%, transparent 70%);
+  }
+  .ambient::after{
+    width:700px; height:700px; right:-200px; bottom:-220px;
+    background:radial-gradient(circle, #6a6cf0 0%, transparent 70%);
+  }
+  .grain{
+    position:fixed; inset:0; z-index:-1; opacity:.05; pointer-events:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  /* card */
+  .card{
+    position:relative; border:1px solid var(--line); border-radius:24px;
+    background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.015));
+    overflow:hidden; transition:transform .5s cubic-bezier(.2,.8,.2,1), border-color .3s, box-shadow .5s;
+  }
+  .card:hover{
+    transform:translateY(-6px);
+    border-color:rgba(255,255,255,.2);
+    box-shadow:0 30px 60px -20px rgba(0,0,0,.6);
+  }
+  .card .cover{
+    position:relative; aspect-ratio:16/10; overflow:hidden;
+  }
+  .card .cover .layer{
+    position:absolute; inset:0;
+    transition:transform .8s cubic-bezier(.2,.8,.2,1), opacity .5s;
+  }
+  .card:hover .cover .layer{ transform:scale(1.06); }
+  .card .cover .glyph{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-family:'Noto Serif SC'; font-weight:900; color:rgba(255,255,255,.92);
+    letter-spacing:-.04em; text-shadow:0 4px 30px rgba(0,0,0,.25);
+  }
+  .card .cover .badge{
+    position:absolute; top:14px; left:14px;
+    background:rgba(0,0,0,.35); backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.18); color:#fff;
+    padding:4px 10px; border-radius:999px; font-size:11px; letter-spacing:.08em;
+    text-transform:uppercase; font-weight:600;
+  }
+  .card .meta{ padding:22px 24px 24px; }
+  .card .title-cn{ font-size:22px; font-weight:700; letter-spacing:-.01em; }
+  .card .title-en{ font-size:12px; color:var(--ink-dim); letter-spacing:.18em; text-transform:uppercase; margin-bottom:10px; }
+  .card .desc{ color:var(--ink-dim); font-size:14px; line-height:1.65; min-height:48px; }
+  .card .open{
+    margin-top:18px; display:inline-flex; align-items:center; gap:6px;
+    color:#fff; font-size:13px; font-weight:500; opacity:.85;
+    transition:gap .3s, opacity .3s;
+  }
+  .card:hover .open{ gap:12px; opacity:1; }
+
+  /* gradients per project */
+  .grad-lumio{ background:radial-gradient(120% 100% at 20% 20%, #f4d29a 0%, #c9874a 45%, #4a2818 100%); }
+  .grad-mori{  background:radial-gradient(120% 100% at 30% 30%, #b8d8a8 0%, #4f7a4a 45%, #1d2e22 100%); }
+  .grad-murmur{ background:radial-gradient(120% 100% at 70% 30%, #6c7df0 0%, #2a2470 50%, #0a0e26 100%); }
+  .grad-nudge{ background:radial-gradient(120% 100% at 30% 70%, #ffd1d9 0%, #e88ea0 45%, #7a3d4d 100%); }
+  .grad-resona{ background:radial-gradient(120% 100% at 70% 70%, #c8b8e8 0%, #5a4a8a 45%, #1a1230 100%); }
+  .grad-xcontract{ background:radial-gradient(120% 100% at 50% 30%, #a8c8f0 0%, #2c5d9c 50%, #0d1f3a 100%); }
+
+  /* logo dots */
+  .logo-dot{
+    width:8px; height:8px; border-radius:50%;
+    box-shadow:0 0 12px currentColor;
+  }
+
+  /* footer */
+  .pill{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border:1px solid var(--line); border-radius:999px;
+    font-size:12px; color:var(--ink-dim);
+  }
+</style>
+</head>
+<body>
+
+<div class="ambient"></div>
+<div class="grain"></div>
+
+<!-- Header -->
+<header class="max-w-6xl mx-auto px-6 pt-10 pb-6 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+    <div class="relative w-9 h-9 rounded-full" style="background:conic-gradient(from 210deg, #c9a36b, #6a6cf0, #e88ea0, #c9a36b);">
+      <div class="absolute inset-1 rounded-full" style="background:var(--bg);"></div>
+      <div class="absolute inset-0 flex items-center justify-center serif font-bold text-sm">S</div>
+    </div>
+    <div class="leading-tight">
+      <div class="text-sm font-semibold tracking-wide">Samples</div>
+      <div class="text-xs" style="color:var(--ink-dim)">产品演示集 · Product Showcase</div>
+    </div>
+  </div>
+  <div class="hidden md:flex items-center gap-2">
+    <span class="pill"><span class="material-icons-round" style="font-size:14px;">apps</span><span id="count">6</span> projects</span>
+    <span class="pill"><span class="material-icons-round" style="font-size:14px;">schedule</span>updated 2026</span>
+  </div>
+</header>
+
+<!-- Hero -->
+<section class="max-w-6xl mx-auto px-6 pt-10 pb-14">
+  <p class="text-xs tracking-[.25em] uppercase mb-5" style="color:var(--ink-dim)">A collection of product demos</p>
+  <h1 class="serif text-5xl md:text-7xl font-bold leading-[1.05] tracking-tight">
+    安静地<br/>
+    <span style="background:linear-gradient(90deg,#c9a36b,#e88ea0,#6a6cf0); -webkit-background-clip:text; background-clip:text; color:transparent;">把每一个想法</span><br/>
+    做成一个产品。
+  </h1>
+  <p class="mt-6 max-w-xl text-base md:text-lg leading-relaxed" style="color:var(--ink-dim);">
+    这里收录了一系列独立的产品概念演示页。点击任意卡片，进入对应项目的完整 demo。
+  </p>
+</section>
+
+<!-- Grid -->
+<main class="max-w-6xl mx-auto px-6 pb-24">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7" id="grid">
+    <!-- cards injected by JS -->
+  </div>
+</main>
+
+<!-- Footer -->
+<footer class="border-t" style="border-color:var(--line);">
+  <div class="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div class="text-sm" style="color:var(--ink-dim)">
+      © 2026 Samples · Each project is an independent product concept demo.
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="logo-dot" style="color:#c9a36b; background:#c9a36b;"></span>
+      <span class="logo-dot" style="color:#4f7a4a; background:#4f7a4a;"></span>
+      <span class="logo-dot" style="color:#6a6cf0; background:#6a6cf0;"></span>
+      <span class="logo-dot" style="color:#e88ea0; background:#e88ea0;"></span>
+      <span class="logo-dot" style="color:#5a4a8a; background:#5a4a8a;"></span>
+      <span class="logo-dot" style="color:#2c5d9c; background:#2c5d9c;"></span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  const projects = [
+    {
+      slug: 'lumio',
+      cn: '拾光',
+      en: 'Lumio',
+      tag: 'Content · Discovery',
+      desc: '让好内容，在对的时刻找到你。一个把阅读还给慢节奏的发现器。',
+      glyph: '光',
+      grad: 'grad-lumio',
+      glyphSize: '180px',
+    },
+    {
+      slug: 'mori',
+      cn: '山野绘本',
+      en: 'Mori',
+      tag: 'Travel · Family',
+      desc: '把每一次出门，画成一张童话地图。给孩子的户外探索手账。',
+      glyph: '野',
+      grad: 'grad-mori',
+      glyphSize: '180px',
+    },
+    {
+      slug: 'murmur',
+      cn: '轻声',
+      en: 'Murmur',
+      tag: 'Wellness · Journal',
+      desc: '深夜情绪的安全出口。一个只属于你的、低声说话的地方。',
+      glyph: '声',
+      grad: 'grad-murmur',
+      glyphSize: '180px',
+    },
+    {
+      slug: 'nudge',
+      cn: '温柔的提醒',
+      en: 'Nudge',
+      tag: 'Habits · Care',
+      desc: '不是 to-do，不是闹钟。一种柔软的、像朋友拍拍你的提醒方式。',
+      glyph: '提',
+      grad: 'grad-nudge',
+      glyphSize: '160px',
+    },
+    {
+      slug: 'resona',
+      cn: '笔替',
+      en: 'Resona',
+      tag: 'Writing · AI',
+      desc: '借他人之笔，写你想说的话。让表达更接近你想成为的样子。',
+      glyph: '笔',
+      grad: 'grad-resona',
+      glyphSize: '180px',
+    },
+    {
+      slug: 'xcontract',
+      cn: '智能合同',
+      en: 'XContract',
+      tag: 'Enterprise · AI',
+      desc: '把繁琐的合同审阅，交给更聪明的方式处理。',
+      glyph: 'X',
+      grad: 'grad-xcontract',
+      glyphSize: '200px',
+    },
+  ];
+
+  const grid = document.getElementById('grid');
+  document.getElementById('count').textContent = projects.length;
+
+  projects.forEach((p, i) => {
+    const a = document.createElement('a');
+    a.href = `./${p.slug}/index.html`;
+    a.className = 'card animate__animated animate__fadeInUp';
+    a.style.animationDelay = `${i * 70}ms`;
+    a.innerHTML = `
+      <div class="cover">
+        <div class="layer ${p.grad}"></div>
+        <div class="layer glyph" style="font-size:${p.glyphSize}; opacity:.85;">${p.glyph}</div>
+        <div class="badge">${p.tag}</div>
+      </div>
+      <div class="meta">
+        <div class="title-en">${p.en}</div>
+        <div class="title-cn serif">${p.cn}</div>
+        <p class="desc mt-3">${p.desc}</p>
+        <span class="open">
+          打开项目
+          <span class="material-icons-round" style="font-size:18px;">arrow_forward</span>
+        </span>
+      </div>
+    `;
+    grid.appendChild(a);
+  });
+</script>
+</body>
+</html>
