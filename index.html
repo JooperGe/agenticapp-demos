@@ -187,7 +187,7 @@
     </div>
   </div>
   <div class="hidden md:flex items-center gap-2">
-    <span class="pill"><span class="material-icons-round" style="font-size:14px;">apps</span><span id="count">6</span> projects</span>
+    <span class="pill"><span class="material-icons-round" style="font-size:14px;">apps</span><span id="count">8</span> projects</span>
     <span class="pill"><span class="material-icons-round" style="font-size:14px;">schedule</span>updated 2026</span>
   </div>
 </header>
@@ -220,9 +220,11 @@
     </div>
     <div class="flex items-center gap-2">
       <span class="logo-dot" style="color:#c9a36b; background:#c9a36b;"></span>
+      <span class="logo-dot" style="color:#D97706; background:#D97706;"></span>
       <span class="logo-dot" style="color:#4f7a4a; background:#4f7a4a;"></span>
       <span class="logo-dot" style="color:#6a6cf0; background:#6a6cf0;"></span>
       <span class="logo-dot" style="color:#e88ea0; background:#e88ea0;"></span>
+      <span class="logo-dot" style="color:#b56e4f; background:#b56e4f;"></span>
       <span class="logo-dot" style="color:#5a4a8a; background:#5a4a8a;"></span>
       <span class="logo-dot" style="color:#2c5d9c; background:#2c5d9c;"></span>
     </div>
@@ -231,6 +233,32 @@
 
 <script>
   const projects = [
+    {
+      slug: 'domi',
+      cn: '宅趣',
+      en: 'Domi',
+      tag: 'Lifestyle · AI',
+      desc: '把家变成你喜欢的样子。一个空间灵感与软装搭配工具。',
+      icon: 'chair',
+      iconBg: 'linear-gradient(135deg,#D4896B,#B56E4F)',
+      accent: '#B56E4F',
+      accentDeep: '#8A4E35',
+      tintSoft: 'rgba(212,137,107,.22)',
+      tintStrong: 'rgba(181,110,79,.10)',
+    },
+    {
+      slug: 'petstory',
+      cn: '宠述',
+      en: 'PetStory',
+      tag: 'Content · Stories',
+      desc: '每个动物，都有自己的故事。一个极简的动物故事集。',
+      icon: 'pets',
+      iconBg: 'linear-gradient(135deg,#FDBA74,#D97706)',
+      accent: '#D97706',
+      accentDeep: '#92400E',
+      tintSoft: 'rgba(253,186,116,.24)',
+      tintStrong: 'rgba(217,119,6,.10)',
+    },
     {
       slug: 'lumio',
       cn: '拾光',

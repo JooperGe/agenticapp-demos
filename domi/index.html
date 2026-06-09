@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>宅趣 Domi · 把家变成你喜欢的样子</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Serif+SC:wght@500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+<style>
+  :root{
+    --cream:#FFF9F2;
+    --warm:#FDF0E3;
+    --clay:#D4896B;
+    --clay-deep:#B56E4F;
+    --sage:#B5C9B8;
+    --sage-deep:#7B9A82;
+    --ink:#2C2523;
+    --ink-dim:#6B5E58;
+    --ink-soft:#A3958E;
+    --terracotta:#E8A87C;
+    --gold:#D4A96A;
+  }
+  *{ -webkit-font-smoothing:antialiased; }
+  body{
+    font-family:'Inter','Noto Serif SC',system-ui,sans-serif;
+    background:var(--cream);
+    color:var(--ink);
+    background-image:
+      radial-gradient(circle at 5% 8%, rgba(212,137,107,0.08) 0, transparent 35%),
+      radial-gradient(circle at 95% 15%, rgba(212,137,107,0.06) 0, transparent 40%),
+      radial-gradient(circle at 50% 95%, rgba(181,201,184,0.12) 0, transparent 50%);
+  }
+  .serif{ font-family:'Noto Serif SC',serif; }
+  .mi{ font-family:'Material Icons Round'; font-style:normal; }
+
+  /* phone mockup */
+  .phone{
+    position:relative;
+    width:340px; height:700px;
+    background:#1A1513;
+    border-radius:44px;
+    padding:14px;
+    box-shadow: 0 30px 60px -20px rgba(44,37,35,0.35), 0 10px 20px -10px rgba(44,37,35,0.2);
+    flex-shrink:0;
+  }
+  .phone::before{
+    content:'';
+    position:absolute; top:18px; left:50%; transform:translateX(-50%);
+    width:110px; height:28px; background:#1A1513; border-radius:20px; z-index:5;
+  }
+  .screen{
+    width:100%; height:100%; border-radius:32px; overflow:hidden;
+    background:var(--cream); position:relative;
+  }
+  .statusbar{
+    height:36px; padding:0 22px; display:flex; align-items:center; justify-content:space-between;
+    font-size:13px; font-weight:600; color:var(--ink); padding-top:14px;
+  }
+  .chip{ display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; font-size:12px; font-weight:500; }
+  .float{ animation: float 6s ease-in-out infinite; }
+  @keyframes float{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-8px); } }
+
+  .num-tag{
+    width:36px; height:36px; border-radius:50%;
+    display:inline-flex; align-items:center; justify-content:center;
+    background:var(--clay); color:white; font-weight:700; font-family:'Noto Serif SC',serif;
+  }
+
+  /* ===== Ideas right panel ===== */
+  #page-wrapper{ display:flex; align-items:flex-start; min-width:1720px; }
+  #main-col{ flex:1 1 auto; min-width:0; }
+  #ideas-col{
+    flex:0 0 420px;
+    position:sticky; top:0;
+    height:100vh;
+    display:flex; flex-direction:column;
+    border-left:1px solid rgba(44,37,35,0.08);
+    background:linear-gradient(160deg,#FFFBF6 0%, #FDF0E3 50%, #FFF9F2 100%);
+    overflow:hidden;
+    z-index:50;
+  }
+  .ideas-strip{
+    display:flex; overflow-x:auto; flex:1;
+    scroll-snap-type:x mandatory;
+    scrollbar-width:none; -ms-overflow-style:none;
+    padding:0 1.5rem 1.5rem;
+  }
+  .ideas-strip::-webkit-scrollbar{ display:none; }
+  .idea-slot{
+    flex:0 0 100%; scroll-snap-align:start;
+    box-sizing:border-box; padding-right:1rem;
+  }
+  .ideas-dots{ display:flex; gap:6px; justify-content:center; padding:12px 0; }
+  .ideas-dots span{ width:6px; height:6px; border-radius:999px; background:rgba(44,37,35,0.15); transition:all .2s; }
+  .ideas-dots span.active{ width:18px; background:var(--clay); }
+
+  .domi-gradient{
+    background:
+      linear-gradient(135deg,#FFF9F2 0%, #FDF0E3 50%, #F5E8DA 100%);
+  }
+  .room-card{
+    background:white; border-radius:24px; overflow:hidden;
+    border:1px solid rgba(107,94,88,0.1);
+    transition:transform .3s, box-shadow .3s;
+  }
+  .room-card:hover{ transform:translateY(-4px); box-shadow:0 16px 40px -12px rgba(44,37,35,0.12); }
+</style>
+</head>
+<body>
+<div id="page-wrapper">
+<div id="main-col">
+
+<!-- ============ HEADER ============ -->
+<header class="relative overflow-hidden domi-gradient">
+  <div class="relative max-w-6xl mx-auto px-6 pt-10 pb-20">
+    <nav class="flex items-center justify-between mb-20">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl bg-white/80 backdrop-blur flex items-center justify-center shadow-sm">
+          <span class="mi text-2xl" style="color:var(--clay-deep);">chair</span>
+        </div>
+        <div>
+          <div class="serif font-bold text-lg leading-tight" style="color:var(--ink);">宅趣</div>
+          <div class="text-xs tracking-[0.2em] font-medium" style="color:var(--clay-deep);">D · O · M · I</div>
+        </div>
+      </div>
+      <div class="hidden md:flex items-center gap-8 text-sm" style="color:var(--ink);">
+        <a class="hover:opacity-60" href="#inspire">灵感</a>
+        <a class="hover:opacity-60" href="#tryon">试穿</a>
+        <a class="hover:opacity-60" href="#collage">清单</a>
+        <a class="hover:opacity-60" href="#profile">空间</a>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="chip" style="background:rgba(255,255,255,0.7); color:var(--clay-deep);">PRD v0.1</span>
+      </div>
+    </nav>
+
+    <div class="grid md:grid-cols-12 gap-12 items-center">
+      <div class="md:col-span-7">
+        <div class="chip mb-5" style="background:rgba(255,255,255,0.7); color:var(--ink-dim); backdrop-filter:blur(4px);">
+          <span class="mi text-sm">auto_awesome</span> AI 空间试穿 · 软装搭配 · 奶油调性
+        </div>
+        <h1 class="serif font-black text-5xl md:text-6xl leading-[1.15] mb-6" style="color:var(--ink);">
+          把家变成<br/>
+          你<span style="color:var(--clay);">喜欢的样子</span>。
+        </h1>
+        <p class="text-base md:text-lg leading-relaxed mb-8 max-w-xl" style="color:var(--ink-dim);">
+          宅趣 Domi 是一个空间灵感与软装规划工具。
+          拍你的房间，AI 帮你换装——发现风格、搭配单品、一键购买，
+          让每个人都能像搭配衣服一样搭配自己的家。
+        </p>
+        <div class="flex flex-wrap gap-3 mb-10">
+          <span class="chip" style="background:white; color:var(--clay-deep); border:1px solid rgba(212,137,107,0.2);"><span class="mi text-sm">auto_awesome</span> AI 空间试穿</span>
+          <span class="chip" style="background:white; color:var(--clay-deep); border:1px solid rgba(212,137,107,0.2);"><span class="mi text-sm">explore</span> 灵感瀑布流</span>
+          <span class="chip" style="background:white; color:var(--clay-deep); border:1px solid rgba(212,137,107,0.2);"><span class="mi text-sm">shopping_bag</span> 搭配清单</span>
+          <span class="chip" style="background:white; color:var(--clay-deep); border:1px solid rgba(212,137,107,0.2);"><span class="mi text-sm">palette</span> 风格画像</span>
+        </div>
+        <div class="flex items-center gap-6 text-sm" style="color:var(--ink-dim);">
+          <div class="flex items-center gap-2"><span class="mi text-base" style="color:var(--clay);">floral</span> 侘寂 · 北欧 · 中古 · 奶油</div>
+          <div class="flex items-center gap-2"><span class="mi text-base" style="color:var(--gold);">photo_camera</span> 拍照即试穿</div>
+        </div>
+      </div>
+
+      <div class="md:col-span-5 flex justify-center">
+        <div class="phone animate__animated animate__fadeInUp">
+          <div class="screen" style="background:linear-gradient(160deg,#FFF9F2,#FDF0E3);">
+            <div class="statusbar">
+              <span>9:41</span>
+              <div class="flex items-center gap-1">
+                <span class="mi text-sm">network_wifi</span>
+                <span class="mi text-sm">battery_full</span>
+              </div>
+            </div>
+            <div class="px-5 pt-2">
+              <div class="text-xs tracking-widest font-semibold mb-1" style="color:var(--clay-deep);">DOMI · AI 试穿</div>
+              <div class="serif font-bold text-xl mb-3" style="color:var(--ink);">拍一张，<br/>看看它换张脸的样子</div>
+            </div>
+            <!-- room before -->
+            <div class="relative mx-4 rounded-3xl overflow-hidden" style="height:200px; background:linear-gradient(135deg,#EDE0D4,#D4C4B0);">
+              <!-- room interior SVG -->
+              <svg viewBox="0 0 300 200" class="w-full h-full">
+                <!-- wall -->
+                <rect x="0" y="0" width="300" height="140" fill="#F2EBE1"/>
+                <!-- floor -->
+                <rect x="0" y="140" width="300" height="60" fill="#D4C4B0"/>
+                <!-- window -->
+                <rect x="200" y="30" width="80" height="90" rx="6" fill="#E1D9CE" stroke="#B8A89A" stroke-width="2"/>
+                <line x1="240" y1="30" x2="240" y2="120" stroke="#B8A89A" stroke-width="1.5"/>
+                <line x1="200" y1="75" x2="280" y2="75" stroke="#B8A89A" stroke-width="1.5"/>
+                <!-- sofa -->
+                <rect x="40" y="100" width="110" height="40" rx="8" fill="#C9A88A"/>
+                <rect x="40" y="80" width="110" height="25" rx="8" fill="#D4B89C"/>
+                <!-- cushion -->
+                <rect x="48" y="92" width="40" height="22" rx="6" fill="#E8C8AA"/>
+                <rect x="100" y="92" width="40" height="22" rx="6" fill="#E8C8AA"/>
+                <!-- lamp -->
+                <rect x="170" y="110" width="4" height="30" fill="#A89888"/>
+                <ellipse cx="172" cy="108" rx="12" ry="8" fill="#E8D8B8"/>
+                <!-- rug -->
+                <ellipse cx="95" cy="165" rx="70" ry="12" fill="#C9B89E" opacity="0.6"/>
+              </svg>
+              <!-- before label -->
+              <div class="absolute top-3 left-3 chip" style="background:rgba(44,37,35,0.6); color:white;"><span class="mi text-sm">visibility</span> BEFORE</div>
+            </div>
+            <!-- divider with arrow -->
+            <div class="flex items-center justify-center my-3 gap-3">
+              <span class="text-xs tracking-widest font-semibold" style="color:var(--ink-soft);">AI 换装</span>
+              <span class="mi" style="color:var(--clay);">arrow_downward</span>
+            </div>
+            <!-- room after -->
+            <div class="relative mx-4 rounded-3xl overflow-hidden" style="height:200px; background:linear-gradient(135deg,#EDE0D4,#D4C4B0);">
+              <svg viewBox="0 0 300 200" class="w-full h-full">
+                <!-- wall - warm toned -->
+                <rect x="0" y="0" width="300" height="140" fill="#F5EDE4"/>
+                <!-- floor -->
+                <rect x="0" y="140" width="300" height="60" fill="#C4B09A"/>
+                <!-- window -->
+                <rect x="200" y="30" width="80" height="90" rx="6" fill="#E8E0D5" stroke="#B8A89A" stroke-width="2"/>
+                <line x1="240" y1="30" x2="240" y2="120" stroke="#B8A89A" stroke-width="1.5"/>
+                <line x1="200" y1="75" x2="280" y2="75" stroke="#B8A89A" stroke-width="1.5"/>
+                <!-- new green sofa -->
+                <rect x="40" y="100" width="110" height="40" rx="8" fill="#7B9A82"/>
+                <rect x="40" y="80" width="110" height="25" rx="8" fill="#8FB59A"/>
+                <rect x="48" y="92" width="40" height="22" rx="6" fill="#A8C9B0"/>
+                <rect x="100" y="92" width="40" height="22" rx="6" fill="#A8C9B0"/>
+                <!-- new lamp -->
+                <rect x="170" y="110" width="4" height="30" fill="#A89888"/>
+                <ellipse cx="172" cy="108" rx="12" ry="8" fill="#E8D8B8"/>
+                <!-- new rug -->
+                <ellipse cx="95" cy="165" rx="70" ry="12" fill="#D4896B" opacity="0.5"/>
+                <!-- plant -->
+                <g transform="translate(4,80)">
+                  <rect x="0" y="20" width="16" height="20" rx="3" fill="#C9B89E"/>
+                  <circle cx="8" cy="12" r="7" fill="#7B9A82"/>
+                  <circle cx="12" cy="6" r="5" fill="#8FB59A"/>
+                  <circle cx="4" cy="8" r="5" fill="#8FB59A"/>
+                </g>
+              </svg>
+              <div class="absolute top-3 left-3 chip" style="background:var(--clay); color:white;"><span class="mi text-sm">auto_awesome</span> AFTER</div>
+            </div>
+            <!-- bottom action -->
+            <div class="absolute bottom-5 left-4 right-4 bg-white/95 backdrop-blur rounded-2xl p-4 shadow-lg">
+              <div class="flex items-center justify-between mb-2">
+                <div>
+                  <div class="text-xs" style="color:var(--ink-dim);">当前风格 · 自然侘寂</div>
+                  <div class="serif font-bold" style="color:var(--ink);">绿色沙发 + 陶土地毯</div>
+                </div>
+                <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:var(--clay);">
+                  <span class="mi text-white">shopping_bag</span>
+                </div>
+              </div>
+              <div class="flex gap-2 text-xs" style="color:var(--ink-dim);">
+                <span class="chip" style="background:var(--cream); border:1px solid rgba(212,137,107,0.2);"><span class="mi text-sm">check_circle</span> 搭配清单</span>
+                <span class="chip" style="background:var(--cream); border:1px solid rgba(212,137,107,0.2);"><span class="mi text-sm">sync_alt</span> 换一个</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ FLOW SECTION 01 · 灵感 ============ -->
+<section id="inspire" class="py-24 relative">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="grid md:grid-cols-12 gap-12 items-center">
+      <div class="md:col-span-6 order-2 md:order-1 flex justify-center">
+        <div class="phone">
+          <div class="screen" style="background:var(--cream);">
+            <div class="statusbar"><span>9:41</span><div class="flex gap-1"><span class="mi text-sm">network_wifi</span><span class="mi text-sm">battery_full</span></div></div>
+            <div class="px-5">
+              <div class="flex items-center justify-between mb-3">
+                <div class="serif font-bold text-xl">灵感</div>
+                <span class="chip" style="background:var(--warm); color:var(--clay-deep);"><span class="mi text-sm">style</span> 侘寂风</span>
+              </div>
+              <!-- style chips -->
+              <div class="flex gap-1.5 mb-4 overflow-x-auto pb-1 scrollbar-hide" style="scrollbar-width:none;">
+                <span class="chip" style="background:white; border:1px solid var(--clay); color:var(--clay-deep);">侘寂</span>
+                <span class="chip" style="background:white; border:1px solid rgba(44,37,35,0.1); color:var(--ink-dim);">北欧</span>
+                <span class="chip" style="background:white; border:1px solid rgba(44,37,35,0.1); color:var(--ink-dim);">中古</span>
+                <span class="chip" style="background:white; border:1px solid rgba(44,37,35,0.1); color:var(--ink-dim);">奶油</span>
+                <span class="chip" style="background:white; border:1px solid rgba(44,37,35,0.1); color:var(--ink-dim);">工业</span>
+              </div>
+              <!-- card 1 -->
+              <div class="rounded-2xl overflow-hidden mb-3 shadow-sm" style="background:white;">
+                <div class="h-28 relative" style="background:linear-gradient(135deg,#EDE0D4,#D4C4B0);">
+                  <div class="absolute inset-0 flex items-center justify-center opacity-20">
+                    <span class="mi text-5xl" style="color:var(--ink);">living</span>
+                  </div>
+                  <div class="absolute bottom-2 left-2 chip" style="background:rgba(255,255,255,0.85); color:var(--ink-dim);">
+                    <span class="mi text-sm" style="color:var(--clay);">sell</span> 侘寂 · 客厅
+                  </div>
+                  <div class="absolute bottom-2 right-2 chip" style="background:rgba(255,255,255,0.85); color:var(--clay-deep);">
+                    <span class="mi text-sm">auto_awesome</span> 试穿到我房间
+                  </div>
+                </div>
+                <div class="p-3">
+                  <div class="flex items-start justify-between">
+                    <div>
+                      <div class="text-sm font-semibold">陶土色客厅 · 微水泥质感</div>
+                      <div class="text-xs mt-1" style="color:var(--ink-dim);">沙发 · 地毯 · 落地灯 · 陶罐</div>
+                    </div>
+                    <span class="mi" style="color:var(--clay);">favorite_border</span>
+                  </div>
+                </div>
+              </div>
+              <!-- card 2 -->
+              <div class="rounded-2xl overflow-hidden shadow-sm" style="background:white;">
+                <div class="h-24 relative" style="background:linear-gradient(135deg,#B5C9B8,#E8D8B8);">
+                  <div class="absolute bottom-2 left-2 chip" style="background:rgba(255,255,255,0.85); color:var(--ink-dim);">
+                    <span class="mi text-sm" style="color:var(--sage-deep);">sell</span> 北欧 · 卧室
+                  </div>
+                </div>
+                <div class="p-3">
+                  <div class="text-sm font-semibold">鼠尾草绿卧室 · 静谧感</div>
+                </div>
+              </div>
+              <!-- category row -->
+              <div class="grid grid-cols-4 gap-2 mt-4 text-center">
+                <div><div class="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center" style="background:var(--warm);"><span class="mi" style="color:var(--clay-deep);">living</span></div><div class="text-[10px] mt-1">客厅</div></div>
+                <div><div class="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center" style="background:#EBF2EC;"><span class="mi" style="color:var(--sage-deep);">bed</span></div><div class="text-[10px] mt-1">卧室</div></div>
+                <div><div class="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center" style="background:#F1EEF2;"><span class="mi" style="color:#9A8AA0;">table_restaurant</span></div><div class="text-[10px] mt-1">餐厅</div></div>
+                <div><div class="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center" style="background:#F2EEE8;"><span class="mi" style="color:#A89888;">local_florist</span></div><div class="text-[10px] mt-1">角落</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="md:col-span-6 order-1 md:order-2">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="num-tag">01</span>
+          <div class="text-xs tracking-[0.2em] font-semibold" style="color:var(--clay-deep);">INSPIRE · 灵感</div>
+        </div>
+        <h2 class="serif font-bold text-4xl mb-5" style="color:var(--ink);">
+          瀑布流灵感，<br/>风格标签精准筛选<span style="color:var(--clay);">.</span>
+        </h2>
+        <p class="leading-relaxed mb-8" style="color:var(--ink-dim);">
+          按风格与场景组织灵感卡片——侘寂、北欧、中古、奶油、工业。
+          每张卡片可「试穿到我房间」，长按单品识图查看商品详情。
+          浏览即种草，种草即试穿。
+        </p>
+        <div class="space-y-4">
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:var(--warm);"><span class="mi" style="color:var(--clay-deep);">sell</span></div>
+            <div><div class="font-semibold mb-1">风格×场景标签</div><div class="text-sm" style="color:var(--ink-dim);">侘寂/北欧/中古/奶油 × 客厅/卧室/角落，精准匹配</div></div>
+          </div>
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:var(--warm);"><span class="mi" style="color:var(--clay-deep);">search</span></div>
+            <div><div class="font-semibold mb-1">单品识图</div><div class="text-sm" style="color:var(--ink-dim);">长按卡片中的单品 → 识别品牌/价格/购买链接</div></div>
+          </div>
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:var(--warm);"><span class="mi" style="color:var(--clay-deep);">photo_camera</span></div>
+            <div><div class="font-semibold mb-1">一试即用</div><div class="text-sm" style="color:var(--ink-dim);">点击「试穿到我房间」→ 调起相机/相册 → AI 换装</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FLOW SECTION 02 · AI 空间试穿 ============ -->
+<section id="tryon" class="py-24 relative" style="background:var(--warm);">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="grid md:grid-cols-12 gap-12 items-center">
+      <div class="md:col-span-6">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="num-tag">02</span>
+          <div class="text-xs tracking-[0.2em] font-semibold" style="color:var(--clay-deep);">TRY-ON · AI 空间试穿</div>
+        </div>
+        <h2 class="serif font-bold text-4xl mb-5" style="color:var(--ink);">
+          拍一张照片，<br/>AI 帮它换装<span style="color:var(--clay);">.</span>
+        </h2>
+        <p class="leading-relaxed mb-8" style="color:var(--ink-dim);">
+          上传房间照片，选择风格或描述改造目标。AI 自动识别空间区域，
+          在保留结构的前提下换风格、换单品、换色调。
+          免费用户每日 3 次，会员不限。
+        </p>
+        <div class="space-y-4">
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:white;"><span class="mi" style="color:var(--clay);">auto_awesome</span></div>
+            <div><div class="font-semibold mb-1">四类改造模式</div><div class="text-sm" style="color:var(--ink-dim);">换风格（侘寂风）、换单品（绿色沙发）、换色调（暖色）、自由描述</div></div>
+          </div>
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:white;"><span class="mi" style="color:var(--clay);">layers</span></div>
+            <div><div class="font-semibold mb-1">区域感知</div><div class="text-sm" style="color:var(--ink-dim);">自动识别地面/墙面/家具轮廓，改色不改结构</div></div>
+          </div>
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:white;"><span class="mi" style="color:var(--clay);">format_list_bulleted</span></div>
+            <div><div class="font-semibold mb-1">多候选</div><div class="text-sm" style="color:var(--ink-dim);">每次生成 2-3 个候选效果，用户挑选/微调/收藏</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="md:col-span-6 flex justify-center">
+        <div class="phone">
+          <div class="screen" style="background:var(--cream);">
+            <div class="statusbar"><span>9:41</span><div class="flex gap-1"><span class="mi text-sm">network_wifi</span><span class="mi text-sm">battery_full</span></div></div>
+            <div class="px-5 pt-3">
+              <div class="text-xs tracking-widest font-semibold mb-2" style="color:var(--clay-deep);">选择改造目标</div>
+              <!-- mode cards -->
+              <div class="space-y-2 mb-4">
+                <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:white; border:2px solid var(--clay);">
+                  <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:var(--warm);"><span class="mi" style="color:var(--clay-deep);">style</span></div>
+                  <div><div class="font-semibold text-sm">换风格</div><div class="text-xs" style="color:var(--ink-dim);">改成侘寂风</div></div>
+                  <span class="mi ml-auto" style="color:var(--clay);">check_circle</span>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:white; border:1px solid rgba(44,37,35,0.08);">
+                  <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:#EBF2EC;"><span class="mi" style="color:var(--sage-deep);">weekend</span></div>
+                  <div><div class="font-semibold text-sm">换单品</div><div class="text-xs" style="color:var(--ink-dim);">换成绿色沙发</div></div>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:white; border:1px solid rgba(44,37,35,0.08);">
+                  <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:#FFF1E0;"><span class="mi" style="color:var(--terracotta);">invert_colors</span></div>
+                  <div><div class="font-semibold text-sm">换色调</div><div class="text-xs" style="color:var(--ink-dim);">暖色调</div></div>
+                </div>
+              </div>
+              <!-- style preset chips -->
+              <div class="mb-3">
+                <div class="text-xs font-semibold mb-2" style="color:var(--ink-dim);">推荐风格预设</div>
+                <div class="flex flex-wrap gap-1.5">
+                  <span class="chip" style="background:white; border:1px solid rgba(212,137,107,0.3); color:var(--clay-deep);">侘寂</span>
+                  <span class="chip" style="background:white; border:1px solid rgba(44,37,35,0.08); color:var(--ink-dim);">北欧</span>
+                  <span class="chip" style="background:white; border:1px solid rgba(44,37,35,0.08); color:var(--ink-dim);">中古</span>
+                  <span class="chip" style="background:white; border:1px solid rgba(44,37,35,0.08); color:var(--ink-dim);">奶油</span>
+                  <span class="chip" style="background:white; border:1px solid rgba(44,37,35,0.08); color:var(--ink-dim);">波西米亚</span>
+                </div>
+              </div>
+              <!-- generate button -->
+              <div class="flex items-center justify-center p-4 rounded-2xl" style="background:var(--clay); color:white;">
+                <span class="mi mr-2">auto_awesome</span>
+                <span class="font-semibold">AI 生成改造效果</span>
+              </div>
+              <div class="text-center text-xs mt-3" style="color:var(--ink-soft);">
+                今日剩余 2 次 · 升级灵感会员不限次
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FLOW SECTION 03 · 搭配清单 ============ -->
+<section id="collage" class="py-24 relative">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="grid md:grid-cols-12 gap-12 items-center">
+      <div class="md:col-span-6 order-2 md:order-1 flex justify-center">
+        <div class="phone">
+          <div class="screen" style="background:var(--cream);">
+            <div class="statusbar"><span>9:41</span><div class="flex gap-1"><span class="mi text-sm">network_wifi</span><span class="mi text-sm">battery_full</span></div></div>
+            <div class="px-5 pt-2">
+              <div class="serif font-bold text-xl mb-1">搭配清单</div>
+              <div class="text-xs mb-4" style="color:var(--ink-dim);">自然侘寂客厅 · 4 件单品</div>
+              <!-- item 1 -->
+              <div class="flex items-center gap-3 p-3 rounded-2xl mb-2" style="background:white;">
+                <div class="w-14 h-14 rounded-xl flex-shrink-0" style="background:linear-gradient(135deg,#8FB59A,#7B9A82);"></div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-semibold truncate">亚麻沙发 · 鼠尾草绿</div>
+                  <div class="text-xs" style="color:var(--ink-soft);">北陌家具 · ¥3,990</div>
+                </div>
+                <span class="mi text-sm" style="color:var(--clay);">shopping_cart</span>
+              </div>
+              <!-- item 2 -->
+              <div class="flex items-center gap-3 p-3 rounded-2xl mb-2" style="background:white;">
+                <div class="w-14 h-14 rounded-xl flex-shrink-0" style="background:linear-gradient(135deg,#D4896B,#C4785A);"></div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-semibold truncate">手工陶土地毯 · 赤陶</div>
+                  <div class="text-xs" style="color:var(--ink-soft);">青山美宿 · ¥1,280</div>
+                </div>
+                <span class="mi text-sm" style="color:var(--clay);">shopping_cart</span>
+              </div>
+              <!-- item 3 -->
+              <div class="flex items-center gap-3 p-3 rounded-2xl mb-2" style="background:white;">
+                <div class="w-14 h-14 rounded-xl flex-shrink-0" style="background:linear-gradient(135deg,#E8D8B8,#D4C09E);"></div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-semibold truncate">纸艺落地灯 · 米白</div>
+                  <div class="text-xs" style="color:var(--ink-soft);">宜家 · ¥599</div>
+                </div>
+                <span class="mi text-sm" style="color:var(--clay);">shopping_cart</span>
+              </div>
+              <!-- item 4 -->
+              <div class="flex items-center gap-3 p-3 rounded-2xl mb-3" style="background:white;">
+                <div class="w-14 h-14 rounded-xl flex-shrink-0" style="background:linear-gradient(135deg,#A8C9B0,#8FB59A);"></div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-semibold truncate">水泥陶罐 + 尤加利叶</div>
+                  <div class="text-xs" style="color:var(--ink-soft);">植物私生活 · ¥168</div>
+                </div>
+                <span class="mi text-sm" style="color:var(--clay);">shopping_cart</span>
+              </div>
+              <!-- total & buy -->
+              <div class="flex items-center justify-between p-3 rounded-2xl" style="background:var(--warm);">
+                <div>
+                  <div class="text-xs" style="color:var(--ink-dim);">合计</div>
+                  <div class="font-bold serif" style="color:var(--clay-deep);">¥6,037</div>
+                </div>
+                <div class="flex gap-2">
+                  <span class="chip" style="background:white; color:var(--ink-dim);"><span class="mi text-sm">ios_share</span> 分享</span>
+                  <span class="chip" style="background:var(--clay); color:white;"><span class="mi text-sm">local_mall</span> 一键购买</span>
+                </div>
+              </div>
+              <!-- alternative -->
+              <div class="text-center mt-3">
+                <span class="text-xs" style="color:var(--ink-soft);">每件商品可查看替代推荐 · 平价版 / 升级版</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="md:col-span-6 order-1 md:order-2">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="num-tag">03</span>
+          <div class="text-xs tracking-[0.2em] font-semibold" style="color:var(--clay-deep);">COLLAGE · 搭配清单</div>
+        </div>
+        <h2 class="serif font-bold text-4xl mb-5" style="color:var(--ink);">
+          每个方案，<br/>都有一份可购买的清单<span style="color:var(--clay);">.</span>
+        </h2>
+        <p class="leading-relaxed mb-8" style="color:var(--ink-dim);">
+          AI 生成效果图的同时自动生成搭配清单。每件单品显示品牌/价格/购买链接，
+          并提供替代推荐。可编辑清单、分享给朋友或一键加入购物车。
+        </p>
+        <div class="space-y-4">
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:var(--warm);"><span class="mi" style="color:var(--clay-deep);">receipt_long</span></div>
+            <div><div class="font-semibold mb-1">自动生成清单</div><div class="text-sm" style="color:var(--ink-dim);">每个改造效果配套完整单品列表</div></div>
+          </div>
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:var(--warm);"><span class="mi" style="color:var(--clay-deep);">swap_horiz</span></div>
+            <div><div class="font-semibold mb-1">替代推荐</div><div class="text-sm" style="color:var(--ink-dim);">每件商品同时推荐平价版和升级版</div></div>
+          </div>
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:var(--warm);"><span class="mi" style="color:var(--clay-deep);">edit</span></div>
+            <div><div class="font-semibold mb-1">可编辑</div><div class="text-sm" style="color:var(--ink-dim);">删/加/替换单品，定制专属搭配方案</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FLOW SECTION 04 · 我的空间 ============ -->
+<section id="profile" class="py-24 relative" style="background:var(--warm);">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="grid md:grid-cols-12 gap-12 items-center">
+      <div class="md:col-span-6">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="num-tag">04</span>
+          <div class="text-xs tracking-[0.2em] font-semibold" style="color:var(--clay-deep);">PROFILE · 我的空间</div>
+        </div>
+        <h2 class="serif font-bold text-4xl mb-5" style="color:var(--ink);">
+          你的房间档案<br/>你的风格画像<span style="color:var(--clay);">.</span>
+        </h2>
+        <p class="leading-relaxed mb-8" style="color:var(--ink-dim);">
+          保存你的所有房间与历史改造记录。系统根据你的点赞、收藏和改造
+          行为生成「风格画像」，告诉你是什么风格的居住者。
+          同一房间的 before/after 时间线，见证家的变化。
+        </p>
+        <div class="space-y-4">
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:white;"><span class="mi" style="color:var(--clay);">collections_bookmark</span></div>
+            <div><div class="font-semibold mb-1">我的房间</div><div class="text-sm" style="color:var(--ink-dim);">已保存的房间 + 历史改造记录</div></div>
+          </div>
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:white;"><span class="mi" style="color:var(--clay);">palette</span></div>
+            <div><div class="font-semibold mb-1">风格画像</div><div class="text-sm" style="color:var(--ink-dim);">分析你的风格偏好，生成居住者人格标签</div></div>
+          </div>
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:white;"><span class="mi" style="color:var(--clay);">timeline</span></div>
+            <div><div class="font-semibold mb-1">改造日记</div><div class="text-sm" style="color:var(--ink-dim);">before/after 时间线，见证家的每一步变化</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="md:col-span-6 flex justify-center">
+        <div class="phone">
+          <div class="screen" style="background:var(--cream);">
+            <div class="statusbar"><span>9:41</span><div class="flex gap-1"><span class="mi text-sm">network_wifi</span><span class="mi text-sm">battery_full</span></div></div>
+            <div class="px-5 pt-2">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <div class="serif font-bold text-lg">我的空间</div>
+                  <div class="text-xs" style="color:var(--ink-dim);">3 个房间 · 12 次改造</div>
+                </div>
+                <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:var(--warm);">
+                  <span class="mi" style="color:var(--clay-deep);">account_circle</span>
+                </div>
+              </div>
+              <!-- style identity card -->
+              <div class="rounded-2xl p-4 mb-4" style="background:linear-gradient(135deg,var(--warm),#FFF9F2);">
+                <div class="text-xs mb-2" style="color:var(--ink-dim);">你的风格画像</div>
+                <div class="flex items-center gap-3">
+                  <div class="w-14 h-14 rounded-full flex items-center justify-center" style="background:var(--clay); color:white; font-family:'Noto Serif SC',serif; font-weight:700; font-size:20px;">侘</div>
+                  <div>
+                    <div class="font-bold">侘寂自然派</div>
+                    <div class="text-xs" style="color:var(--ink-dim);">偏好大地色系 · 自然材质 · 留白</div>
+                  </div>
+                </div>
+                <div class="flex gap-2 mt-3">
+                  <span class="chip" style="background:white; color:var(--clay-deep);">陶土 85%</span>
+                  <span class="chip" style="background:white; color:var(--sage-deep);">木质 72%</span>
+                  <span class="chip" style="background:white; color:var(--gold);">亚麻 68%</span>
+                </div>
+              </div>
+              <!-- room list -->
+              <div class="space-y-2">
+                <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:white;">
+                  <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background:linear-gradient(135deg,#EDE0D4,#D4C4B0);"></div>
+                  <div class="flex-1">
+                    <div class="text-sm font-semibold">客厅 · 侘寂风改造</div>
+                    <div class="text-xs" style="color:var(--ink-soft);">2026 年 5 月 · 已收藏</div>
+                  </div>
+                  <span class="mi text-sm" style="color:var(--clay);">chevron_right</span>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:white;">
+                  <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background:linear-gradient(135deg,#B5C9B8,#9AB8A0);"></div>
+                  <div class="flex-1">
+                    <div class="text-sm font-semibold">卧室 · 鼠尾草绿</div>
+                    <div class="text-xs" style="color:var(--ink-soft);">2026 年 4 月 · 搭配清单已购买</div>
+                  </div>
+                  <span class="mi text-sm" style="color:var(--clay);">chevron_right</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VALUE CARDS ============ -->
+<section class="py-24">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-16">
+      <div class="chip mx-auto mb-4" style="background:var(--warm); color:var(--clay-deep);">DOMI · 核心价值</div>
+      <h2 class="serif font-bold text-4xl" style="color:var(--ink);">
+        像搭配衣服一样<br/>搭配你的家<span style="color:var(--clay);">.</span>
+      </h2>
+    </div>
+    <div class="grid md:grid-cols-3 gap-8">
+      <div class="room-card p-8 text-center">
+        <div class="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-5" style="background:var(--warm);">
+          <span class="mi text-3xl" style="color:var(--clay);">auto_awesome</span>
+        </div>
+        <h3 class="serif font-bold text-xl mb-3">AI 空间试穿</h3>
+        <p class="text-sm leading-relaxed" style="color:var(--ink-dim);">拍房间照片，AI 帮你换风格/换单品/换色调，0 成本试错。每次 2-3 候选，不满意再换。</p>
+      </div>
+      <div class="room-card p-8 text-center">
+        <div class="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-5" style="background:var(--warm);">
+          <span class="mi text-3xl" style="color:var(--clay);">shopping_bag</span>
+        </div>
+        <h3 class="serif font-bold text-xl mb-3">灵感 → 购买闭环</h3>
+        <p class="text-sm leading-relaxed" style="color:var(--ink-dim);">看到好搭配 → AI 试穿到你家 → 生成可购买清单。种草到下单，一步不落。</p>
+      </div>
+      <div class="room-card p-8 text-center">
+        <div class="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-5" style="background:var(--warm);">
+          <span class="mi text-3xl" style="color:var(--clay);">palette</span>
+        </div>
+        <h3 class="serif font-bold text-xl mb-3">风格画像</h3>
+        <p class="text-sm leading-relaxed" style="color:var(--ink-dim);">记录你的每一次点赞和改造，AI 分析你的风格偏好，生成专属「居住者人格」标签。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="py-16" style="background:linear-gradient(180deg,var(--cream) 0%, #F5E8DA 100%); border-top:1px solid rgba(107,94,88,0.08);">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:var(--clay-deep);">
+          <span class="mi text-white text-sm">chair</span>
+        </div>
+        <div>
+          <div class="serif font-bold" style="color:var(--ink);">宅趣 Domi</div>
+          <div class="text-xs" style="color:var(--ink-dim);">把家变成你喜欢的样子</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-4 text-sm" style="color:var(--ink-dim);">
+        <span>PRD v0.1</span>
+        <span>·</span>
+        <span>概念演示</span>
+        <span>·</span>
+        <span>2026</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="logo-dot" style="color:var(--clay); background:var(--clay); width:8px; height:8px; border-radius:50%; box-shadow:0 0 12px currentColor;"></span>
+        <span class="logo-dot" style="color:var(--sage-deep); background:var(--sage-deep); width:8px; height:8px; border-radius:50%; box-shadow:0 0 12px currentColor;"></span>
+        <span class="logo-dot" style="color:var(--gold); background:var(--gold); width:8px; height:8px; border-radius:50%; box-shadow:0 0 12px currentColor;"></span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</div><!-- /main-col -->
+
+<!-- ============ IDEAS RIGHT PANEL ============ -->
+<div id="ideas-col">
+  <div class="flex-shrink-0 px-6 pt-8 pb-4">
+    <div class="flex items-center gap-2 mb-1">
+      <span class="mi text-lg" style="color:var(--clay);">lightbulb</span>
+      <span class="serif font-bold text-lg">设计推敲</span>
+    </div>
+    <p class="text-xs" style="color:var(--ink-dim);">关于 Domi 的一些思考碎片</p>
+  </div>
+
+  <div class="ideas-strip" id="ideas-strip">
+    <div class="idea-slot">
+      <div class="rounded-2xl p-5" style="background:white; border:1px solid rgba(212,137,107,0.1);">
+        <div class="chip mb-3" style="background:var(--warm); color:var(--clay-deep);">CORE · 核心假设</div>
+        <h4 class="serif font-bold text-base mb-2" style="color:var(--ink);">AI 试穿是门还是墙？</h4>
+        <p class="text-xs leading-relaxed" style="color:var(--ink-dim);">
+          Domi 的核心假设是「降低视觉化试错成本能提高软装下单转化率」。
+          但如果 AI 生成的改造效果过于完美（光影、材质、比例不真实），
+          用户对实物的落差感反而可能降低购买意愿。
+        </p>
+        <p class="text-xs leading-relaxed mt-2" style="color:var(--ink-dim);">
+          对策：生成时加入「可信度水印」或「实物偏差估计」标签，
+          让用户预期管理到位。甚至可以提供「低保真 vs 高保真」两档模式。
+        </p>
+        <div class="mt-3 text-xs font-semibold" style="color:var(--clay);">#AI阈值 #预期管理</div>
+      </div>
+    </div>
+
+    <div class="idea-slot">
+      <div class="rounded-2xl p-5" style="background:white; border:1px solid rgba(212,137,107,0.1);">
+        <div class="chip mb-3" style="background:var(--warm); color:var(--clay-deep);">DIFFERENTIATION · 差异化</div>
+        <h4 class="serif font-bold text-base mb-2" style="color:var(--ink);">为什么不只做「AI 生成」？</h4>
+        <p class="text-xs leading-relaxed" style="color:var(--ink-dim);">
+          纯 AI 生成家居图已经有 Midjourney / DALL·E 能做——但 Domi 的差异不在图，
+          而在「图 + 可购买清单 + 风格画像」的闭环。用户不需要更好看的图，
+          用户需要的是「怎么把我家变成图上那样」。
+        </p>
+        <p class="text-xs leading-relaxed mt-2" style="color:var(--ink-dim);">
+          MVP 阶段可以把「搭配清单」作为免费用户的引流钩子，
+          即使不用 AI 试穿，单纯的灵感 + 商品推荐也有价值。
+        </p>
+        <div class="mt-3 text-xs font-semibold" style="color:var(--clay);">#闭环价值 #商品推荐</div>
+      </div>
+    </div>
+
+    <div class="idea-slot">
+      <div class="rounded-2xl p-5" style="background:white; border:1px solid rgba(212,137,107,0.1);">
+        <div class="chip mb-3" style="background:var(--warm); color:var(--clay-deep);">GROWTH · 冷启动</div>
+        <h4 class="serif font-bold text-base mb-2" style="color:var(--ink);">攻还是守？</h4>
+        <p class="text-xs leading-relaxed" style="color:var(--ink-dim);">
+          两种冷启动策略：<br/>
+          <strong>守（内容先行）</strong>—— 先做「灵感瀑布流 + 商品链接」，
+          像 Pinterest × 好好住的集合，靠 CPS 佣金产生收入，用流量养 AI 数据。<br/>
+          <strong>攻（AI 先行）</strong>—— 直接上 AI 试穿功能，
+          用「拍房间 → 换装」的 viral 效果拉动传播。
+        </p>
+        <p class="text-xs leading-relaxed mt-2" style="color:var(--ink-dim);">
+          建议 MVP 以「守」起步，但首页把 AI 功能放在视觉焦点，
+          给人「这是一个 AI 产品」的品牌感知。
+        </p>
+        <div class="mt-3 text-xs font-semibold" style="color:var(--clay);">#冷启动 #MVP策略</div>
+      </div>
+    </div>
+
+    <div class="idea-slot">
+      <div class="rounded-2xl p-5" style="background:white; border:1px solid rgba(212,137,107,0.1);">
+        <div class="chip mb-3" style="background:var(--warm); color:var(--clay-deep);">MONETIZATION · 商业化</div>
+        <h4 class="serif font-bold text-base mb-2" style="color:var(--ink);">会员 vs 佣金，谁更赚钱？</h4>
+        <p class="text-xs leading-relaxed" style="color:var(--ink-dim);">
+          家居品类的 CPS 佣金率通常在 5-15%（大家具偏低，软装小件偏高）。
+          如果 Domi 每月引导 1000 单 × ¥500 客单价 × 8% = ¥40,000 佣金收入。
+          同时灵感会员 ¥19/月，初期 5000 会员 = ¥95,000/月。
+        </p>
+        <p class="text-xs leading-relaxed mt-2" style="color:var(--ink-dim);">
+          双收入模型良性互补：会员覆盖 AI 算力成本，佣金贡献毛利。
+          搭配会员 ¥49/月（含商品 9 折）把两个收入流绑定，
+          用折扣激励用户升级更高 tier。
+        </p>
+        <div class="mt-3 text-xs font-semibold" style="color:var(--clay);">#双收入 #单位经济</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ideas-dots flex-shrink-0 pb-6" id="ideas-dots">
+  </div>
+</div>
+
+</div><!-- /page-wrapper -->
+
+<script>
+// Ideas dots
+(function(){
+  const strip = document.getElementById('ideas-strip');
+  const dotsContainer = document.getElementById('ideas-dots');
+  const slots = strip.querySelectorAll('.idea-slot');
+  const dots = [];
+  slots.forEach((_, i) => {
+    const dot = document.createElement('span');
+    if(i === 0) dot.classList.add('active');
+    dotsContainer.appendChild(dot);
+    dots.push(dot);
+  });
+
+  let ticking = false;
+  strip.addEventListener('scroll', () => {
+    if(!ticking){
+      requestAnimationFrame(() => {
+        const scrollLeft = strip.scrollLeft;
+        const slotWidth = strip.scrollWidth / slots.length;
+        const activeIndex = Math.round(scrollLeft / slotWidth);
+        dots.forEach((d, j) => d.classList.toggle('active', j === activeIndex));
+        ticking = false;
+      });
+      ticking = true;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

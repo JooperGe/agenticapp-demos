@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>宠述 PetStory · 每个动物，都有自己的故事</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream:   { 50:'#FEFCF8', 100:'#FDF8EE', 200:'#F9EDD6', 300:'#F3DDB4' },
+            amber:   { 200:'#FDE68A', 300:'#FCD34D', 400:'#FBBF24', 500:'#D97706' },
+            sage:    { 100:'#ECF5E8', 200:'#D8EBCE', 300:'#B8D8A8', 400:'#8FB87A', 500:'#6B8F5E' },
+            earth:   { 100:'#F5EDE0', 200:'#E8D5BC', 300:'#D4B896', 400:'#B8946A', 500:'#8B6F4E' },
+            warm:    { 50:'#FFF8F0', 100:'#FFEDD5', 200:'#FED7AA', 300:'#FDBA74', 400:'#FB923C' },
+            ink:     { 400:'#A8A29E', 500:'#78716C', 600:'#57534E', 700:'#44403C', 800:'#292524', 900:'#1C1917' },
+          },
+          fontFamily: {
+            sans:  ['Inter','PingFang SC','system-ui','sans-serif'],
+            serif: ['"Noto Serif SC"','serif'],
+          },
+          boxShadow: {
+            soft:  '0 10px 30px -12px rgba(139,111,78,.18), 0 4px 12px -4px rgba(28,25,23,.05)',
+            phone: '0 40px 80px -20px rgba(28,25,23,.28), 0 18px 40px -18px rgba(139,111,78,.22)',
+            card:  '0 4px 20px -4px rgba(139,111,78,.14), 0 1px 4px rgba(28,25,23,.04)',
+            chip:  '0 4px 12px -4px rgba(139,111,78,.35)',
+            warm:  '0 8px 32px -8px rgba(251,146,60,.25)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html, body { background: #FCF8F3; color: #1C1917; }
+    body {
+      background-image:
+        radial-gradient(1100px 500px at 5%  -5%,  #FDF8EE 0%, transparent 60%),
+        radial-gradient(800px  450px at 108% 8%,  #ECF5E8 0%, transparent 55%),
+        radial-gradient(700px  400px at 50%  110%, #FFF8F0 0%, transparent 60%);
+    }
+
+    /* ── Phone frame ── */
+    .phone {
+      width: 340px; height: 700px; border-radius: 44px;
+      background: linear-gradient(180deg, #FFFFFF 0%, #FEFCF8 100%);
+      border: 1px solid rgba(28,25,23,.06);
+      position: relative; overflow: hidden;
+      flex-shrink: 0;
+    }
+    .phone::before {
+      content: ""; position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+      width: 110px; height: 26px; border-radius: 999px; background: #1C1917; z-index: 40;
+    }
+    .screen { position: absolute; inset: 0; padding: 54px 18px 20px; display: flex; flex-direction: column; }
+    .statusbar { position: absolute; top: 20px; left: 28px; right: 28px; display: flex; justify-content: space-between; font-size: 12px; color: #292524; font-weight: 600; z-index: 30; }
+
+    /* ── Shared utilities ── */
+    .mi { font-family: 'Material Icons Round'; font-weight: normal; font-style: normal; font-size: 20px; line-height: 1; letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; direction: ltr; -webkit-font-smoothing: antialiased; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+    .dot  { width: 6px; height: 6px; border-radius: 999px; display: inline-block; }
+    .label{ font-size: 11px; color: #78716C; letter-spacing: .08em; text-transform: uppercase; }
+
+    /* ── Animations ── */
+    .float { animation: float 5s ease-in-out infinite; }
+    @keyframes float { 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-7px) } }
+    .pulse-dot { animation: pdot 2s ease-in-out infinite; }
+    @keyframes pdot { 0%,100%{ opacity:1; transform:scale(1) } 50%{ opacity:.5; transform:scale(.8) } }
+    .wiggle { animation: wiggle 3s ease-in-out infinite; }
+    @keyframes wiggle { 0%,100%{ transform:rotate(0) } 25%{ transform:rotate(6deg) } 75%{ transform:rotate(-6deg) } }
+
+    /* ── Section labels ── */
+    .flow-label { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: .06em; background: #F9EDD6; color: #8B6F4E; }
+
+    /* ── Bottom nav ── */
+    .bottom-nav { display: flex; justify-content: space-around; align-items: center; padding: 10px 0 14px; border-top: 1px solid rgba(28,25,23,.07); background: rgba(255,255,255,.92); backdrop-filter: blur(12px); flex-shrink: 0; }
+    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; color: #A8A29E; }
+    .nav-item.active { color: #D97706; }
+
+    /* ── Animal avatar ── */
+    .pet-avatar {
+      width: 48px; height: 48px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; flex-shrink: 0;
+    }
+    .pet-avatar-sm {
+      width: 80px; height: 80px; border-radius: 22px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 40px; flex-shrink: 0;
+    }
+
+    /* ── Story card ── */
+    .story-card {
+      border-radius: 18px; padding: 14px;
+      background: white; box-shadow: 0 2px 12px -4px rgba(139,111,78,.12), 0 1px 3px rgba(28,25,23,.04);
+      display: flex; gap: 12px; align-items: center;
+      cursor: pointer; transition: transform .2s, box-shadow .2s;
+    }
+    .story-card:active { transform: scale(.98); }
+
+    /* ── Tag pills ── */
+    .tag { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; }
+
+    /* ── Scroll fade ── */
+    .scroll-fade { mask-image: linear-gradient(180deg, transparent 0%, #000 8%, #000 92%, transparent 100%); }
+
+    /* ===== Ideas right panel (同 mori/nudge 布局) ===== */
+    #page-wrapper{ display:flex; align-items:flex-start; min-width:1720px; }
+    #main-col{ flex:1 1 auto; min-width:0; }
+    #ideas-col{
+      flex: 0 0 420px;
+      position: sticky; top: 0;
+      height: 100vh;
+      display: flex; flex-direction: column;
+      border-left: 1px solid rgba(28,25,23,.08);
+      background: linear-gradient(160deg,#FFFBF6 0%, #FDF8EE 60%, #FFF8F0 100%);
+      overflow: hidden;
+      z-index: 50;
+    }
+    .ideas-strip{
+      display:flex; overflow-x:auto; flex:1;
+      scroll-snap-type: x mandatory;
+      scrollbar-width:none; -ms-overflow-style:none;
+      padding: 0 1.5rem 1.5rem;
+    }
+    .ideas-strip::-webkit-scrollbar{ display:none; }
+    .idea-slot{
+      flex: 0 0 100%; scroll-snap-align:start;
+      box-sizing:border-box; padding-right: 1rem;
+    }
+    .ideas-dots{ display:flex; gap:6px; justify-content:center; padding:12px 0; }
+    .ideas-dots span{ width:6px; height:6px; border-radius:999px; background:rgba(28,25,23,.15); transition:all .2s; }
+    .ideas-dots span.active{ width:18px; background:#D97706; }
+  </style>
+</head>
+<body class="font-sans antialiased">
+<div id="page-wrapper">
+<div id="main-col">
+
+<!-- ══════════ HEADER · 品牌区 ══════════ -->
+<header class="px-10 pt-14 pb-8">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-2xl flex items-center justify-center shadow-chip"
+           style="background:linear-gradient(135deg,#FDBA74,#D97706)">
+        <span class="mi text-white" style="font-size:22px">pets</span>
+      </div>
+      <div>
+        <div class="font-serif text-2xl font-bold leading-tight">宠述 <span class="opacity-40 font-sans font-medium text-base">PetStory</span></div>
+        <div class="text-xs tracking-wide opacity-60">每个动物，都有自己的故事</div>
+      </div>
+    </div>
+    <div class="hidden md:flex items-center gap-2">
+      <span class="chip bg-warm-50 text-ink-600" style="background:#F5EDE0">
+        <span class="dot bg-amber-500 pulse-dot"></span>Design Preview
+      </span>
+      <span class="chip bg-warm-50 text-ink-600" style="background:#F5EDE0">v0.1 · Mobile App</span>
+    </div>
+  </div>
+
+  <div class="mt-12 max-w-3xl">
+    <h1 class="font-serif text-4xl md:text-5xl font-bold leading-tight">
+      翻开一页，<span class="text-amber-600">认识一个</span><br/>
+      温暖的小生命。
+    </h1>
+    <p class="mt-5 opacity-60 leading-relaxed max-w-xl">
+      PetStory 是一个极简的动物故事集。首页浏览收录的动物简介，点开即可阅读它们的故事。
+      没有复杂的社交功能，只有文字、图片，和那些值得被记录的相遇。
+    </p>
+    <div class="mt-6 flex flex-wrap gap-3">
+      <span class="chip" style="font-size:13px;padding:7px 14px;background:#F9EDD6;color:#8B6F4E">
+        <span class="mi" style="font-size:16px;margin-right:4px">menu_book</span>动物故事集
+      </span>
+      <span class="chip" style="font-size:13px;padding:7px 14px;background:#ECF5E8;color:#6B8F5E">
+        <span class="mi" style="font-size:16px;margin-right:4px">spa</span>极简体验
+      </span>
+      <span class="chip" style="font-size:13px;padding:7px 14px;background:#FFEDD5;color:#C2410C">
+        <span class="mi" style="font-size:16px;margin-right:4px">favorite</span>温暖治愈
+      </span>
+      <span class="chip" style="font-size:13px;padding:7px 14px;background:#F5EDE0;color:#57534E">
+        <span class="mi" style="font-size:16px;margin-right:4px">edit_note</span>收录故事
+      </span>
+    </div>
+  </div>
+</header>
+
+<main class="px-10 pb-32">
+
+  <!-- ══════════ FLOW 01 · 首页列表 ══════════ -->
+  <section class="mt-8">
+    <div class="flex items-baseline gap-3 mb-6">
+      <span class="flow-label">Flow 01</span>
+      <h2 class="font-serif text-2xl font-bold">首页 · 动物列表</h2>
+    </div>
+    <p class="text-sm opacity-60 max-w-2xl mb-8 leading-relaxed">
+      打开 App 首先看到的是收录的动物卡片列表，每张卡片展示头像、名字、简介和一个标签。
+      点击任意卡片，进入它的完整故事。
+    </p>
+
+    <div class="flex gap-10 flex-wrap">
+
+      <!-- ── 列表页 ── -->
+      <div class="animate__animated animate__fadeInUp" style="animation-delay:.05s">
+        <p class="label mb-3"><span style="color:#D97706;font-weight:700">●</span> 首页 · 动物列表</p>
+        <div class="phone shadow-phone">
+          <div class="statusbar">
+            <span>9:41</span>
+            <span class="flex items-center gap-1">
+              <span class="mi" style="font-size:14px">signal_cellular_alt</span>
+              <span class="mi" style="font-size:14px">wifi</span>
+              <span class="mi" style="font-size:14px">battery_full</span>
+            </span>
+          </div>
+          <div class="screen" style="background:linear-gradient(180deg,#FEFCF8 0%,#FDF8EE 100%)">
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <div class="font-serif font-bold text-lg leading-tight">宠述</div>
+                <div class="text-[10px] opacity-50 tracking-wider">PetStory</div>
+              </div>
+              <span class="mi text-amber-600" style="font-size:22px">search</span>
+            </div>
+
+            <!-- Featured banner -->
+            <div class="rounded-2xl p-4 mb-4" style="background:linear-gradient(135deg,#FDBA74,#FB923C);min-height:90px;position:relative;overflow:hidden">
+              <div style="position:absolute;top:-20px;right:-20px;font-size:80px;opacity:.12" class="mi">pets</div>
+              <div class="relative z-10">
+                <div class="text-white font-serif font-bold text-sm mb-1">今日推荐</div>
+                <div class="text-white/80 text-[11px] leading-relaxed">流浪猫小橘的温暖故事<br/>已被 128 人阅读</div>
+              </div>
+            </div>
+
+            <!-- Section title -->
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-[13px] font-semibold">全部动物</span>
+              <span class="text-[10px] opacity-40">共 5 位小邻居</span>
+            </div>
+
+            <!-- Animal list -->
+            <div class="flex flex-col gap-2.5 flex-1 overflow-y-auto pr-1 scroll-fade">
+
+              <!-- ① 小橘 -->
+              <div class="story-card">
+                <div class="pet-avatar" style="background:linear-gradient(135deg,#FED7AA,#FB923C)">
+                  <span class="mi text-white" style="font-size:22px">cruelty_free</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="font-serif font-bold text-sm">小橘</span>
+                    <span class="tag" style="background:#F9EDD6;color:#8B6F4E;font-size:9px">橘猫</span>
+                  </div>
+                  <div class="text-[11px] opacity-50 truncate mt-0.5">从流浪到拥有一个家，它用了整整一个冬天。</div>
+                </div>
+                <span class="mi text-ink-400" style="font-size:16px">chevron_right</span>
+              </div>
+
+              <!-- ② 太阳 -->
+              <div class="story-card">
+                <div class="pet-avatar" style="background:linear-gradient(135deg,#FDE68A,#F59E0B)">
+                  <span class="mi text-white" style="font-size:22px">wb_sunny</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="font-serif font-bold text-sm">太阳</span>
+                    <span class="tag" style="background:#ECF5E8;color:#6B8F5E;font-size:9px">金毛</span>
+                  </div>
+                  <div class="text-[11px] opacity-50 truncate mt-0.5">它的笑容能融化整个冬天的冰。</div>
+                </div>
+                <span class="mi text-ink-400" style="font-size:16px">chevron_right</span>
+              </div>
+
+              <!-- ③ 棉花糖 -->
+              <div class="story-card">
+                <div class="pet-avatar" style="background:linear-gradient(135deg,#F3E8FF,#D946EF)">
+                  <span class="mi text-white" style="font-size:22px">cottage</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="font-serif font-bold text-sm">棉花糖</span>
+                    <span class="tag" style="background:#F3E8FF;color:#A21CAF;font-size:9px">垂耳兔</span>
+                  </div>
+                  <div class="text-[11px] opacity-50 truncate mt-0.5">一只胆小的兔子，如何学会信任人类的手。</div>
+                </div>
+                <span class="mi text-ink-400" style="font-size:16px">chevron_right</span>
+              </div>
+
+              <!-- ④ 蓝蓝 -->
+              <div class="story-card">
+                <div class="pet-avatar" style="background:linear-gradient(135deg,#BAE6FD,#0EA5E9)">
+                  <span class="mi text-white" style="font-size:22px">flight</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="font-serif font-bold text-sm">蓝蓝</span>
+                    <span class="tag" style="background:#E0F2FE;color:#0284C7;font-size:9px">虎皮鹦鹉</span>
+                  </div>
+                  <div class="text-[11px] opacity-50 truncate mt-0.5">教会了一个沉默的孩子，重新开口说话。</div>
+                </div>
+                <span class="mi text-ink-400" style="font-size:16px">chevron_right</span>
+              </div>
+
+              <!-- ⑤ 团子 -->
+              <div class="story-card">
+                <div class="pet-avatar" style="background:linear-gradient(135deg,#FECDD3,#E11D48)">
+                  <span class="mi text-white" style="font-size:22px">circle</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="font-serif font-bold text-sm">团子</span>
+                    <span class="tag" style="background:#FCE7F3;color:#BE123C;font-size:9px">仓鼠</span>
+                  </div>
+                  <div class="text-[11px] opacity-50 truncate mt-0.5">小小的身体里，住着一个环游世界的梦想家。</div>
+                </div>
+                <span class="mi text-ink-400" style="font-size:16px">chevron_right</span>
+              </div>
+
+            </div>
+
+            <!-- Bottom nav -->
+            <div class="bottom-nav -mx-[18px] -mb-[20px] px-[18px]">
+              <div class="nav-item active"><span class="mi" style="font-size:18px">home</span>首页</div>
+              <div class="nav-item"><span class="mi" style="font-size:18px">explore</span>发现</div>
+              <div class="nav-item"><span class="mi" style="font-size:18px">bookmark_border</span>收藏</div>
+              <div class="nav-item"><span class="mi" style="font-size:18px">person_outline</span>我的</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 列表说明 ── -->
+      <div class="flex flex-col justify-center max-w-xs animate__animated animate__fadeInUp" style="animation-delay:.2s">
+        <div class="rounded-3xl border bg-white/80 p-6 shadow-soft">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#FDBA74,#D97706)">
+              <span class="mi text-white" style="font-size:16px">list_alt</span>
+            </span>
+            <span class="font-serif font-bold">列表页设计要点</span>
+          </div>
+          <ul class="text-sm space-y-2 opacity-60 leading-relaxed">
+            <li class="flex gap-2"><span class="text-amber-500 shrink-0">·</span>顶部品牌区 + 搜索入口，简洁克制</li>
+            <li class="flex gap-2"><span class="text-amber-500 shrink-0">·</span>精选推荐横幅，增加发现感</li>
+            <li class="flex gap-2"><span class="text-amber-500 shrink-0">·</span>卡片式列表：头像 + 名字 + 标签 + 一句话简介</li>
+            <li class="flex gap-2"><span class="text-amber-500 shrink-0">·</span>每个动物头像使用专属配色，强化辨识</li>
+            <li class="flex gap-2"><span class="text-amber-500 shrink-0">·</span>底部导航 4 个 Tab，首页默认高亮</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════ FLOW 02 · 故事详情 ══════════ -->
+  <section class="mt-24">
+    <div class="flex items-baseline gap-3 mb-6">
+      <span class="flow-label">Flow 02</span>
+      <h2 class="font-serif text-2xl font-bold">详情 · 故事阅读</h2>
+    </div>
+    <p class="text-sm opacity-60 max-w-2xl mb-8 leading-relaxed">
+      点击列表中的动物卡片，进入专属的故事页面。上方展示动物的头像、基本信息和一句话标签，
+      下方展开完整的故事正文，搭配氛围插图，带来沉浸的阅读体验。
+    </p>
+
+    <div class="flex gap-10 flex-wrap">
+
+      <!-- ── 故事详情 ── -->
+      <div class="animate__animated animate__fadeInUp" style="animation-delay:.05s">
+        <p class="label mb-3"><span style="color:#D97706;font-weight:700">●</span> 故事详情 · 小橘</p>
+        <div class="phone shadow-phone">
+          <div class="statusbar">
+            <span>9:41</span>
+            <span class="flex items-center gap-1">
+              <span class="mi" style="font-size:14px">signal_cellular_alt</span>
+              <span class="mi" style="font-size:14px">wifi</span>
+              <span class="mi" style="font-size:14px">battery_full</span>
+            </span>
+          </div>
+          <div class="screen" style="background:linear-gradient(180deg,#FFF8F0 0%,#FEFCF8 100%)">
+            <!-- Top bar -->
+            <div class="flex items-center gap-2 mb-4">
+              <span class="mi" style="font-size:18px;color:#78716C">arrow_back_ios</span>
+              <span class="text-[11px] opacity-50 tracking-wider">返回列表</span>
+            </div>
+
+            <!-- Hero area -->
+            <div class="flex flex-col items-center mb-5">
+              <div class="pet-avatar-sm mb-3" style="background:linear-gradient(135deg,#FED7AA,#FB923C);box-shadow:0 8px 24px -4px rgba(251,146,60,.3)">
+                <span class="mi text-white" style="font-size:38px">cruelty_free</span>
+              </div>
+              <div class="font-serif text-xl font-bold">小橘</div>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="tag" style="background:#F9EDD6;color:#8B6F4E">橘猫</span>
+                <span class="tag" style="background:#FCE7F3;color:#BE123C">♀ 3岁</span>
+                <span class="text-[10px] opacity-40">已收录 45 天</span>
+              </div>
+            </div>
+
+            <!-- Story content -->
+            <div class="flex-1 overflow-y-auto pr-1 scroll-fade text-[13px] leading-relaxed space-y-3 opacity-75">
+              <p>
+                第一次见到小橘，是在那年深冬的垃圾站旁边。它蜷缩在一个破纸箱里，橘色的毛发结成一缕一缕的，
+                看到有人走近，它没有跑，只是抬起头，轻轻地叫了一声。
+              </p>
+
+              <!-- Illustration placeholder -->
+              <div class="rounded-2xl h-28 my-3 flex items-center justify-center" style="background:linear-gradient(135deg,#F9EDD6,#FDBA74)">
+                <span class="mi text-white/40" style="font-size:36px">image</span>
+              </div>
+
+              <p>
+                那一声轻叫，让我停下了脚步。我蹲下身，它犹豫了一下，然后慢慢地蹭了过来。
+                它的身上很凉，但蹭过来的动作却很轻很柔，像怕弄疼我似的。
+              </p>
+              <p>
+                带去宠物医院检查，医生说它大概一岁出头，有些营养不良，但所幸没有严重的疾病。
+                打了疫苗、做了驱虫，它在笼子里安静地待着，不吵不闹，只是用那双琥珀色的眼睛看着每一个人。
+              </p>
+              <p>
+                回到家后，小橘用了整整三天才敢从沙发底下出来。第四天晚上，我坐在沙发上看书，
+                感觉到脚边有一团温暖——它不知什么时候靠了过来，把自己团成一个橘色的圆球，贴着我的脚睡着了。
+              </p>
+              <p>
+                从那天起，它再也没有躲到沙发底下过。
+              </p>
+              <p>
+                现在的小橘，是一只标准的橘猫。它会在每天早上六点准时用毛茸茸的脑袋顶我的下巴，
+                会在我做饭的时候蹲在厨房门口监工，会在我加班到深夜时跳上桌子，一屁股坐在键盘上——
+                然后用那种"该睡觉了"的眼神看着我。
+              </p>
+              <p>
+                它教会我一件事：信任不是一瞬间发生的。它是在每一个清晨的蹭蹭里，在每一顿饱饭后的咕噜声里，
+                在每一个安静的夜晚里，一点一点长出来的。
+              </p>
+
+              <div class="pt-2 pb-1 text-center">
+                <span class="text-[10px] opacity-40">—— 故事完 · 感谢阅读 ——</span>
+              </div>
+            </div>
+
+            <!-- Bottom action -->
+            <div class="flex items-center justify-between pt-3 mt-1 border-t border-black/5">
+              <div class="flex items-center gap-3">
+                <span class="mi text-ink-400" style="font-size:18px">favorite_border</span>
+                <span class="mi text-ink-400" style="font-size:18px">ios_share</span>
+              </div>
+              <span class="text-[10px] opacity-40">128 次阅读</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 详情说明 ── -->
+      <div class="flex flex-col justify-center max-w-xs animate__animated animate__fadeInUp" style="animation-delay:.2s">
+        <div class="rounded-3xl border bg-white/80 p-6 shadow-soft">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#FDBA74,#D97706)">
+              <span class="mi text-white" style="font-size:16px">auto_stories</span>
+            </span>
+            <span class="font-serif font-bold">详情页设计要点</span>
+          </div>
+          <ul class="text-sm space-y-2 opacity-60 leading-relaxed">
+            <li class="flex gap-2"><span class="text-amber-500 shrink-0">·</span>顶部返回按钮，随时回到列表</li>
+            <li class="flex gap-2"><span class="text-amber-500 shrink-0">·</span>大号头像 + 名字 + 标签，建立主角认知</li>
+            <li class="flex gap-2"><span class="text-amber-500 shrink-0">·</span>正文以叙事散文风格呈现，读感自然</li>
+            <li class="flex gap-2"><span class="text-amber-500 shrink-0">·</span>氛围插图穿插，打破纯文字节奏</li>
+            <li class="flex gap-2"><span class="text-amber-500 shrink-0">·</span>底部交互：收藏 / 分享 / 阅读计数</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════ 核心价值 ══════════ -->
+  <section class="mt-24 max-w-5xl">
+    <div class="flex items-baseline gap-3 mb-10">
+      <span class="flow-label">核心价值</span>
+      <h2 class="font-serif text-2xl font-bold">为什么需要一个 PetStory</h2>
+    </div>
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="rounded-2xl bg-white/90 border border-black/[.04] p-6 shadow-card">
+        <div class="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style="background:linear-gradient(135deg,#F9EDD6,#D4B896)">
+          <span class="mi" style="font-size:20px;color:#8B6F4E">self_improvement</span>
+        </div>
+        <div class="font-serif font-bold text-base mb-2">治愈与陪伴</div>
+        <p class="text-sm opacity-60 leading-relaxed">每个动物故事都是一剂温柔良药。在疲惫的夜晚翻开一篇，让毛茸茸的文字温暖你的心。</p>
+      </div>
+      <div class="rounded-2xl bg-white/90 border border-black/[.04] p-6 shadow-card">
+        <div class="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style="background:linear-gradient(135deg,#ECF5E8,#8FB87A)">
+          <span class="mi" style="font-size:20px;color:#6B8F5E">auto_stories</span>
+        </div>
+        <div class="font-serif font-bold text-base mb-2">极简专注</div>
+        <p class="text-sm opacity-60 leading-relaxed">没有社交、没有算法推荐。只有精心收录的故事，和纯粹的阅读体验。回归内容本身。</p>
+      </div>
+      <div class="rounded-2xl bg-white/90 border border-black/[.04] p-6 shadow-card">
+        <div class="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style="background:linear-gradient(135deg,#FFEDD5,#FDBA74)">
+          <span class="mi" style="font-size:20px;color:#D97706">record_voice_over</span>
+        </div>
+        <div class="font-serif font-bold text-base mb-2">记录与记忆</div>
+        <p class="text-sm opacity-60 leading-relaxed">每个生命都值得被记录。PetStory 让散落在时光里的动物故事，有了一个安静的家。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ 收录动物一览 ══════════ -->
+  <section class="mt-24 max-w-5xl">
+    <div class="flex items-baseline gap-3 mb-10">
+      <span class="flow-label">收录动物</span>
+      <h2 class="font-serif text-2xl font-bold">目前已收录 5 位小邻居</h2>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div class="rounded-2xl bg-white/70 border border-black/[.04] p-5 text-center shadow-card hover:shadow-soft transition-shadow">
+        <div class="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center" style="background:linear-gradient(135deg,#FED7AA,#FB923C)">
+          <span class="mi text-white" style="font-size:28px">cruelty_free</span>
+        </div>
+        <div class="font-serif font-bold">小橘</div>
+        <div class="text-[10px] opacity-40 mt-0.5">橘猫 · 3岁</div>
+        <div class="mt-2 text-[11px] opacity-50 leading-relaxed">从流浪到拥有一个家</div>
+      </div>
+      <div class="rounded-2xl bg-white/70 border border-black/[.04] p-5 text-center shadow-card hover:shadow-soft transition-shadow">
+        <div class="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center" style="background:linear-gradient(135deg,#FDE68A,#F59E0B)">
+          <span class="mi text-white" style="font-size:28px">wb_sunny</span>
+        </div>
+        <div class="font-serif font-bold">太阳</div>
+        <div class="text-[10px] opacity-40 mt-0.5">金毛 · 4岁</div>
+        <div class="mt-2 text-[11px] opacity-50 leading-relaxed">笑容能融化冬天</div>
+      </div>
+      <div class="rounded-2xl bg-white/70 border border-black/[.04] p-5 text-center shadow-card hover:shadow-soft transition-shadow">
+        <div class="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center" style="background:linear-gradient(135deg,#F3E8FF,#D946EF)">
+          <span class="mi text-white" style="font-size:28px">cottage</span>
+        </div>
+        <div class="font-serif font-bold">棉花糖</div>
+        <div class="text-[10px] opacity-40 mt-0.5">垂耳兔 · 2岁</div>
+        <div class="mt-2 text-[11px] opacity-50 leading-relaxed">胆小鬼学会信任</div>
+      </div>
+      <div class="rounded-2xl bg-white/70 border border-black/[.04] p-5 text-center shadow-card hover:shadow-soft transition-shadow">
+        <div class="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center" style="background:linear-gradient(135deg,#BAE6FD,#0EA5E9)">
+          <span class="mi text-white" style="font-size:28px">flight</span>
+        </div>
+        <div class="font-serif font-bold">蓝蓝</div>
+        <div class="text-[10px] opacity-40 mt-0.5">虎皮鹦鹉 · 2岁</div>
+        <div class="mt-2 text-[11px] opacity-50 leading-relaxed">帮孩子重新开口</div>
+      </div>
+      <div class="rounded-2xl bg-white/70 border border-black/[.04] p-5 text-center shadow-card hover:shadow-soft transition-shadow">
+        <div class="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center" style="background:linear-gradient(135deg,#FECDD3,#E11D48)">
+          <span class="mi text-white" style="font-size:28px">circle</span>
+        </div>
+        <div class="font-serif font-bold">团子</div>
+        <div class="text-[10px] opacity-40 mt-0.5">仓鼠 · 1岁</div>
+        <div class="mt-2 text-[11px] opacity-50 leading-relaxed">小身体大梦想</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+</div><!-- /main-col -->
+
+<!-- ============ IDEAS RIGHT PANEL ============ -->
+<div id="ideas-col">
+  <!-- Panel header -->
+  <div class="px-6 pt-8 pb-4 border-b shrink-0" style="border-color:rgba(28,25,23,.08);">
+    <div class="flex items-center gap-2 mb-1">
+      <div class="w-7 h-7 rounded-xl flex items-center justify-center" style="background:#1C1917;">
+        <span class="mi text-white" style="font-size:14px;">lightbulb</span>
+      </div>
+      <span class="serif text-lg font-bold" style="color:#1C1917;">Ideas</span>
+      <span class="chip text-[10px] ml-1" style="background:rgba(217,119,6,0.15); color:#D97706;">3 条</span>
+    </div>
+    <p class="text-[11px] leading-relaxed" style="color:#78716C;">产品想法备忘 · 左右滑动查看</p>
+    <div class="flex items-center gap-1 mt-2 text-[10px]" style="color:#78716C; opacity:0.6;">
+      <span class="mi" style="font-size:12px;">swipe</span>
+      <span>向左滑可以看更多</span>
+    </div>
+  </div>
+
+  <!-- Card carousel -->
+  <div class="ideas-strip" id="ideasStrip">
+
+    <!-- ── Idea #001 · 多声音阅读 ── -->
+    <div class="idea-slot">
+      <div class="rounded-3xl border bg-white/85 p-5 h-full overflow-y-auto" style="border-color:rgba(28,25,23,.08); box-shadow:0 8px 24px -12px rgba(28,25,23,.08); max-height:calc(100vh - 160px);">
+        <div class="flex items-start justify-between mb-3">
+          <div>
+            <div class="text-[10px] tracking-widest uppercase mb-1" style="color:#78716C;">Idea #001 · 阅读 / 语音</div>
+            <div class="serif text-[17px] font-bold leading-snug" style="color:#1C1917;">用不同角色的声音，<br/>把故事"念"出来</div>
+          </div>
+          <span class="chip text-[10px] shrink-0 ml-2" style="background:#FFF1D8; color:#D97706; border:1px solid rgba(217,119,6,0.4);">待评估</span>
+        </div>
+        <p class="text-[12px] leading-relaxed mb-4" style="color:#57534E;">
+          每个动物故事添加语音朗读功能，用户可以选择不同的"声优"来朗读故事——
+          比如用温柔的女声读小橘的故事，用活泼的童声读团子的冒险。甚至可以模拟动物主角自己的"声音"来叙述。
+        </p>
+        <div class="rounded-2xl border p-3 mb-4" style="background:rgba(253,248,238,0.6); border-color:rgba(28,25,23,.06);">
+          <div class="text-[10px] tracking-wider uppercase mb-3" style="color:#78716C;">交互流程</div>
+          <div class="flex items-start gap-2 mb-3">
+            <div class="w-6 h-6 rounded-full text-white flex items-center justify-center shrink-0 mt-0.5" style="background:#D97706;">
+              <span class="mi" style="font-size:12px;">headphones</span>
+            </div>
+            <div class="flex-1">
+              <div class="text-[9px] mb-1" style="color:#78716C;">①  用户点击朗读</div>
+              <div class="rounded-xl bg-white border px-2.5 py-1.5 text-[11px]" style="border-color:rgba(28,25,23,.08); color:#1C1917;">
+                在故事页底部点击 <b>「听它说」</b> 按钮
+              </div>
+            </div>
+          </div>
+          <div class="flex items-start gap-2 mb-3">
+            <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5" style="background:rgba(28,25,23,.06);">
+              <span class="mi" style="font-size:12px; color:#D97706;">mic</span>
+            </div>
+            <div class="flex-1">
+              <div class="text-[9px] mb-1" style="color:#78716C;">②  选择声音角色</div>
+              <div class="rounded-xl bg-white border px-2.5 py-1.5 text-[11px]" style="border-color:rgba(28,25,23,.08); color:#1C1917;">
+                切换「小橘本橘」「温柔姐姐」「小朋友」等角色音色
+              </div>
+            </div>
+          </div>
+          <div class="flex items-start gap-2">
+            <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5" style="background:rgba(28,25,23,.06);">
+              <span class="mi" style="font-size:12px; color:#8FB87A;">play_circle</span>
+            </div>
+            <div class="flex-1">
+              <div class="text-[9px] mb-1" style="color:#78716C;">③  沉浸听故事</div>
+              <div class="rounded-xl border-2 p-2" style="border-color:rgba(217,119,6,.5); background:linear-gradient(135deg, #FDF8EE, #FFF8F0);">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="mi" style="font-size:14px;color:#D97706;">graphic_eq</span>
+                  <div class="text-[10px] font-semibold" style="color:#D97706;">正在朗读 · 小橘本橘</div>
+                </div>
+                <div class="text-[10px]" style="color:#57534E;">「第一次见到小橘，是在那年深冬的垃圾站旁边…」</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="rounded-xl border p-2.5" style="background:rgba(236,245,232,0.5); border-color:rgba(139,111,78,0.2);">
+            <div class="text-[9px] font-medium mb-1.5 flex items-center gap-1" style="color:#6B8F5E;"><span class="mi" style="font-size:11px;">thumb_up</span>亮点</div>
+            <ul class="text-[10px] space-y-1 leading-relaxed" style="color:#57534E;">
+              <li>· 增加情感代入感</li>
+              <li>· 适合睡前听故事场景</li>
+              <li>· 角色音色增加趣味性</li>
+              <li>· 无障碍友好</li>
+            </ul>
+          </div>
+          <div class="rounded-xl border p-2.5" style="background:rgba(255,237,213,0.4); border-color:rgba(251,146,60,0.25);">
+            <div class="text-[9px] font-medium mb-1.5 flex items-center gap-1" style="color:#C2410C;"><span class="mi" style="font-size:11px;">warning_amber</span>待解决</div>
+            <ul class="text-[10px] space-y-1 leading-relaxed" style="color:#57534E;">
+              <li>· TTS 成本与延迟</li>
+              <li>· 角色音色训练数据</li>
+              <li>· 离线播放支持</li>
+              <li>· 背景音效混音</li>
+            </ul>
+          </div>
+        </div>
+        <div class="mt-3 text-[10px] px-3 py-2 rounded-lg" style="background:rgba(28,25,23,.04); color:#78716C;">
+          <span style="color:#1C1917; font-weight:600;">技术栈 ·</span> TTS (Azure/CosyVoice) + 音色克隆 + 背景音效合成
+        </div>
+      </div>
+    </div><!-- /idea-slot #001 -->
+
+    <!-- ── Idea #002 · 故事地图 ── -->
+    <div class="idea-slot">
+      <div class="rounded-3xl border bg-white/85 p-5 h-full overflow-y-auto" style="border-color:rgba(28,25,23,.08); box-shadow:0 8px 24px -12px rgba(28,25,23,.08); max-height:calc(100vh - 160px);">
+        <div class="flex items-start justify-between mb-3">
+          <div>
+            <div class="text-[10px] tracking-widest uppercase mb-1" style="color:#78716C;">Idea #002 · 发现 / 地图</div>
+            <div class="serif text-[17px] font-bold leading-snug" style="color:#1C1917;">把动物的故事地点<br/>标记在一张地图上</div>
+          </div>
+          <span class="chip text-[10px] shrink-0 ml-2" style="background:#ECF5E8; color:#6B8F5E; border:1px solid rgba(107,143,94,0.4);">已采纳</span>
+        </div>
+        <p class="text-[12px] leading-relaxed mb-4" style="color:#57534E;">
+          每个动物故事都有一个发生地点。用一张手绘风格的地图把这些地点标记出来，用户可以在地图上浏览不同动物的"领地"，
+          点击标记点跳转到对应的故事。小橘的垃圾站、太阳的公园、蓝蓝的阳台——每一处都是故事开始的地方。
+        </p>
+        <div class="rounded-2xl border p-3 mb-4" style="background:rgba(253,248,238,0.6); border-color:rgba(28,25,23,.06);">
+          <div class="text-[10px] tracking-wider uppercase mb-3" style="color:#78716C;">交互流程</div>
+          <div class="flex items-start gap-2 mb-3">
+            <div class="w-6 h-6 rounded-full text-white flex items-center justify-center shrink-0 mt-0.5" style="background:#6B8F5E;">
+              <span class="mi" style="font-size:12px;">map</span>
+            </div>
+            <div class="flex-1">
+              <div class="text-[9px] mb-1" style="color:#78716C;">①  进入故事地图</div>
+              <div class="rounded-xl bg-white border px-2.5 py-1.5 text-[11px]" style="border-color:rgba(28,25,23,.08); color:#1C1917;">
+                在发现 Tab 中切换到「故事地图」视图
+              </div>
+            </div>
+          </div>
+          <div class="flex items-start gap-2 mb-3">
+            <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5" style="background:rgba(28,25,23,.06);">
+              <span class="mi" style="font-size:12px; color:#D97706;">pets</span>
+            </div>
+            <div class="flex-1">
+              <div class="text-[9px] mb-1" style="color:#78716C;">②  浏览动物标记</div>
+              <div class="rounded-xl bg-white border px-2.5 py-1.5 text-[11px]" style="border-color:rgba(28,25,23,.08); color:#1C1917;">
+                地图上出现 5 个动物头像标记点，显示名字和一句话简介
+              </div>
+            </div>
+          </div>
+          <div class="flex items-start gap-2">
+            <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5" style="background:rgba(28,25,23,.06);">
+              <span class="mi" style="font-size:12px; color:#D946EF;">touch_app</span>
+            </div>
+            <div class="flex-1">
+              <div class="text-[9px] mb-1" style="color:#78716C;">③  点击阅读故事</div>
+              <div class="rounded-xl border-2 p-2" style="border-color:rgba(217,119,6,.5); background:linear-gradient(135deg, #FDF8EE, #FFF8F0);">
+                <div class="flex items-center gap-1 text-[10px]">
+                  <span style="font-size:12px;">📍</span> 点击小橘标记 →
+                  <span class="font-semibold" style="color:#D97706;">跳转到故事页</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3 text-[10px] px-3 py-2 rounded-lg" style="background:rgba(28,25,23,.04); color:#78716C;">
+          <span style="color:#1C1917; font-weight:600;">技术栈 ·</span> Mapbox / 高德地图 API + 手绘风格 Tile 叠加层 + 自定义标记
+        </div>
+      </div>
+    </div><!-- /idea-slot #002 -->
+
+    <!-- ── Idea #003 · 动物日记 ── -->
+    <div class="idea-slot">
+      <div class="rounded-3xl border bg-white/85 p-5 h-full overflow-y-auto" style="border-color:rgba(28,25,23,.08); box-shadow:0 8px 24px -12px rgba(28,25,23,.08); max-height:calc(100vh - 160px);">
+        <div class="flex items-start justify-between mb-3">
+          <div>
+            <div class="text-[10px] tracking-widest uppercase mb-1" style="color:#78716C;">Idea #003 · UGC / 社区</div>
+            <div class="serif text-[17px] font-bold leading-snug" style="color:#1C1917;">用户投稿自己的动物故事，<br/>让温暖一直延续下去</div>
+          </div>
+          <span class="chip text-[10px] shrink-0 ml-2" style="background:#FFEDD5; color:#C2410C; border:1px solid rgba(251,146,60,0.4);">待开发</span>
+        </div>
+        <p class="text-[12px] leading-relaxed mb-4" style="color:#57534E;">
+          开放用户投稿，每个人都可以记录自己与动物的故事。编辑审核后收录到 PetStory 中，让这个小小的故事集变成一个由所有人共同书写的温暖角落。
+          投稿者可选择匿名或署名，每篇投稿标注贡献者。
+        </p>
+        <div class="rounded-2xl border p-3 mb-4" style="background:rgba(253,248,238,0.6); border-color:rgba(28,25,23,.06);">
+          <div class="text-[10px] tracking-wider uppercase mb-3" style="color:#78716C;">交互流程</div>
+          <div class="flex items-start gap-2 mb-3">
+            <div class="w-6 h-6 rounded-full text-white flex items-center justify-center shrink-0 mt-0.5" style="background:#D97706;">
+              <span class="mi" style="font-size:12px;">edit_note</span>
+            </div>
+            <div class="flex-1">
+              <div class="text-[9px] mb-1" style="color:#78716C;">①  「我的」Tab → 投稿入口</div>
+              <div class="rounded-xl bg-white border px-2.5 py-1.5 text-[11px]" style="border-color:rgba(28,25,23,.08); color:#1C1917;">
+                填写动物名字、种类、照片和故事正文
+              </div>
+            </div>
+          </div>
+          <div class="flex items-start gap-2 mb-3">
+            <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5" style="background:rgba(28,25,23,.06);">
+              <span class="mi" style="font-size:12px; color:#6B8F5E;">verified</span>
+            </div>
+            <div class="flex-1">
+              <div class="text-[9px] mb-1" style="color:#78716C;">②  编辑审核</div>
+              <div class="rounded-xl bg-white border px-2.5 py-1.5 text-[11px]" style="border-color:rgba(28,25,23,.08); color:#1C1917;">
+                审核通过后收录到列表中，标注「用户投稿」标识
+              </div>
+            </div>
+          </div>
+          <div class="flex items-start gap-2">
+            <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5" style="background:rgba(28,25,23,.06);">
+              <span class="mi" style="font-size:12px; color:#D946EF;">diversity_3</span>
+            </div>
+            <div class="flex-1">
+              <div class="text-[9px] mb-1" style="color:#78716C;">③  故事被更多人看到</div>
+              <div class="rounded-xl border-2 p-2" style="border-color:rgba(217,119,6,.5); background:linear-gradient(135deg, #FDF8EE, #FFF8F0);">
+                <div class="text-[10px]">投稿者可分享故事卡片到社交媒体</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="rounded-xl border p-2.5" style="background:rgba(236,245,232,0.5); border-color:rgba(139,111,78,0.2);">
+            <div class="text-[9px] font-medium mb-1.5 flex items-center gap-1" style="color:#6B8F5E;"><span class="mi" style="font-size:11px;">thumb_up</span>亮点</div>
+            <ul class="text-[10px] space-y-1 leading-relaxed" style="color:#57534E;">
+              <li>· 内容无限扩展</li>
+              <li>· 社区归属感强</li>
+              <li>· 低运营成本</li>
+              <li>· 真实故事最动人</li>
+            </ul>
+          </div>
+          <div class="rounded-xl border p-2.5" style="background:rgba(255,237,213,0.4); border-color:rgba(251,146,60,0.25);">
+            <div class="text-[9px] font-medium mb-1.5 flex items-center gap-1" style="color:#C2410C;"><span class="mi" style="font-size:11px;">warning_amber</span>待解决</div>
+            <ul class="text-[10px] space-y-1 leading-relaxed" style="color:#57534E;">
+              <li>· 内容审核机制</li>
+              <li>· 版权归属问题</li>
+              <li>· 投稿体验门槛</li>
+              <li>· 避免变成社交平台</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div><!-- /idea-slot #003 -->
+
+  </div><!-- /ideas-strip -->
+
+  <!-- dot indicator -->
+  <div class="ideas-dots shrink-0" id="ideaDots">
+    <span class="active"></span>
+    <span></span>
+    <span></span>
+  </div>
+</div><!-- /ideas-col -->
+
+</div><!-- /page-wrapper -->
+
+<script>
+  // Dot indicator syncs with horizontal scroll of the ideas strip
+  const strip = document.getElementById('ideasStrip');
+  const dots  = document.querySelectorAll('#ideaDots span');
+  if (strip && dots.length) {
+    strip.addEventListener('scroll', () => {
+      const idx = Math.round(strip.scrollLeft / strip.clientWidth);
+      dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+    });
+  }
+</script>
+
+<!-- ══════════ FOOTER ══════════ -->
+<footer class="border-t border-black/[.07]">
+  <div class="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div class="text-sm opacity-50">
+      © 2026 PetStory 宠述 · 每个动物，都有自己的故事
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="dot" style="background:#D97706"></span>
+      <span class="dot" style="background:#8FB87A"></span>
+      <span class="dot" style="background:#F59E0B"></span>
+      <span class="dot" style="background:#D946EF"></span>
+      <span class="dot" style="background:#0EA5E9"></span>
+      <span class="dot" style="background:#E11D48"></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
