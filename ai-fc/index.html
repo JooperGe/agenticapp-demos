@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI FC · 你不是球员，你是教练</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Serif+SC:wght@500;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+<style>
+  :root{
+    --pitch:#1B5E3F;
+    --pitch-mid:#2D7A52;
+    --pitch-light:#4A9B6E;
+    --pitch-deep:#0E3D27;
+    --chalk:#F4F8F5;
+    --field:#E8F0EA;
+    --mist:#DDEAE0;
+    --ink:#0E1F17;
+    --ink-dim:#4A5A50;
+    --ink-soft:#8A9A90;
+    --coral:#E8654E;
+    --coral-deep:#B83E29;
+    --gold:#E8B84A;
+    --gold-deep:#B88A1F;
+    --line:rgba(14,31,23,.08);
+  }
+  *{ -webkit-font-smoothing:antialiased; }
+  body{
+    font-family:'Inter','Noto Serif SC',system-ui,sans-serif;
+    background:var(--chalk);
+    color:var(--ink);
+    background-image:
+      radial-gradient(circle at 12% 8%, rgba(45,122,82,0.16) 0, transparent 42%),
+      radial-gradient(circle at 88% 22%, rgba(232,184,74,0.12) 0, transparent 40%),
+      radial-gradient(circle at 50% 95%, rgba(232,101,78,0.10) 0, transparent 50%);
+  }
+  .serif{ font-family:'Noto Serif SC',serif; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .mi{ font-family:'Material Icons Round'; font-style:normal; }
+
+  /* phone mockup */
+  .phone{
+    position:relative;
+    width:340px; height:700px;
+    background:#08130D;
+    border-radius:44px;
+    padding:14px;
+    box-shadow: 0 30px 60px -20px rgba(14,31,23,0.35), 0 10px 20px -10px rgba(14,31,23,0.25);
+  }
+  .phone::before{
+    content:'';
+    position:absolute; top:18px; left:50%; transform:translateX(-50%);
+    width:110px; height:28px; background:#08130D; border-radius:20px; z-index:5;
+  }
+  .screen{
+    width:100%; height:100%; border-radius:32px; overflow:hidden;
+    background:var(--chalk); position:relative;
+  }
+  .statusbar{
+    height:36px; padding:0 22px; display:flex; align-items:center; justify-content:space-between;
+    font-size:13px; font-weight:600; color:var(--ink); padding-top:14px;
+  }
+  .chip{ display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; font-size:12px; font-weight:500; }
+  .float{ animation: float 6s ease-in-out infinite; }
+  @keyframes float{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-8px); } }
+
+  /* pitch background */
+  .pitch-bg{
+    background:
+      linear-gradient(180deg, var(--pitch) 0%, var(--pitch-mid) 100%);
+    background-image:
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0 40px, transparent 40px 80px),
+      linear-gradient(180deg, var(--pitch) 0%, var(--pitch-mid) 100%);
+  }
+
+  .num-tag{
+    width:36px; height:36px; border-radius:50%;
+    display:inline-flex; align-items:center; justify-content:center;
+    background:var(--pitch); color:white; font-weight:700; font-family:'Noto Serif SC',serif;
+  }
+  .leaf-card{
+    background:white; border-radius:24px; padding:24px;
+    border:1px solid var(--line);
+    box-shadow: 0 8px 24px -12px rgba(14,31,23,0.08);
+  }
+  .swatch{ width:100%; height:64px; border-radius:14px; border:1px solid rgba(0,0,0,0.06); }
+  .footer-leaf{ background:linear-gradient(180deg, var(--pitch-deep) 0%, var(--ink) 100%); color:var(--mist); }
+
+  /* dashed tactical line */
+  .tactic-line{
+    stroke:white; stroke-width:2; fill:none;
+    stroke-dasharray: 6 6;
+    animation: dash 1.5s linear infinite;
+  }
+  @keyframes dash{ to{ stroke-dashoffset:-24; } }
+  .pulse-dot{ animation: pulseDot 2s ease-in-out infinite; }
+  @keyframes pulseDot{ 0%,100%{ opacity:.5; r:4;} 50%{ opacity:1; r:6;} }
+
+  /* attribute bar */
+  .attr-bar{ height:6px; border-radius:3px; background:rgba(14,31,23,0.08); overflow:hidden; }
+  .attr-bar > i{ display:block; height:100%; border-radius:3px; }
+
+  /* ===== Ideas right panel ===== */
+  #page-wrapper{ display:flex; align-items:flex-start; min-width:1720px; }
+  #main-col{ flex:1 1 auto; min-width:0; }
+  #ideas-col{
+    flex: 0 0 420px;
+    position: sticky; top: 0;
+    height: 100vh;
+    display: flex; flex-direction: column;
+    border-left: 1px solid var(--line);
+    background: linear-gradient(160deg,#F8FCF9 0%, #ECF3EE 60%, var(--chalk) 100%);
+    overflow: hidden;
+    z-index: 50;
+  }
+  .ideas-strip{
+    display:flex; overflow-x:auto; flex:1;
+    scroll-snap-type: x mandatory;
+    scrollbar-width:none; -ms-overflow-style:none;
+    padding: 0 1.5rem 1.5rem;
+  }
+  .ideas-strip::-webkit-scrollbar{ display:none; }
+  .idea-slot{
+    flex: 0 0 100%; scroll-snap-align:start;
+    box-sizing:border-box; padding-right: 1rem;
+  }
+  .ideas-dots{ display:flex; gap:6px; justify-content:center; padding:12px 0; }
+  .ideas-dots span{ width:6px; height:6px; border-radius:999px; background:rgba(14,31,23,0.15); transition:all .2s; }
+  .ideas-dots span.active{ width:18px; background:var(--coral); }
+</style>
+</head>
+<body>
+<div id="page-wrapper">
+<div id="main-col">
+
+<!-- ============ HEADER ============ -->
+<header class="relative overflow-hidden">
+  <div class="absolute inset-0 pitch-bg opacity-90"></div>
+  <!-- chalk lines decoration -->
+  <svg class="absolute inset-0 w-full h-full opacity-[0.08]" preserveAspectRatio="none" viewBox="0 0 1200 600">
+    <line x1="600" y1="0" x2="600" y2="600" stroke="white" stroke-width="2"/>
+    <circle cx="600" cy="300" r="90" stroke="white" stroke-width="2" fill="none"/>
+    <rect x="0" y="180" width="120" height="240" stroke="white" stroke-width="2" fill="none"/>
+    <rect x="1080" y="180" width="120" height="240" stroke="white" stroke-width="2" fill="none"/>
+  </svg>
+
+  <div class="relative max-w-6xl mx-auto px-6 pt-10 pb-20">
+    <nav class="flex items-center justify-between mb-20">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl bg-white/90 backdrop-blur flex items-center justify-center shadow-sm">
+          <span class="mi text-2xl" style="color:var(--pitch);">sports_soccer</span>
+        </div>
+        <div>
+          <div class="serif font-bold text-lg leading-tight text-white">AI FC</div>
+          <div class="text-xs tracking-[0.2em] font-medium text-white/70">A · I · F · C</div>
+        </div>
+      </div>
+      <div class="hidden md:flex items-center gap-8 text-sm text-white">
+        <a class="hover:opacity-60" href="#attributes">球员</a>
+        <a class="hover:opacity-60" href="#training">训练</a>
+        <a class="hover:opacity-60" href="#match">比赛</a>
+        <a class="hover:opacity-60" href="#coach">教练</a>
+        <a class="hover:opacity-60" href="#engine">引擎</a>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="chip" style="background:rgba(255,255,255,0.18); color:white; backdrop-filter:blur(4px);">概念稿 v0.1</span>
+      </div>
+    </nav>
+
+    <div class="grid md:grid-cols-12 gap-12 items-center">
+      <div class="md:col-span-7">
+        <div class="chip mb-5" style="background:rgba(255,255,255,0.18); color:white; backdrop-filter:blur(4px);">
+          <span class="mi text-sm">auto_awesome</span> AI 驱动 · 教练视角 · 10 倍速
+        </div>
+        <h1 class="serif font-black text-5xl md:text-6xl leading-[1.15] mb-6 text-white">
+          你不是球员，<br/>
+          你是<span style="color:var(--gold);">教练</span>。
+        </h1>
+        <p class="text-base md:text-lg leading-relaxed mb-8 max-w-xl text-white/85">
+          AI FC 是一款 AI 驱动的足球教练模拟游戏。你培养 AI 球员、编排战术、
+          在 10 倍速的比赛中实时干预。球员有体能、有情绪、会失误、会进化——
+          恰到好处的不完美，才是真实足球的魅力。
+        </p>
+        <div class="flex flex-wrap gap-3 mb-10">
+          <span class="chip" style="background:rgba(255,255,255,0.95); color:var(--pitch-deep);"><span class="mi text-sm">sports_soccer</span> 22 个 AI 球员</span>
+          <span class="chip" style="background:rgba(255,255,255,0.95); color:var(--pitch-deep);"><span class="mi text-sm">fast_forward</span> 10 倍速比赛</span>
+          <span class="chip" style="background:rgba(255,255,255,0.95); color:var(--pitch-deep);"><span class="mi text-sm">tune</span> 实时战术干预</span>
+          <span class="chip" style="background:rgba(255,255,255,0.95); color:var(--pitch-deep);"><span class="mi text-sm">psychology</span> 离线规则引擎</span>
+        </div>
+        <div class="flex items-center gap-6 text-sm text-white/80">
+          <div class="flex items-center gap-2"><span class="mi text-base" style="color:var(--gold);">emoji_events</span> 联赛 / 杯赛</div>
+          <div class="flex items-center gap-2"><span class="mi text-base" style="color:var(--coral);">whatshot</span> 进化点系统</div>
+          <div class="flex items-center gap-2"><span class="mi text-base" style="color:var(--pitch-light);">cloud_off</span> 完全离线可玩</div>
+        </div>
+      </div>
+
+      <!-- Hero phone: tactical board -->
+      <div class="md:col-span-5 flex justify-center">
+        <div class="phone animate__animated animate__fadeInUp">
+          <div class="screen pitch-bg">
+            <div class="statusbar text-white">
+              <span>9:41</span>
+              <div class="flex items-center gap-1">
+                <span class="mi text-sm">network_wifi</span>
+                <span class="mi text-sm">battery_full</span>
+              </div>
+            </div>
+            <div class="px-5 pt-2">
+              <div class="text-xs tracking-widest font-semibold mb-1 text-white/70">AI FC · 战术板</div>
+              <div class="serif font-bold text-xl mb-3 text-white">4-3-3 · 主场阵型</div>
+            </div>
+            <!-- pitch -->
+            <div class="relative mx-4 rounded-3xl overflow-hidden" style="height:380px; background:linear-gradient(180deg,#1B5E3F,#0E3D27);">
+              <svg viewBox="0 0 300 380" class="w-full h-full">
+                <!-- pitch lines -->
+                <rect x="10" y="10" width="280" height="360" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" fill="none"/>
+                <line x1="150" y1="10" x2="150" y2="370" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+                <circle cx="150" cy="190" r="42" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" fill="none"/>
+                <rect x="10" y="130" width="50" height="120" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" fill="none"/>
+                <rect x="240" y="130" width="50" height="120" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" fill="none"/>
+                <!-- formation lines (4-3-3) -->
+                <path class="tactic-line" d="M40 190 L80 70 L80 310 L40 190 M80 70 L80 310"/>
+                <path class="tactic-line" d="M150 120 L150 260 M110 190 L190 190"/>
+                <path class="tactic-line" d="M220 120 L260 80 M220 190 L260 190 M220 260 L260 300"/>
+                <!-- GK -->
+                <g transform="translate(40,190)"><circle r="11" fill="#E8B84A"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="#0E1F17">1</text></g>
+                <!-- back 4 -->
+                <g transform="translate(95,80)"><circle r="11" fill="white"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="#0E1F17">2</text></g>
+                <g transform="translate(95,150)"><circle r="11" fill="white"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="#0E1F17">4</text></g>
+                <g transform="translate(95,230)"><circle r="11" fill="white"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="#0E1F17">5</text></g>
+                <g transform="translate(95,300)"><circle r="11" fill="white"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="#0E1F17">3</text></g>
+                <!-- mid 3 -->
+                <g transform="translate(155,130)"><circle r="11" fill="#4A9B6E"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="white">6</text></g>
+                <g transform="translate(155,190)"><circle r="11" fill="#4A9B6E"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="white">8</text></g>
+                <g transform="translate(155,250)"><circle r="11" fill="#4A9B6E"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="white">10</text></g>
+                <!-- front 3 -->
+                <g transform="translate(225,120)"><circle r="11" fill="#E8654E"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="white">7</text></g>
+                <g transform="translate(225,190)"><circle r="11" fill="#E8654E"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="white">9</text></g>
+                <g transform="translate(225,260)"><circle r="11" fill="#E8654E"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="white">11</text></g>
+                <!-- ball -->
+                <circle class="pulse-dot" cx="175" cy="180" r="5" fill="white"/>
+              </svg>
+              <!-- floating chips -->
+              <div class="absolute top-4 left-4 chip animate__animated animate__fadeInDown" style="background:rgba(255,255,255,0.9); color:var(--pitch-deep);">
+                <span class="mi text-sm" style="color:var(--coral);">timer</span> 第 67' · 1:1
+              </div>
+              <div class="absolute bottom-4 right-4 chip animate__animated animate__fadeInUp" style="background:rgba(232,184,74,0.95); color:var(--ink);">
+                <span class="mi text-sm">bolt</span> 10× 速度
+              </div>
+            </div>
+            <!-- bottom card -->
+            <div class="absolute bottom-5 left-4 right-4 bg-white rounded-2xl p-4 shadow-lg">
+              <div class="flex items-center justify-between mb-2">
+                <div>
+                  <div class="text-xs" style="color:var(--ink-dim);">教练面板 · 实时干预</div>
+                  <div class="serif font-bold" style="color:var(--ink);">中场 A · 传球成功率 91%</div>
+                </div>
+                <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:var(--coral);">
+                  <span class="mi text-white">pause</span>
+                </div>
+              </div>
+              <div class="flex gap-3 text-xs" style="color:var(--ink-dim);">
+                <span class="flex items-center gap-1"><span class="mi text-sm" style="color:var(--pitch);">favorite</span> 体力 62%</span>
+                <span class="flex items-center gap-1"><span class="mi text-sm" style="color:var(--gold);">mood</span> 情绪 稳定</span>
+                <span class="flex items-center gap-1"><span class="mi text-sm" style="color:var(--coral);">whatshot</span> +3 进化</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ FLOW 01 · 球员AI属性体系 ============ -->
+<section id="attributes" class="py-24 relative">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="grid md:grid-cols-12 gap-12 items-center">
+      <div class="md:col-span-6 order-2 md:order-1 flex justify-center">
+        <div class="phone">
+          <div class="screen" style="background:var(--chalk);">
+            <div class="statusbar"><span>9:41</span><div class="flex gap-1"><span class="mi text-sm">network_wifi</span><span class="mi text-sm">battery_full</span></div></div>
+            <div class="px-5">
+              <div class="flex items-center justify-between mb-3">
+                <div class="serif font-bold text-xl">球员档案</div>
+                <span class="chip" style="background:var(--mist); color:var(--pitch-deep);">前锋 · 9 号</span>
+              </div>
+              <!-- player head -->
+              <div class="rounded-3xl p-4 mb-3" style="background:linear-gradient(135deg,var(--pitch),var(--pitch-deep)); color:white;">
+                <div class="flex items-center gap-3">
+                  <div class="w-16 h-16 rounded-2xl flex items-center justify-center" style="background:rgba(255,255,255,0.15);">
+                    <span class="mi text-3xl">person</span>
+                  </div>
+                  <div class="flex-1">
+                    <div class="serif font-bold text-lg">林·安德森</div>
+                    <div class="text-xs opacity-80">21 岁 · 天赋 78 · 综评 74</div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-[10px] opacity-70">进化点</div>
+                    <div class="serif font-bold text-2xl" style="color:var(--gold);">12</div>
+                  </div>
+                </div>
+              </div>
+              <!-- attributes -->
+              <div class="space-y-2.5 mb-3">
+                <div>
+                  <div class="flex justify-between text-xs mb-1"><span style="color:var(--ink-dim);">体能</span><span class="mono font-semibold">72</span></div>
+                  <div class="attr-bar"><i style="width:72%; background:var(--pitch);"></i></div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-xs mb-1"><span style="color:var(--ink-dim);">技术</span><span class="mono font-semibold">81</span></div>
+                  <div class="attr-bar"><i style="width:81%; background:var(--gold);"></i></div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-xs mb-1"><span style="color:var(--ink-dim);">意识</span><span class="mono font-semibold">65</span></div>
+                  <div class="attr-bar"><i style="width:65%; background:var(--pitch-light);"></i></div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-xs mb-1"><span style="color:var(--ink-dim);">决策</span><span class="mono font-semibold">58</span></div>
+                  <div class="attr-bar"><i style="width:58%; background:var(--coral);"></i></div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-xs mb-1"><span style="color:var(--ink-dim);">心理</span><span class="mono font-semibold">70</span></div>
+                  <div class="attr-bar"><i style="width:70%; background:var(--pitch);"></i></div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-xs mb-1"><span style="color:var(--ink-dim);">身体</span><span class="mono font-semibold">77</span></div>
+                  <div class="attr-bar"><i style="width:77%; background:var(--gold-deep);"></i></div>
+                </div>
+              </div>
+              <!--失误提示 -->
+              <div class="rounded-2xl p-3 flex items-start gap-2" style="background:#FBEEE8; border:1px solid rgba(232,101,78,0.2);">
+                <span class="mi text-sm mt-0.5" style="color:var(--coral);">info</span>
+                <div class="text-xs leading-relaxed" style="color:var(--coral-deep);">
+                  <b>失误率永不归零</b> · 满级球员也会在关键时刻停球失误——这就是真实足球。
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="md:col-span-6 order-1 md:order-2">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="num-tag">01</span>
+          <div class="text-xs tracking-[0.2em] font-semibold" style="color:var(--pitch-deep);">ATTRIBUTES · 球员属性</div>
+        </div>
+        <h2 class="serif font-bold text-4xl mb-5" style="color:var(--ink);">
+          七个维度，<br/>定义一个<span style="color:var(--pitch);">不完美</span>的 AI 球员。
+        </h2>
+        <p class="leading-relaxed mb-8" style="color:var(--ink-dim);">
+          每个 AI 球员拥有体能、技术、意识、决策、心理、失误、身体七个维度。
+          视野决定他「看到」多少机会，决策力决定他「选择」是否合理，
+          心理决定他落后时是崩盘还是绝平。失误率永远不为零——这是 AI 的人类感。
+        </p>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="leaf-card !p-5">
+            <div class="text-xs" style="color:var(--ink-dim);">视野差异</div>
+            <div class="serif font-bold mt-1">90 vs 30</div>
+            <div class="text-sm mt-1" style="color:var(--ink-dim);">大半场可见 / 只见身边 3 人</div>
+          </div>
+          <div class="leaf-card !p-5">
+            <div class="text-xs" style="color:var(--ink-dim);">决策权重</div>
+            <div class="serif font-bold mt-1">不是成功率</div>
+            <div class="text-sm mt-1" style="color:var(--ink-dim);">改变决策树节点权重</div>
+          </div>
+          <div class="leaf-card !p-5">
+            <div class="text-xs" style="color:var(--ink-dim);">天赋上限</div>
+            <div class="serif font-bold mt-1">78 → 85</div>
+            <div class="text-sm mt-1" style="color:var(--ink-dim);">训练逼近上限，不可无限涨</div>
+          </div>
+          <div class="leaf-card !p-5">
+            <div class="text-xs" style="color:var(--ink-dim);">进化突破</div>
+            <div class="serif font-bold mt-1" style="color:var(--coral);">进化点</div>
+            <div class="text-sm mt-1" style="color:var(--ink-dim);">关键表现解锁隐藏潜力</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FLOW 02 · 训练系统 ============ -->
+<section id="training" class="py-24 relative" style="background:linear-gradient(180deg, transparent, var(--mist), transparent);">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="grid md:grid-cols-12 gap-12 items-center">
+      <div class="md:col-span-6">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="num-tag" style="background:var(--gold-deep);">02</span>
+          <div class="text-xs tracking-[0.2em] font-semibold" style="color:var(--gold-deep);">TRAINING · 训练系统</div>
+        </div>
+        <h2 class="serif font-bold text-4xl mb-5" style="color:var(--ink);">
+          定向训练，<br/>看着小球员<span style="color:var(--gold-deep);">长成核心</span>。
+        </h2>
+        <p class="leading-relaxed mb-8" style="color:var(--ink-dim);">
+          选择单个球员，进入定向训练。技术、体能、战术、心理四类训练各有侧重。
+          训练有边际递减——60 到 70 容易，90 到 95 极难。过度训练会受伤，
+          长期不练会遗忘。养成感，是这套游戏最强的留存驱动力。
+        </p>
+        <div class="space-y-4">
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:var(--mist);"><span class="mi" style="color:var(--pitch-deep);">fitness_center</span></div>
+            <div><div class="font-semibold mb-1">体能训练</div><div class="text-sm" style="color:var(--ink-dim);">间歇跑 / 力量 / 冲刺，提升耐力与爆发力</div></div>
+          </div>
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:var(--mist);"><span class="mi" style="color:var(--pitch-deep);">sports_soccer</span></div>
+            <div><div class="font-semibold mb-1">技术训练</div><div class="text-sm" style="color:var(--ink-dim);">定点传球 / 射门 / 盘带障碍，逼近天赋上限</div></div>
+          </div>
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:var(--mist);"><span class="mi" style="color:var(--pitch-deep);">videocam</span></div>
+            <div><div class="font-semibold mb-1">战术训练</div><div class="text-sm" style="color:var(--ink-dim);">录像分析提升视野，模拟对抗提升决策力</div></div>
+          </div>
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:var(--mist);"><span class="mi" style="color:var(--pitch-deep);">psychology</span></div>
+            <div><div class="font-semibold mb-1">心理辅导</div><div class="text-sm" style="color:var(--ink-dim);">团队建设 / 压力测试 / 激励，提升抗压与协作</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="md:col-span-6 flex justify-center">
+        <div class="phone">
+          <div class="screen" style="background:var(--chalk);">
+            <div class="statusbar"><span>9:41</span><div class="flex gap-1"><span class="mi text-sm">network_wifi</span><span class="mi text-sm">battery_full</span></div></div>
+            <div class="px-5">
+              <div class="flex items-center justify-between mb-2">
+                <div class="serif font-bold text-xl">定向训练</div>
+                <span class="chip" style="background:#FBEEE8; color:var(--coral-deep);"><span class="mi text-sm">stars</span> 训练点 24</span>
+              </div>
+              <div class="text-xs mb-4" style="color:var(--ink-dim);">林·安德森 · 前锋 · 技术上限 85</div>
+              <!-- training options -->
+              <div class="space-y-3 mb-4">
+                <div class="rounded-2xl p-3 bg-white shadow-sm">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                      <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:var(--mist);"><span class="mi text-sm" style="color:var(--pitch-deep);">sports_soccer</span></div>
+                      <div>
+                        <div class="text-sm font-semibold">射门练习</div>
+                        <div class="text-[10px]" style="color:var(--ink-dim);">射门精度 81 → 83</div>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <div class="text-[10px]" style="color:var(--ink-dim);">消耗</div>
+                      <div class="mono font-bold text-sm" style="color:var(--coral);">6 点</div>
+                    </div>
+                  </div>
+                  <div class="attr-bar"><i style="width:81%; background:var(--gold);"></i></div>
+                  <div class="text-[10px] mt-1" style="color:var(--ink-dim);">距上限 85 还剩 4 点 · 边际递减中</div>
+                </div>
+                <div class="rounded-2xl p-3 bg-white shadow-sm">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                      <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:var(--mist);"><span class="mi text-sm" style="color:var(--pitch-deep);">videocam</span></div>
+                      <div>
+                        <div class="text-sm font-semibold">录像分析</div>
+                        <div class="text-[10px]" style="color:var(--ink-dim);">视野 65 → 67</div>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <div class="text-[10px]" style="color:var(--ink-dim);">消耗</div>
+                      <div class="mono font-bold text-sm" style="color:var(--coral);">4 点</div>
+                    </div>
+                  </div>
+                  <div class="attr-bar"><i style="width:65%; background:var(--pitch-light);"></i></div>
+                </div>
+                <div class="rounded-2xl p-3 bg-white shadow-sm">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                      <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:#FBEEE8;"><span class="mi text-sm" style="color:var(--coral);">warning</span></div>
+                      <div>
+                        <div class="text-sm font-semibold">体能训练</div>
+                        <div class="text-[10px]" style="color:var(--coral-deep);">恢复不足 · 受伤风险 +18%</div>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <div class="text-[10px]" style="color:var(--ink-dim);">消耗</div>
+                      <div class="mono font-bold text-sm" style="color:var(--coral);">5 点</div>
+                    </div>
+                  </div>
+                  <div class="attr-bar"><i style="width:72%; background:var(--pitch);"></i></div>
+                </div>
+              </div>
+              <!-- evolution -->
+              <div class="rounded-2xl p-3 flex items-center gap-3" style="background:linear-gradient(135deg,#1B5E3F,#0E3D27); color:white;">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(232,184,74,0.25);">
+                  <span class="mi" style="color:var(--gold);">auto_awesome</span>
+                </div>
+                <div class="flex-1">
+                  <div class="text-xs opacity-80">进化故事线</div>
+                  <div class="text-sm font-semibold">再 1 次绝杀 → 解锁「大心脏」隐藏潜力</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FLOW 03 · 比赛引擎 ============ -->
+<section id="match" class="py-24 relative">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="grid md:grid-cols-12 gap-12 items-center">
+      <div class="md:col-span-6 order-2 md:order-1 flex justify-center">
+        <div class="phone">
+          <div class="screen pitch-bg">
+            <div class="statusbar text-white"><span>9:41</span><div class="flex gap-1"><span class="mi text-sm">network_wifi</span><span class="mi text-sm">battery_full</span></div></div>
+            <!-- scoreboard -->
+            <div class="px-5 pt-2">
+              <div class="flex items-center justify-between rounded-2xl px-4 py-2.5" style="background:rgba(0,0,0,0.3); backdrop-filter:blur(8px);">
+                <div class="text-white">
+                  <div class="text-[10px] opacity-70">主场</div>
+                  <div class="serif font-bold text-sm">AI FC 红队</div>
+                </div>
+                <div class="text-center text-white">
+                  <div class="mono font-bold text-2xl" style="color:var(--gold);">1 : 1</div>
+                  <div class="text-[10px] opacity-70">67' · 下半场</div>
+                </div>
+                <div class="text-white text-right">
+                  <div class="text-[10px] opacity-70">客场</div>
+                  <div class="serif font-bold text-sm">蓝月联</div>
+                </div>
+              </div>
+            </div>
+            <!-- live pitch -->
+            <div class="relative mx-4 mt-3 rounded-3xl overflow-hidden" style="height:340px; background:linear-gradient(180deg,#1B5E3F,#0E3D27);">
+              <svg viewBox="0 0 300 340" class="w-full h-full">
+                <rect x="8" y="8" width="284" height="324" stroke="rgba(255,255,255,0.4)" stroke-width="1.2" fill="none"/>
+                <line x1="150" y1="8" x2="150" y2="332" stroke="rgba(255,255,255,0.4)" stroke-width="1.2"/>
+                <circle cx="150" cy="170" r="38" stroke="rgba(255,255,255,0.4)" stroke-width="1.2" fill="none"/>
+                <!-- attacking run -->
+                <path class="tactic-line" d="M70 170 Q120 100 180 90 Q220 85 250 60"/>
+                <!-- red team (attacking, right) -->
+                <g transform="translate(250,60)"><circle r="10" fill="#E8654E"/><text y="3" text-anchor="middle" font-size="10" font-weight="700" fill="white">9</text></g>
+                <g transform="translate(200,120)"><circle r="10" fill="#E8654E"/><text y="3" text-anchor="middle" font-size="10" font-weight="700" fill="white">7</text></g>
+                <g transform="translate(180,200)"><circle r="10" fill="#E8654E"/><text y="3" text-anchor="middle" font-size="10" font-weight="700" fill="white">10</text></g>
+                <g transform="translate(120,150)"><circle r="10" fill="#E8654E"/><text y="3" text-anchor="middle" font-size="10" font-weight="700" fill="white">8</text></g>
+                <g transform="translate(70,170)"><circle r="10" fill="#E8654E"/><text y="3" text-anchor="middle" font-size="10" font-weight="700" fill="white">6</text></g>
+                <!-- blue team (defending, left) -->
+                <g transform="translate(40,170)"><circle r="10" fill="#4A7FB8"/><text y="3" text-anchor="middle" font-size="10" font-weight="700" fill="white">1</text></g>
+                <g transform="translate(90,80)"><circle r="10" fill="#4A7FB8"/><text y="3" text-anchor="middle" font-size="10" font-weight="700" fill="white">2</text></g>
+                <g transform="translate(95,250)"><circle r="10" fill="#4A7FB8"/><text y="3" text-anchor="middle" font-size="10" font-weight="700" fill="white">3</text></g>
+                <g transform="translate(140,170)"><circle r="10" fill="#4A7FB8"/><text y="3" text-anchor="middle" font-size="10" font-weight="700" fill="white">5</text></g>
+                <!-- ball -->
+                <circle class="pulse-dot" cx="255" cy="62" r="5" fill="white"/>
+                <!-- vision cone for #9 -->
+                <path d="M250 60 L290 35 L290 85 Z" fill="rgba(232,184,74,0.18)"/>
+              </svg>
+              <div class="absolute top-3 left-3 chip" style="background:rgba(255,255,255,0.9); color:var(--pitch-deep);">
+                <span class="mi text-sm" style="color:var(--coral);">bolt</span> 10× · 9 分钟一场
+              </div>
+              <div class="absolute bottom-3 right-3 chip" style="background:rgba(232,184,74,0.95); color:var(--ink);">
+                <span class="mi text-sm">visibility</span> 9 号视野 85
+              </div>
+            </div>
+            <!-- live commentary -->
+            <div class="absolute bottom-5 left-4 right-4 bg-white rounded-2xl p-3 shadow-lg">
+              <div class="flex items-center gap-2 mb-1.5">
+                <span class="w-2 h-2 rounded-full animate-pulse" style="background:var(--coral);"></span>
+                <span class="text-[10px] font-semibold tracking-wider" style="color:var(--coral);">LIVE · 实时</span>
+              </div>
+              <div class="text-xs leading-relaxed" style="color:var(--ink);">
+                <b>67'</b> 9 号接直塞球单刀！决策力 58 — 犹豫 0.3 秒，后卫追上…
+              </div>
+              <div class="mt-2 flex gap-2">
+                <span class="chip text-[10px]" style="background:var(--mist); color:var(--pitch-deep);"><span class="mi" style="font-size:11px;">favorite</span> 9号 体力 41%</span>
+                <span class="chip text-[10px]" style="background:#FBEEE8; color:var(--coral-deep);"><span class="mi" style="font-size:11px;">mood</span> 紧张</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="md:col-span-6 order-1 md:order-2">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="num-tag" style="background:var(--coral);">03</span>
+          <div class="text-xs tracking-[0.2em] font-semibold" style="color:var(--coral);">MATCH · 比赛引擎</div>
+        </div>
+        <h2 class="serif font-bold text-4xl mb-5" style="color:var(--ink);">
+          一场 90 分钟，<br/>压缩成<span style="color:var(--coral);">9 分钟</span>的博弈。
+        </h2>
+        <p class="leading-relaxed mb-8" style="color:var(--ink-dim);">
+          俯视 2D 球场，22 个 AI 球员同时决策。完整的物理引擎处理球的运动、
+          球员碰撞、弹射角度。体力好的覆盖全场，视野好的中场送出直塞，
+          决策差的前锋单刀时犹豫被追上——没有任何脚本，全是属性与决策树的有机结果。
+        </p>
+        <div class="grid grid-cols-3 gap-4 mb-6">
+          <div class="leaf-card !p-4 text-center"><div class="serif font-bold text-2xl" style="color:var(--pitch-deep);">22</div><div class="text-xs mt-1" style="color:var(--ink-dim);">AI 同场决策</div></div>
+          <div class="leaf-card !p-4 text-center"><div class="serif font-bold text-2xl" style="color:var(--coral);">10×</div><div class="text-xs mt-1" style="color:var(--ink-dim);">比赛倍速</div></div>
+          <div class="leaf-card !p-4 text-center"><div class="serif font-bold text-2xl" style="color:var(--gold-deep);">0</div><div class="text-xs mt-1" style="color:var(--ink-dim);">脚本化事件</div></div>
+        </div>
+        <div class="rounded-2xl p-4" style="background:var(--ink); color:white;">
+          <div class="text-xs tracking-widest font-semibold mb-2" style="color:var(--gold);">名场面 · 随机生成</div>
+          <div class="text-sm opacity-85 leading-relaxed">远距离世界波 · 乌龙球 · 红牌冲突 · 门将失误 · 补时绝杀 —— 全部由属性 + 事件 + 随机偏差自然涌现。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FLOW 04 · 实时教练干预 ============ -->
+<section id="coach" class="py-24 relative" style="background:linear-gradient(180deg, transparent, var(--mist), transparent);">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-12">
+      <div class="flex items-center justify-center gap-3 mb-4">
+        <span class="num-tag" style="background:var(--gold);">04</span>
+        <div class="text-xs tracking-[0.2em] font-semibold" style="color:var(--gold-deep);">COACH · 教练干预</div>
+      </div>
+      <h2 class="serif font-bold text-4xl mb-4" style="color:var(--ink);">
+        暂停比赛，下达指令。
+      </h2>
+      <p class="max-w-2xl mx-auto leading-relaxed" style="color:var(--ink-dim);">
+        核心玩法不是看着球赛发呆。你随时可以暂停，切换阵型、换人、
+        对单个球员下指令、中场做心理干预。这是 FIFA 与 FM 之间的差异化地带。
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-12 gap-10 items-center">
+      <div class="md:col-span-7 grid grid-cols-2 gap-4">
+        <div class="leaf-card">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style="background:var(--mist);"><span class="mi text-2xl" style="color:var(--pitch-deep);">grid_view</span></div>
+          <div class="serif font-bold mb-1">战术调整</div>
+          <div class="text-sm" style="color:var(--ink-dim);">切换阵型 4-3-3 → 4-4-2，改变攻守倾向与压迫线。</div>
+        </div>
+        <div class="leaf-card">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style="background:#FBEEE8;"><span class="mi text-2xl" style="color:var(--coral);">swap_horiz</span></div>
+          <div class="serif font-bold mb-1">换人</div>
+          <div class="text-sm" style="color:var(--ink-dim);">替换体力不足或状态不佳的球员，替补席随时待命。</div>
+        </div>
+        <div class="leaf-card">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style="background:#FFF6E0;"><span class="mi text-2xl" style="color:var(--gold-deep);">my_location</span></div>
+          <div class="serif font-bold mb-1">针对性指令</div>
+          <div class="text-sm" style="color:var(--ink-dim);">对单个球员下令：「压上去」「盯死对方 10 号」「保持位置」。</div>
+        </div>
+        <div class="leaf-card">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style="background:var(--mist);"><span class="mi text-2xl" style="color:var(--pitch-deep);">psychology</span></div>
+          <div class="serif font-bold mb-1">激励 / 安抚</div>
+          <div class="text-sm" style="color:var(--ink-dim);">中场休息对球队或个人做心理干预，影响下半场情绪与表现。</div>
+        </div>
+        <div class="leaf-card col-span-2 flex gap-4 items-start">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style="background:var(--pitch); color:white;"><span class="mi text-2xl">flag</span></div>
+          <div>
+            <div class="serif font-bold mb-1">定位球布置</div>
+            <div class="text-sm" style="color:var(--ink-dim);">角球 / 任意球时设定跑位路线与掩护战术。细节决定成败。</div>
+          </div>
+        </div>
+      </div>
+      <div class="md:col-span-5 flex justify-center">
+        <div class="phone">
+          <div class="screen" style="background:var(--ink);">
+            <div class="statusbar text-white"><span>9:41</span><div class="flex gap-1"><span class="mi text-sm">network_wifi</span><span class="mi text-sm">battery_full</span></div></div>
+            <div class="px-6 pt-2 text-white">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="mi text-sm" style="color:var(--coral);">pause_circle</span>
+                <span class="text-xs opacity-70">比赛已暂停 · 67'</span>
+              </div>
+              <div class="serif font-bold text-2xl mb-6">教练指令</div>
+              <!-- instruction list -->
+              <div class="space-y-3 mb-5">
+                <div class="rounded-2xl p-3" style="background:rgba(255,255,255,0.08); backdrop-filter:blur(8px);">
+                  <div class="flex items-center justify-between mb-1">
+                    <div class="text-sm font-semibold">对阵型</div>
+                    <span class="chip text-[10px]" style="background:rgba(232,184,74,0.25); color:var(--gold);">4-3-3</span>
+                  </div>
+                  <div class="flex gap-2 mt-2">
+                    <span class="chip text-[10px]" style="background:rgba(255,255,255,0.1);">4-4-2</span>
+                    <span class="chip text-[10px]" style="background:rgba(255,255,255,0.1);">3-5-2</span>
+                    <span class="chip text-[10px]" style="background:rgba(255,255,255,0.1);">5-3-2</span>
+                  </div>
+                </div>
+                <div class="rounded-2xl p-3" style="background:rgba(255,255,255,0.08); backdrop-filter:blur(8px);">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <div class="text-sm font-semibold">对 9 号 · 安德森</div>
+                      <div class="text-[10px] opacity-70">体力 41% · 决策力 58</div>
+                    </div>
+                    <span class="mi text-base" style="color:var(--coral);">arrow_forward</span>
+                  </div>
+                  <div class="flex gap-2 mt-2 flex-wrap">
+                    <span class="chip text-[10px]" style="background:rgba(232,101,78,0.3); color:#FFC4B8;">压上去</span>
+                    <span class="chip text-[10px]" style="background:rgba(255,255,255,0.1);">回撤接应</span>
+                    <span class="chip text-[10px]" style="background:rgba(255,255,255,0.1);">保持位置</span>
+                  </div>
+                </div>
+                <div class="rounded-2xl p-3" style="background:rgba(255,255,255,0.08); backdrop-filter:blur(8px);">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <div class="text-sm font-semibold">换人</div>
+                      <div class="text-[10px] opacity-70">9 号 ↓ · 19 号 ↑ · 速度 88</div>
+                    </div>
+                    <span class="mi text-base" style="color:var(--gold);">swap_horiz</span>
+                  </div>
+                </div>
+              </div>
+              <button class="w-full py-3 rounded-2xl font-semibold text-sm" style="background:var(--coral); color:white;">
+                恢复比赛 · 10×
+              </button>
+              <div class="text-center text-[10px] opacity-50 mt-3">指令生效后 AI 决策权重即时调整</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FLOW 05 · AI决策三层架构 ============ -->
+<section id="engine" class="py-24 relative">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-12">
+      <div class="flex items-center justify-center gap-3 mb-4">
+        <span class="num-tag" style="background:var(--ink);">05</span>
+        <div class="text-xs tracking-[0.2em] font-semibold" style="color:var(--ink);">ENGINE · 决策引擎</div>
+      </div>
+      <h2 class="serif font-bold text-4xl mb-4" style="color:var(--ink);">
+        感知 → 思考 → 行动，<br/>每帧一轮的三层流水线。
+      </h2>
+      <p class="max-w-2xl mx-auto leading-relaxed" style="color:var(--ink-dim);">
+        球员的 AI 不是一颗巨大的树，而是三层流水线。事件驱动 + 定时轮询双层架构，
+        让攻转守的瞬间反应与跑位的周期规划同时存在。规则引擎 + 数值系统，
+        每帧 22 人决策在 2ms 内完成——不需要大模型。
+      </p>
+    </div>
+
+    <!-- 3-layer diagram -->
+    <div class="grid md:grid-cols-3 gap-6 mb-12">
+      <div class="leaf-card relative overflow-hidden">
+        <div class="absolute top-4 right-4 serif font-black text-6xl opacity-[0.06]" style="color:var(--pitch);">01</div>
+        <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style="background:var(--mist);"><span class="mi text-2xl" style="color:var(--pitch-deep);">visibility</span></div>
+        <div class="text-xs tracking-widest font-semibold mb-1" style="color:var(--pitch-deep);">PERCEPTION</div>
+        <div class="serif font-bold text-xl mb-2">感知层</div>
+        <p class="text-sm leading-relaxed mb-3" style="color:var(--ink-dim);">扇形视野 + 距离衰减。视野 90 的球员感知半径 60m、扇角 150°；视野 30 的只能看到身边 3-4 人。视野外是估计值，越远越不准。</p>
+        <div class="text-[11px] mono" style="color:var(--ink-soft);">→ 球位 · 队友 · 对手 · 空间 · 自身</div>
+      </div>
+      <div class="leaf-card relative overflow-hidden">
+        <div class="absolute top-4 right-4 serif font-black text-6xl opacity-[0.06]" style="color:var(--gold-deep);">02</div>
+        <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style="background:#FFF6E0;"><span class="mi text-2xl" style="color:var(--gold-deep);">psychology</span></div>
+        <div class="text-xs tracking-widest font-semibold mb-1" style="color:var(--gold-deep);">THINKING</div>
+        <div class="serif font-bold text-xl mb-2">思考层</div>
+        <p class="text-sm leading-relaxed mb-3" style="color:var(--ink-dim);">情境决策（每 0.5s）+ 微观动作（每帧）。决策力不是改成功率，而是改决策树节点权重——95 的前锋会选传球助攻，25 的盲目射门打飞。</p>
+        <div class="text-[11px] mono" style="color:var(--ink-soft);">→ 持球？逼抢？射门窗口？跑位？</div>
+      </div>
+      <div class="leaf-card relative overflow-hidden">
+        <div class="absolute top-4 right-4 serif font-black text-6xl opacity-[0.06]" style="color:var(--coral);">03</div>
+        <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style="background:#FBEEE8;"><span class="mi text-2xl" style="color:var(--coral);">directions_run</span></div>
+        <div class="text-xs tracking-widest font-semibold mb-1" style="color:var(--coral);">ACTION</div>
+        <div class="serif font-bold text-xl mb-2">行动层</div>
+        <p class="text-sm leading-relaxed mb-3" style="color:var(--ink-dim);">移动 + 球操作 + 抢断。执行带高斯偏差：技术 85 传球偏差 ±2°，技术 45 疲劳高压下偏差 ±10°。这就是「人脚」的来源。</p>
+        <div class="text-[11px] mono" style="color:var(--ink-soft);">→ 指令 + 噪声(σ=f(技术,疲劳,心理))</div>
+      </div>
+    </div>
+
+    <!-- event architecture -->
+    <div class="rounded-3xl p-8" style="background:var(--ink); color:white;">
+      <div class="text-xs tracking-[0.3em] font-semibold mb-6" style="color:var(--gold);">EVENT-DRIVEN + TICK · 双层架构</div>
+      <div class="grid md:grid-cols-2 gap-8">
+        <div>
+          <div class="serif font-bold text-lg mb-3">事件驱动层（中断）</div>
+          <div class="space-y-2 text-sm opacity-85">
+            <div class="flex items-center gap-2"><span class="chip text-[10px]" style="background:var(--coral); color:white;">P0</span> 球飞向门将 · 0 帧中断</div>
+            <div class="flex items-center gap-2"><span class="chip text-[10px]" style="background:#E8B84A; color:var(--ink);">P1</span> 丢球 / 进球 · 50ms 反应</div>
+            <div class="flex items-center gap-2"><span class="chip text-[10px]" style="background:#4A9B6E; color:white;">P2</span> 教练指令 · 排队执行</div>
+            <div class="flex items-center gap-2"><span class="chip text-[10px]" style="background:rgba(255,255,255,0.15);">P3</span> 发现空档 · 加入权重</div>
+          </div>
+        </div>
+        <div>
+          <div class="serif font-bold text-lg mb-3">定时轮询层（背景）</div>
+          <div class="space-y-2 text-sm opacity-85">
+            <div class="flex items-center justify-between"><span>持球人</span><span class="mono" style="color:var(--gold);">每帧</span></div>
+            <div class="flex items-center justify-between"><span>球附近 5m 球员</span><span class="mono" style="color:var(--gold);">每 3 帧</span></div>
+            <div class="flex items-center justify-between"><span>远端球员</span><span class="mono" style="color:var(--gold);">每 10 帧</span></div>
+            <div class="flex items-center justify-between"><span>团队协调器</span><span class="mono" style="color:var(--gold);">每 2 秒</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="mt-6 pt-6 border-t border-white/10 text-sm opacity-70 leading-relaxed">
+        丢球后的反应不是「所有人同时转身」——前锋可能还在前冲 0.5 秒才意识到，
+        后卫则已收缩好了。这种<span style="color:var(--gold);">时间差</span>就是真实感。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SYSTEMS OVERVIEW ============ -->
+<section class="py-24 relative" style="background:linear-gradient(180deg, var(--mist), transparent);">
+  <div class="max-w-6xl mx-auto px-6 text-center mb-12">
+    <div class="text-xs tracking-[0.3em] font-semibold mb-3" style="color:var(--pitch-deep);">CORE SYSTEMS · 核心系统总览</div>
+    <h2 class="serif font-bold text-4xl" style="color:var(--ink);">五个系统，一个完整的教练人生。</h2>
+  </div>
+
+  <div class="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-5 gap-6">
+    <div class="text-center">
+      <div class="phone mx-auto" style="transform:scale(0.7); transform-origin:top center;">
+        <div class="screen" style="background:var(--chalk);">
+          <div class="statusbar"><span>9:41</span></div>
+          <div class="px-4">
+            <div class="serif font-bold text-lg mb-2">球员</div>
+            <div class="space-y-1.5">
+              <div class="attr-bar"><i style="width:72%; background:var(--pitch);"></i></div>
+              <div class="attr-bar"><i style="width:81%; background:var(--gold);"></i></div>
+              <div class="attr-bar"><i style="width:65%; background:var(--pitch-light);"></i></div>
+              <div class="attr-bar"><i style="width:58%; background:var(--coral);"></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="serif font-bold mt-2" style="color:var(--pitch-deep);">球员</div>
+      <div class="text-xs" style="color:var(--ink-dim);">七维属性 · 天赋上限</div>
+    </div>
+    <div class="text-center">
+      <div class="phone mx-auto" style="transform:scale(0.7); transform-origin:top center;">
+        <div class="screen" style="background:var(--chalk);">
+          <div class="statusbar"><span>9:41</span></div>
+          <div class="px-4">
+            <div class="serif font-bold text-lg mb-2">训练</div>
+            <div class="rounded-xl bg-white shadow-sm p-2 mb-1"><div class="text-[9px]">射门 81→83</div></div>
+            <div class="rounded-xl bg-white shadow-sm p-2 mb-1"><div class="text-[9px]">视野 65→67</div></div>
+            <div class="rounded-xl p-2" style="background:linear-gradient(135deg,#1B5E3F,#0E3D27);"><div class="text-[9px] text-white">进化 +12</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="serif font-bold mt-2" style="color:var(--gold-deep);">训练</div>
+      <div class="text-xs" style="color:var(--ink-dim);">边际递减 · 进化突破</div>
+    </div>
+    <div class="text-center">
+      <div class="phone mx-auto" style="transform:scale(0.7); transform-origin:top center;">
+        <div class="screen pitch-bg">
+          <div class="statusbar text-white"><span>9:41</span></div>
+          <div class="px-4 pt-2">
+            <div class="text-white text-center"><div class="mono font-bold text-xl" style="color:var(--gold);">1:1</div><div class="text-[9px] opacity-70">67'</div></div>
+            <svg viewBox="0 0 200 140" class="w-full mt-2">
+              <rect x="5" y="5" width="190" height="130" stroke="rgba(255,255,255,0.4)" fill="none"/>
+              <circle cx="60" cy="70" r="6" fill="#E8654E"/>
+              <circle cx="140" cy="50" r="6" fill="#4A7FB8"/>
+              <circle cx="100" cy="70" r="3" fill="white"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="serif font-bold mt-2" style="color:var(--coral);">比赛</div>
+      <div class="text-xs" style="color:var(--ink-dim);">10× · 物理引擎 · 名场面</div>
+    </div>
+    <div class="text-center">
+      <div class="phone mx-auto" style="transform:scale(0.7); transform-origin:top center;">
+        <div class="screen" style="background:var(--ink);">
+          <div class="statusbar text-white"><span>9:41</span></div>
+          <div class="px-4 pt-2 text-white">
+            <div class="text-[10px] opacity-70 mb-1">已暂停</div>
+            <div class="serif font-bold text-sm mb-2">教练指令</div>
+            <div class="rounded-lg p-1.5 mb-1" style="background:rgba(255,255,255,0.1);"><div class="text-[9px]">4-3-3 → 4-4-2</div></div>
+            <div class="rounded-lg p-1.5" style="background:rgba(232,101,78,0.3);"><div class="text-[9px]">9号 压上去</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="serif font-bold mt-2" style="color:var(--pitch);">教练</div>
+      <div class="text-xs" style="color:var(--ink-dim);">战术 · 换人 · 心理</div>
+    </div>
+    <div class="text-center">
+      <div class="phone mx-auto" style="transform:scale(0.7); transform-origin:top center;">
+        <div class="screen" style="background:var(--chalk);">
+          <div class="statusbar"><span>9:41</span></div>
+          <div class="px-4 pt-2">
+            <div class="serif font-bold text-lg mb-2">球队</div>
+            <div class="grid grid-cols-2 gap-1 text-[9px]">
+              <div class="rounded bg-white p-1 shadow-sm">招募</div>
+              <div class="rounded bg-white p-1 shadow-sm">阵容</div>
+              <div class="rounded bg-white p-1 shadow-sm">默契</div>
+              <div class="rounded bg-white p-1 shadow-sm">赛季</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="serif font-bold mt-2" style="color:var(--ink);">球队</div>
+      <div class="text-xs" style="color:var(--ink-dim);">招募 · 默契 · 赛季</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TECH / BUSINESS ============ -->
+<section class="py-24 relative">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-12">
+      <div class="text-xs tracking-[0.3em] font-semibold mb-3" style="color:var(--pitch-deep);">TECH & BUSINESS · 技术与商业</div>
+      <h2 class="serif font-bold text-4xl" style="color:var(--ink);">离线规则引擎，是这件产品的底座。</h2>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-6 mb-12">
+      <div class="leaf-card">
+        <div class="text-xs tracking-widest font-semibold mb-2" style="color:var(--pitch-deep);">为什么不用 LLM</div>
+        <div class="serif font-bold text-2xl mb-3">延迟差 300×</div>
+        <ul class="text-sm space-y-1.5" style="color:var(--ink-dim);">
+          <li class="flex justify-between"><span>规则引擎单次决策</span><span class="mono font-semibold" style="color:var(--ink);">0.01ms</span></li>
+          <li class="flex justify-between"><span>LLM API 单次</span><span class="mono font-semibold" style="color:var(--coral);">500-3000ms</span></li>
+          <li class="flex justify-between"><span>22 人 / 帧</span><span class="mono font-semibold" style="color:var(--ink);">2ms 全完成</span></li>
+          <li class="flex justify-between"><span>每场 API 成本</span><span class="mono font-semibold" style="color:var(--coral);">$2+ / 不可持续</span></li>
+        </ul>
+      </div>
+      <div class="leaf-card">
+        <div class="text-xs tracking-widest font-semibold mb-2" style="color:var(--coral);">每帧计算量</div>
+        <div class="serif font-bold text-2xl mb-3">~1500 次</div>
+        <div class="text-sm space-y-2" style="color:var(--ink-dim);">
+          <div class="flex justify-between"><span>物理引擎</span><span class="font-semibold" style="color:var(--ink);">~300</span></div>
+          <div class="flex justify-between"><span>感知系统</span><span class="font-semibold" style="color:var(--ink);">~100</span></div>
+          <div class="flex justify-between"><span>AI 决策</span><span class="font-semibold" style="color:var(--ink);">~800</span></div>
+          <div class="flex justify-between"><span>占帧预算 (16ms)</span><span class="font-semibold" style="color:var(--pitch);">&lt; 0.01%</span></div>
+        </div>
+      </div>
+      <div class="leaf-card">
+        <div class="text-xs tracking-widest font-semibold mb-2" style="color:var(--gold-deep);">部署架构</div>
+        <div class="serif font-bold text-2xl mb-3">离线为主</div>
+        <div class="text-sm space-y-2" style="color:var(--ink-dim);">
+          <div class="flex gap-2"><span class="chip" style="background:var(--mist); color:var(--pitch-deep);">核心</span> 物理 / AI / 训练 / 赛程 全本地</div>
+          <div class="flex gap-2"><span class="chip" style="background:#FFF6E0; color:var(--gold-deep);">在线</span> 云存档 / 异步 PvP / 数据更新</div>
+          <div class="flex gap-2"><span class="chip" style="background:#FBEEE8; color:var(--coral-deep);">可选</span> LLM 赛后报告 / 球探报告 / 教练对话</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- differentiation strip -->
+    <div class="rounded-3xl p-8" style="background:var(--pitch-deep); color:white;">
+      <div class="text-xs tracking-[0.3em] font-semibold mb-3" style="color:var(--gold);">FOUR HIGHLIGHTS · 四个技术亮点</div>
+      <div class="grid md:grid-cols-4 gap-6">
+        <div><div class="text-2xl mb-1">🎯</div><div class="serif font-bold text-sm">不完美即魅力</div><div class="text-xs opacity-70 mt-1">失误率永不归零</div></div>
+        <div><div class="text-2xl mb-1">⏩</div><div class="serif font-bold text-sm">10 倍速</div><div class="text-xs opacity-70 mt-1">战术深度不减</div></div>
+        <div><div class="text-2xl mb-1">🧠</div><div class="serif font-bold text-sm">教练视角</div><div class="text-xs opacity-70 mt-1">FIFA 与 FM 之间</div></div>
+        <div><div class="text-2xl mb-1">🌱</div><div class="serif font-bold text-sm">培养羁绊</div><div class="text-xs opacity-70 mt-1">养成感强留存</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DESIGN SYSTEM ============ -->
+<section class="py-24 relative" style="background:linear-gradient(180deg, transparent, var(--mist));">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-12">
+      <div class="text-xs tracking-[0.3em] font-semibold mb-3" style="color:var(--pitch-deep);">DESIGN SYSTEM · 视觉语言</div>
+      <h2 class="serif font-bold text-4xl" style="color:var(--ink);">球场的绿，与战术板的白。</h2>
+    </div>
+
+    <div class="grid md:grid-cols-12 gap-8">
+      <div class="md:col-span-7">
+        <div class="leaf-card !p-8">
+          <div class="text-xs tracking-widest font-semibold mb-4" style="color:var(--ink-dim);">COLOR PALETTE</div>
+          <div class="grid grid-cols-6 gap-3 mb-3">
+            <div><div class="swatch" style="background:#1B5E3F;"></div><div class="text-[10px] mt-1 font-mono">Pitch</div><div class="text-[10px] font-mono opacity-60">#1B5E3F</div></div>
+            <div><div class="swatch" style="background:#2D7A52;"></div><div class="text-[10px] mt-1 font-mono">Pitch Mid</div><div class="text-[10px] font-mono opacity-60">#2D7A52</div></div>
+            <div><div class="swatch" style="background:#4A9B6E;"></div><div class="text-[10px] mt-1 font-mono">Pitch Light</div><div class="text-[10px] font-mono opacity-60">#4A9B6E</div></div>
+            <div><div class="swatch" style="background:#E8654E;"></div><div class="text-[10px] mt-1 font-mono">Coral</div><div class="text-[10px] font-mono opacity-60">#E8654E</div></div>
+            <div><div class="swatch" style="background:#E8B84A;"></div><div class="text-[10px] mt-1 font-mono">Gold</div><div class="text-[10px] font-mono opacity-60">#E8B84A</div></div>
+            <div><div class="swatch" style="background:#0E1F17;"></div><div class="text-[10px] mt-1 font-mono">Ink</div><div class="text-[10px] font-mono opacity-60">#0E1F17</div></div>
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <div><div class="swatch" style="background:#F4F8F5;"></div><div class="text-[10px] mt-1 font-mono">Chalk</div><div class="text-[10px] font-mono opacity-60">#F4F8F5</div></div>
+            <div><div class="swatch" style="background:#DDEAE0;"></div><div class="text-[10px] mt-1 font-mono">Mist</div><div class="text-[10px] font-mono opacity-60">#DDEAE0</div></div>
+            <div><div class="swatch" style="background:#0E3D27;"></div><div class="text-[10px] mt-1 font-mono">Pitch Deep</div><div class="text-[10px] font-mono opacity-60">#0E3D27</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="md:col-span-5 space-y-4">
+        <div class="leaf-card !p-6">
+          <div class="text-xs tracking-widest font-semibold mb-2" style="color:var(--ink-dim);">TYPOGRAPHY</div>
+          <div class="serif font-black text-3xl" style="color:var(--ink);">你不是球员</div>
+          <div class="serif font-bold text-xl" style="color:var(--pitch-deep);">你是教练</div>
+          <div class="text-sm mt-2 font-medium">Inter · 正文 / Noto Serif SC · 标题 / JetBrains Mono · 数值</div>
+        </div>
+        <div class="leaf-card !p-6">
+          <div class="text-xs tracking-widest font-semibold mb-2" style="color:var(--ink-dim);">PRINCIPLES</div>
+          <ul class="text-sm space-y-1.5">
+            <li class="flex gap-2"><span style="color:var(--pitch);">✦</span> 战术板美学：白线、圆点、扇形视野</li>
+            <li class="flex gap-2"><span style="color:var(--pitch);">✦</span> 数值优先：属性条 / mono 字体贯穿全局</li>
+            <li class="flex gap-2"><span style="color:var(--pitch);">✦</span> 不完美即真实：失误提示用 coral 暖警示</li>
+            <li class="flex gap-2"><span style="color:var(--pitch);">✦</span> 进化与成就用 gold，行为与能量用 coral</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center mt-16">
+      <div class="serif text-2xl md:text-3xl italic" style="color:var(--pitch-deep);">「恰到好处的失误率，加上可训练的成长空间，等于持续的参与动力。」</div>
+      <div class="text-xs mt-2 tracking-[0.3em]" style="color:var(--ink-dim);">— AI FC ONE LINE</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer-leaf">
+  <div class="max-w-6xl mx-auto px-6 py-16">
+    <div class="grid md:grid-cols-12 gap-10">
+      <div class="md:col-span-5">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-11 h-11 rounded-2xl bg-white/10 flex items-center justify-center">
+            <span class="mi text-2xl" style="color:var(--pitch-light);">sports_soccer</span>
+          </div>
+          <div>
+            <div class="serif font-bold text-lg">AI FC</div>
+            <div class="text-xs tracking-[0.2em] opacity-70">A · I · F · C</div>
+          </div>
+        </div>
+        <p class="text-sm opacity-80 leading-relaxed max-w-sm">
+          一款 AI 驱动的足球教练模拟游戏。你培养 AI 球员、指挥战术、
+          在 10 倍速的比赛中实时干预。概念稿 v0.1 · 头脑风暴四轮对齐。
+        </p>
+      </div>
+      <div class="md:col-span-3">
+        <div class="text-xs tracking-widest font-semibold mb-3 opacity-70">PRODUCT</div>
+        <ul class="space-y-2 text-sm">
+          <li><a class="opacity-80 hover:opacity-100" href="#attributes">球员 Attributes</a></li>
+          <li><a class="opacity-80 hover:opacity-100" href="#training">训练 Training</a></li>
+          <li><a class="opacity-80 hover:opacity-100" href="#match">比赛 Match</a></li>
+          <li><a class="opacity-80 hover:opacity-100" href="#coach">教练 Coach</a></li>
+          <li><a class="opacity-80 hover:opacity-100" href="#engine">引擎 Engine</a></li>
+        </ul>
+      </div>
+      <div class="md:col-span-4">
+        <div class="text-xs tracking-widest font-semibold mb-3 opacity-70">DOCS · 头脑风暴纪要</div>
+        <ul class="space-y-2 text-sm">
+          <li class="flex justify-between"><span>01 产品核心概念</span><span class="opacity-60">docs/</span></li>
+          <li class="flex justify-between"><span>02 AI 决策与物理引擎</span><span class="opacity-60">docs/</span></li>
+          <li class="flex justify-between"><span>03 实时决策与事件处理</span><span class="opacity-60">docs/</span></li>
+          <li class="flex justify-between"><span>04 性能与部署架构</span><span class="opacity-60">docs/</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="border-t border-white/10 mt-12 pt-6 flex flex-col md:flex-row justify-between text-xs opacity-60">
+      <span>© 2026 AI FC · 你不是球员，你是教练。</span>
+      <span>Built with Tailwind · 离线规则引擎 + 可选 AI 增强</span>
+    </div>
+  </div>
+</footer>
+
+</div><!-- /main-col -->
+
+<!-- ============ IDEAS RIGHT PANEL ============ -->
+<div id="ideas-col">
+  <!-- Panel header -->
+  <div class="px-6 pt-8 pb-4 border-b shrink-0" style="border-color:var(--line);">
+    <div class="flex items-center gap-2 mb-1">
+      <div class="w-7 h-7 rounded-xl flex items-center justify-center" style="background:var(--ink);">
+        <span class="mi text-white" style="font-size:14px;">lightbulb</span>
+      </div>
+      <span class="serif text-lg font-bold" style="color:var(--ink);">Ideas</span>
+      <span class="chip text-[10px] ml-1" style="background:rgba(232,101,78,0.15); color:var(--coral);">1 条</span>
+    </div>
+    <p class="text-[11px] leading-relaxed" style="color:var(--ink-dim);">产品想法备忘 · 左右滑动查看</p>
+    <div class="flex items-center gap-1 mt-2 text-[10px]" style="color:var(--ink-dim); opacity:0.6;">
+      <span class="mi" style="font-size:12px;">swipe</span>
+      <span>向左滑可以看更多</span>
+    </div>
+  </div>
+
+  <!-- Card carousel -->
+  <div class="ideas-strip" id="ideasStrip">
+
+    <!-- ── Idea #001 · 球员生涯记忆系统 ── -->
+    <div class="idea-slot">
+      <div class="rounded-3xl border bg-white/85 p-5 h-full overflow-y-auto" style="border-color:var(--line); box-shadow:0 8px 24px -12px rgba(14,31,23,0.08); max-height:calc(100vh - 160px);">
+        <div class="flex items-start justify-between mb-3">
+          <div>
+            <div class="text-[10px] tracking-widest uppercase mb-1" style="color:var(--ink-dim);">Idea #001 · AI 记忆 / 叙事</div>
+            <div class="serif text-[17px] font-bold leading-snug" style="color:var(--ink);">让 AI 球员<br/>「记得」那场绝杀</div>
+          </div>
+          <span class="chip text-[10px] shrink-0 ml-2" style="background:#FFF6E0; color:var(--gold-deep); border:1px solid rgba(184,138,31,0.4);">待评估</span>
+        </div>
+        <p class="text-[12px] leading-relaxed mb-4" style="color:var(--ink-dim);">
+          每个球员维护一份<b style="color:var(--ink);">生涯记忆库</b>：关键比赛（绝杀 / 乌龙 / 红牌 / 零封）被写入长期记忆，
+          在后续比赛的<b style="color:var(--ink);">决策权重</b>中隐性生效。对阵曾让自己乌龙的后卫时，
+          决策力临时 -5；在曾绝杀过的球场，抗压 +8。
+          记忆不显示在 UI，只通过解说与行为流露——让球员有「故事」。
+        </p>
+
+        <!-- mini demo -->
+        <div class="rounded-2xl border p-3 mb-4" style="background:rgba(244,248,245,0.6); border-color:var(--line);">
+          <div class="text-[10px] tracking-wider uppercase mb-3" style="color:var(--ink-dim);">记忆如何影响决策</div>
+
+          <!-- step 1 -->
+          <div class="flex items-start gap-2 mb-3">
+            <div class="w-6 h-6 rounded-full text-white flex items-center justify-center shrink-0 mt-0.5" style="background:var(--pitch);">
+              <span class="mi" style="font-size:12px;">edit_note</span>
+            </div>
+            <div class="flex-1">
+              <div class="text-[9px] mb-1" style="color:var(--ink-dim);">①  2026 春 · 联赛第 12 轮</div>
+              <div class="rounded-xl bg-white border px-2.5 py-1.5 text-[11px]" style="border-color:var(--line); color:var(--ink);">
+                9 号安德森 89' 绝杀蓝月联 → 写入记忆 <b>+「大场面球员」</b>
+              </div>
+            </div>
+          </div>
+
+          <!-- step 2 -->
+          <div class="flex items-start gap-2 mb-3">
+            <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5" style="background:rgba(14,31,23,0.06);">
+              <span class="mi" style="font-size:12px; color:var(--coral);">replay</span>
+            </div>
+            <div class="flex-1">
+              <div class="text-[9px] mb-1" style="color:var(--ink-dim);">②  2026 秋 · 杯赛再遇蓝月联</div>
+              <div class="rounded-xl bg-white border px-2.5 py-1.5 text-[11px] flex items-center gap-2" style="border-color:var(--line); color:var(--ink);">
+                <span style="font-size:14px;">🧠</span>
+                <span>记忆唤醒：<b>抗压 +8 / 射门权重 +15%</b></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- step 3 -->
+          <div class="flex items-start gap-2">
+            <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5" style="background:rgba(14,31,23,0.06);">
+              <span class="mi" style="font-size:12px; color:var(--gold-deep);">campaign</span>
+            </div>
+            <div class="flex-1">
+              <div class="text-[9px] mb-1" style="color:var(--ink-dim);">③  解说侧自然流露</div>
+              <div class="rounded-xl border-2 p-2" style="border-color:rgba(27,94,63,0.5); background:linear-gradient(135deg, #DDEAE0, #FFF6E0);">
+                <div class="text-[10px]" style="color:var(--ink);">「安德森又站在了这里——上次他对蓝月联，89 分钟绝杀...」</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- pros / cons -->
+        <div class="grid grid-cols-2 gap-2">
+          <div class="rounded-xl border p-2.5" style="background:rgba(221,234,224,0.5); border-color:rgba(27,94,63,0.2);">
+            <div class="text-[9px] font-medium mb-1.5 flex items-center gap-1" style="color:var(--pitch-deep);"><span class="mi" style="font-size:11px;">thumb_up</span>亮点</div>
+            <ul class="text-[10px] space-y-1 leading-relaxed" style="color:var(--ink-dim);">
+              <li>· 球员从「数据」变「角色」</li>
+              <li>· 解说叙事天然丰富</li>
+              <li>· 老玩家有羁绊留存</li>
+              <li>· 不增加额外 UI 复杂度</li>
+            </ul>
+          </div>
+          <div class="rounded-xl border p-2.5" style="background:rgba(251,238,232,0.4); border-color:rgba(232,101,78,0.25);">
+            <div class="text-[9px] font-medium mb-1.5 flex items-center gap-1" style="color:var(--coral);"><span class="mi" style="font-size:11px;">warning_amber</span>待解决</div>
+            <ul class="text-[10px] space-y-1 leading-relaxed" style="color:var(--ink-dim);">
+              <li>· 记忆衰减与覆盖策略</li>
+              <li>· 避免负面记忆滚雪球</li>
+              <li>· 跨赛季转会后是否继承</li>
+              <li>· 需平衡「宿命感」与随机性</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- tech stack chip -->
+        <div class="mt-3 text-[10px] px-3 py-2 rounded-lg" style="background:rgba(14,31,23,0.04); color:var(--ink-dim);">
+          <span style="color:var(--ink); font-weight:600;">技术栈 ·</span> 球员档案扩展记忆字段 + 决策树权重钩子 + LLM 解说侧异步引用
+        </div>
+      </div>
+    </div><!-- /idea-slot #001 -->
+
+  </div><!-- /ideas-strip -->
+
+  <!-- dot indicator -->
+  <div class="ideas-dots shrink-0" id="ideaDots">
+    <span class="active"></span>
+  </div>
+</div><!-- /ideas-col -->
+
+</div><!-- /page-wrapper -->
+
+<script>
+  // Dot indicator syncs with horizontal scroll of the ideas strip
+  const strip = document.getElementById('ideasStrip');
+  const dots  = document.querySelectorAll('#ideaDots span');
+  if (strip && dots.length) {
+    strip.addEventListener('scroll', () => {
+      const idx = Math.round(strip.scrollLeft / strip.clientWidth);
+      dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+    });
+  }
+</script>
+
+</body>
+</html>
