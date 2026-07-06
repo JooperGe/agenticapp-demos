@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI FC · 比赛模拟 Demo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0f0a; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+.container { background: #1a2e1a; border-radius: 16px; padding: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); max-width: 1160px; width: 100%; display: flex; gap: 16px; }
+.main-col { flex: 1; min-width: 0; }
+.scoreboard { display: flex; align-items: center; justify-content: center; gap: 24px; padding: 8px 0 14px; color: #fff; }
+.scoreboard .team { text-align: center; min-width: 100px; }
+.scoreboard .team .name { font-size: 14px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.85; }
+.scoreboard .team.home .name { color: #ef5350; }
+.scoreboard .team.away .name { color: #42a5f5; }
+.scoreboard .score { font-size: 36px; font-weight: 800; display: flex; align-items: center; gap: 14px; }
+.scoreboard .score .divider { color: rgba(255,255,255,0.2); font-weight: 300; }
+.scoreboard .time { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; background: rgba(0,0,0,0.3); padding: 4px 14px; border-radius: 8px; letter-spacing: 1px; min-width: 72px; text-align: center; }
+.canvas-wrap { position: relative; background: #1b5e20; border-radius: 12px; overflow: hidden; margin-bottom: 8px; cursor: pointer; }
+canvas { display: block; width: 100%; height: auto; }
+.commentary { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 8px 12px; height: 60px; overflow-y: auto; color: rgba(255,255,255,0.7); font-size: 11px; line-height: 1.6; margin-bottom: 8px; }
+.commentary::-webkit-scrollbar { width: 4px; }
+.commentary::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+.commentary .entry { display: flex; gap: 8px; align-items: flex-start; }
+.commentary .entry .time-tag { color: rgba(255,255,255,0.35); font-weight: 600; flex-shrink: 0; min-width: 32px; }
+.controls { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.controls button { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; letter-spacing: 0.3px; white-space: nowrap; }
+.controls button:hover { background: rgba(255,255,255,0.15); }
+.controls button.active { background: #2e7d32; border-color: #388e3c; }
+.controls .speed-group { display: flex; gap: 4px; }
+.controls .speed-group button { padding: 6px 10px; font-size: 11px; }
+.controls .speed-group button.on { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.25); }
+.panel { width: 280px; flex-shrink: 0; display: none; flex-direction: column; background: rgba(0,0,0,0.35); border-radius: 14px; border: 1px solid rgba(255,255,255,0.06); padding: 16px; color: #fff; overflow-y: auto; max-height: 660px; }
+.panel.open { display: flex; }
+.panel .p-close { align-self: flex-end; background: none; border: none; color: rgba(255,255,255,0.3); cursor: pointer; font-size: 16px; padding: 2px 6px; }
+.panel .p-close:hover { color: #fff; }
+.panel .p-back { background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; font-size: 11px; padding: 0 0 8px; display: flex; align-items: center; gap: 4px; }
+.panel .p-back:hover { color: #fff; }
+.panel .p-header { text-align: center; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 10px; }
+.panel .p-header .num-role { font-size: 13px; font-weight: 700; }
+.panel .p-header .num-role span.home { color: #ef5350; }
+.panel .p-header .num-role span.away { color: #42a5f5; }
+.panel .p-header .name { font-size: 18px; font-weight: 800; margin: 2px 0; }
+.panel .p-header .team-label { font-size: 11px; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; }
+.panel .p-section { margin-bottom: 12px; }
+.panel .p-section .sec-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; opacity: 0.4; margin-bottom: 6px; }
+.panel .attr-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.panel .attr-row .label { font-size: 11px; width: 42px; opacity: 0.6; flex-shrink: 0; }
+.panel .attr-row input[type=range] { flex: 1; height: 4px; -webkit-appearance: none; appearance: none; background: rgba(255,255,255,0.12); border-radius: 2px; outline: none; }
+.panel .attr-row input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #ffd54f; cursor: pointer; border: 2px solid rgba(0,0,0,0.3); }
+.panel .attr-row .val { font-size: 10px; font-weight: 700; width: 22px; text-align: right; font-variant-numeric: tabular-nums; opacity: 0.7; }
+.panel .trait-row { margin-bottom: 8px; }
+.panel .trait-row .t-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+.panel .trait-row .t-head .t-name { font-size: 11px; font-weight: 600; }
+.panel .trait-row .t-head .t-val { font-size: 11px; font-weight: 700; color: #ffd54f; min-width: 22px; text-align: right; }
+.panel .trait-row .t-desc { font-size: 9px; opacity: 0.4; line-height: 1.3; margin-bottom: 2px; }
+.panel .trait-row input[type=range] { width: 100%; height: 4px; -webkit-appearance: none; appearance: none; background: rgba(255,255,255,0.12); border-radius: 2px; outline: none; }
+.panel .trait-row input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #ffd54f; cursor: pointer; border: 2px solid rgba(0,0,0,0.3); }
+.panel .btn-save { width: 100%; padding: 8px; border: none; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; background: #2e7d32; color: #fff; transition: all 0.2s; margin-top: 4px; }
+.panel .btn-save:hover { background: #388e3c; }
+.panel .btn-save.saved { background: #1565c0; }
+.panel .btn-reset { width: 100%; padding: 8px; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; background: transparent; color: rgba(255,255,255,0.5); transition: all 0.2s; margin-top: 6px; }
+.panel .btn-reset:hover { background: rgba(255,255,255,0.05); color: #fff; border-color: rgba(255,255,255,0.2); }
+.panel .hint { font-size: 9px; opacity: 0.3; text-align: center; margin-top: 6px; }
+.panel .r-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+.panel .r-tab { flex:1; padding: 6px 0; text-align: center; font-size: 10px; font-weight: 600; border-radius: 6px; cursor: pointer; background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.3); border: none; }
+.panel .r-tab.on { background: rgba(255,255,255,0.1); color: #fff; }
+.panel .r-group { margin-bottom: 10px; }
+.panel .r-group-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; opacity: 0.35; margin: 8px 0 4px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.04); }
+.panel .r-row { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; }
+.panel .r-row .r-lab { font-size: 10px; width: 48px; opacity: 0.55; flex-shrink: 0; }
+.panel .r-row .r-val { font-size: 9px; font-weight: 700; width: 34px; text-align: right; font-variant-numeric: tabular-nums; color: #4fc3f7; }
+.panel .r-row input[type=range] { flex: 1; height: 3px; -webkit-appearance: none; appearance: none; background: rgba(255,255,255,0.08); border-radius: 2px; outline: none; }
+.panel .r-row input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 11px; height: 11px; border-radius: 50%; background: #4fc3f7; cursor: pointer; border: none; }
+.panel .r-row .r-desc { font-size: 7.5px; opacity: 0.3; flex: 1; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.panel .r-role-btn { display: inline-flex; padding: 4px 10px; border-radius: 6px; font-size: 9px; font-weight: 600; cursor: pointer; background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.4); border: 1px solid rgba(255,255,255,0.06); margin: 2px; }
+.panel .r-role-btn.on { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.15); }
+.panel .r-sit { font-size: 9px; opacity: 0.45; margin: 6px 0 3px; font-weight: 600; }
+.panel .r-rule { display: flex; align-items: center; gap: 4px; margin-bottom: 3px; padding: 3px 5px; border-radius: 4px; background: rgba(255,255,255,0.02); }
+.panel .r-rule .r-rule-desc { font-size: 9px; min-width: 38px; }
+.panel .r-rule input[type=range] { flex: 1; height: 2px; -webkit-appearance: none; appearance: none; background: rgba(255,255,255,0.08); border-radius: 2px; outline: none; }
+.panel .r-rule input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 9px; height: 9px; border-radius: 50%; background: #ffd54f; cursor: pointer; border: none; }
+.panel .r-rule .r-rule-act { font-size: 8px; padding: 1px 5px; border-radius: 3px; background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.3); }
+.panel .r-sub { font-size: 7.5px; opacity: 0.25; margin: 1px 0 2px 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="main-col">
+  <div class="scoreboard">
+    <div class="team home"><div class="name">红队</div></div>
+    <div class="score"><span id="scoreHome">0</span><span class="divider">:</span><span id="scoreAway">0</span></div>
+    <div class="team away"><div class="name">蓝队</div></div>
+    <div class="time" id="matchTime">00:00</div>
+  </div>
+  <div class="canvas-wrap"><canvas id="pitch" width="860" height="560"></canvas></div>
+  <div class="commentary" id="commentary"></div>
+  <div class="controls">
+    <button id="btnPause">⏸ 暂停</button>
+    <div class="speed-group"><button data-speed="1" class="on">1×</button><button data-speed="2">2×</button><button data-speed="4">4×</button></div>
+    <button id="btnReset">↺ 重置</button>
+    <button id="btnRules">⚙ 规则</button>
+  </div>
+</div>
+<div class="panel" id="panel"></div>
+</div>
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CONSTANTS (geometry — non-editable)
+// ═══════════════════════════════════════════════════════════════
+const PW = 1050, PH = 680, GW = 30, GH = 140, PAW = 132, PAH = 340;
+const PT = 170, PB = 510;
+const BR = 5, PR = 10;
+const OUT_W = 8;
+
+// ═══════════════════════════════════════════════════════════════
+//  RULES CONFIG — the complete rule book for the football simulation.
+//  This is the SINGLE SOURCE OF TRUTH for ALL player behavior.
+// ═══════════════════════════════════════════════════════════════
+const DEFAULT_RULES = {
+  halfLen: 1800,              // 半场时长（秒）
+  ballFriction: 0.985,        // 球每帧速度衰减 1=不衰减
+  passDeviation: 0.8,          // 传球/射门随机偏移乘数 越大越不准
+
+  gkSaveBase: 0.3,             // 门将扑救基础概率
+  gkSaveRangeFactor: 0.45,     // 距球门越近扑救概率增加乘数
+  gkHoldLimit: 3.5,            // 门将持球最长时间（秒）
+  gkClaimAdd: 25,              // 门将出击抓球额外半径
+  gkPressNear: 40,             // 对方距门将<此距离=紧逼大脚
+  gkPressFar: 80,              // 对方距门将<此距离=快速出球
+  gkClearPower: 6,
+  gkClearRand: 2,
+  gkShortPower: 2.5,
+  gkLongPower: 5,
+
+  tackleBase: 0.08,            // 抢断基础概率
+  tackleAggWeight: 1000,
+  tackleRangeAdd: 10,
+
+  passAccBase: 0.65,
+  passAccWeight: 0.3,
+  passSpdBase: 1.2,
+  passSpdWeight: 1.5,
+  passPower: 3,
+  passPowerRand: 1,
+  passPowerLong: 4,
+
+  shootPowBase: 4,
+  shootPowRand: 2,
+
+  goalTop: 270,
+  goalBottom: 410,
+
+  // ════ ROLE DECISION RULES ════
+  // conditions use: toBall, nearest, dGoal, agg, self, wr, risk, conf, disc, tmCount, halfY, shoot, distFromHome
+  roles: {
+    CB: {
+      hasBall: [
+        { desc:"传", cond:"tmCount>0 && rand<0.6", action:"pass", target:"bestTeammate" },
+        { desc:"开", cond:"true", action:"pass", target:"forward" }
+      ],
+      oppHasBall: [
+        { desc:"上抢门槛", cond:"nearest && toBall<(120+agg*1.5)", action:"chase" },
+        { desc:"回撤系数", cond:"true", action:"retreat" }
+      ],
+      looseBall:[{ desc:"追球距离", cond:"nearest && toBall<150", action:"chase" }],
+      default:[{ desc:"归位距离", cond:"distFromHome>(30+disc*0.5)", action:"moveHome", bias:20 },{ desc:"漂移", cond:"true", action:"drift" }]
+    },
+    FB: {
+      hasBall:[{ desc:"传", cond:"tmCount>0 && rand<0.5", action:"pass", target:"bestTeammate" },{ desc:"盘", cond:"true", action:"dribbleFwd" }],
+      oppHasBall:[{ desc:"上抢", cond:"nearest && toBall<(100+agg*1.2)", action:"chase" },{ desc:"回撤", cond:"true", action:"retreat" }],
+      looseBall:[{ desc:"追球", cond:"nearest && toBall<120", action:"chase" }],
+      myTeamHasBall:[{ desc:"套边", cond:"wr>30 && rand<wr/200", action:"overlap" }],
+      default:[{ desc:"归位", cond:"distFromHome>(40+disc*0.3)", action:"moveHome", bias:20 },{ desc:"站住", cond:"true", action:"stand" }]
+    },
+    CM: {
+      hasBall:[{ desc:"塞", cond:"tmCount>0 && rand<(0.4+risk*0.005)", action:"pass", target:"mostForward" },{ desc:"传", cond:"tmCount>0", action:"pass", target:"bestTeammate" },{ desc:"盘", cond:"true", action:"dribbleFwd" }],
+      oppHasBall:[{ desc:"上抢", cond:"(nearest||toBall<pr*0.6) && toBall<(80+agg*1.2+(wr>50?30:0))", action:"chase" },{ desc:"回撤", cond:"true", action:"retreat" }],
+      looseBall:[{ desc:"追球", cond:"nearest && toBall<150", action:"chase" }],
+      myTeamHasBall:[{ desc:"拖后", cond:"abs(halfY)>60", action:"moveHome", bias:15 },{ desc:"前插", cond:"true", action:"pushForward" }],
+      default:[{ desc:"归位", cond:"distFromHome>(40+disc*0.4)", action:"moveHome" },{ desc:"漂移", cond:"true", action:"drift" }]
+    },
+    WM: {
+      hasBall:[{ desc:"传", cond:"tmCount>0 && rand<0.3", action:"pass", target:"bestTeammate" },{ desc:"中", cond:"crossRange && rand<0.3", action:"cross" },{ desc:"盘", cond:"true", action:"dribbleFwd" }],
+      oppHasBall:[{ desc:"上抢", cond:"nearest && toBall<(90+agg*1.0)", action:"chase" },{ desc:"回撤", cond:"true", action:"retreat" }],
+      looseBall:[{ desc:"追球", cond:"nearest && toBall<120", action:"chase" }],
+      default:[{ desc:"归位", cond:"distFromHome>(50+disc*0.3)", action:"moveHome" },{ desc:"站住", cond:"true", action:"stand" }]
+    },
+    ST: {
+      hasBall:[{ desc:"射", cond:"dGoal<280 && rand<(0.3+self*0.005+shoot/300)", action:"shoot" },{ desc:"传", cond:"tmCount>0", action:"pass", target:"bestTeammate" },{ desc:"盘", cond:"true", action:"dribbleFwd" }],
+      oppHasBall:[{ desc:"逼抢", cond:"nearest && toBall<(40+agg*0.8+(wr>50?30:0)) && agg>20", action:"chase" },{ desc:"回", cond:"wr>70 && ball.x<PW*0.4", action:"moveHome", bias:-40 },{ desc:"站", cond:"true", action:"stand" }],
+      looseBall:[{ desc:"追", cond:"nearest && toBall<100", action:"chase" },{ desc:"躲", cond:"conf<30 && toBall<80", action:"avoid" }],
+      myTeamHasBall:[{ desc:"前插", cond:"rand<(0.2+conf*0.003+wr*0.0033)", action:"runForward" }],
+      default:[{ desc:"归位", cond:"distFromHome>50", action:"moveHome" },{ desc:"站位", cond:"true", action:"stand" }]
+    }
+  },
+  passScore: { spaceWeight:0.6, forwardWeight:0.3, distIdeal:120, distPenalty:0.1 }
+};
+
+let rulesConfig = {};
+const RULES_KEY = 'aifc_match_rules_v2';
+function loadRules() {
+  try {
+    const d = localStorage.getItem(RULES_KEY);
+    if (d) { const p = JSON.parse(d); rulesConfig = { ...JSON.parse(JSON.stringify(DEFAULT_RULES)), ...p }; return; }
+  } catch(e) {}
+  rulesConfig = JSON.parse(JSON.stringify(DEFAULT_RULES));
+}
+function saveRules() { try { localStorage.setItem(RULES_KEY, JSON.stringify(rulesConfig)); } catch(e) {} }
+function resetRules() { rulesConfig = JSON.parse(JSON.stringify(DEFAULT_RULES)); saveRules(); applyRules(); }
+function applyRules() { halfLen = rulesConfig.halfLen; GT = rulesConfig.goalTop; GB = rulesConfig.goalBottom; }
+let GT = DEFAULT_RULES.goalTop, GB = DEFAULT_RULES.goalBottom, halfLen = DEFAULT_RULES.halfLen;
+
+// ═══════════════════════════════════════════════════════════════
+//  CANVAS + STATE
+// ═══════════════════════════════════════════════════════════════
+const cv = document.getElementById('pitch'), ctx = cv.getContext('2d');
+const sx = (cv.width-28)/PW, sy = (cv.height-28)/PH;
+function tc(x,y) { return { x:14+x*sx, y:14+y*sy }; }
+let paused = false, spd = 1, matchTime = 0, half = 1, prevT = 0, commentary = [];
+let ball, players, score = { h:0, a:0 };
+let phase = 'kickoff', phaseTimer = 0, lastTouch = null;
+let selectedPlayer = null, panelMode = 'closed';
+
+// ═══════════════════════════════════════════════════════════════
+//  PROFILES
+// ═══════════════════════════════════════════════════════════════
+const PROFILES_KEY = 'aifc_player_profiles_v1';
+let savedProfiles = {};
+function loadProfiles() { try { const d=localStorage.getItem(PROFILES_KEY); if(d) { savedProfiles=JSON.parse(d); return true; } } catch(e){} return false; }
+function saveProfiles() { try { localStorage.setItem(PROFILES_KEY, JSON.stringify(savedProfiles)); } catch(e){} }
+function profileKey(p) { return `${p.team}_${p.number}`; }
+const TRAIT_KEYS = ['aggressiveness','selfishness','workRate','riskTaking','confidence','discipline'];
+const TRAIT_META = { aggressiveness:{label:'侵略性',desc:'低=消极 · 高=疯狂逼抢'}, selfishness:{label:'自私度',desc:'低=乐于传球 · 高=独断专行'}, workRate:{label:'积极性',desc:'低=静态 · 高=全场飞奔'}, riskTaking:{label:'冒险度',desc:'低=保守 · 高=尝试妙传'}, confidence:{label:'接球意愿',desc:'低=躲球 · 高=主动要球'}, discipline:{label:'纪律性',desc:'低=自由 · 高=严守阵型'} };
+function defaultTraits() { const t={}; TRAIT_KEYS.forEach(k=>t[k]=50); return t; }
+
+// ═══════════════════════════════════════════════════════════════
+//  FORMATION
+// ═══════════════════════════════════════════════════════════════
+const F442 = [
+  {role:'GK',hx:40,hy:340,zr:50},{role:'LB',hx:130,hy:80,zr:90},{role:'CB',hx:140,hy:250,zr:75},{role:'CB',hx:140,hy:430,zr:75},
+  {role:'RB',hx:130,hy:600,zr:90},{role:'LM',hx:300,hy:80,zr:90},{role:'CM',hx:310,hy:250,zr:65},{role:'CM',hx:310,hy:430,zr:65},
+  {role:'RM',hx:300,hy:600,zr:90},{role:'ST',hx:450,hy:260,zr:75},{role:'ST',hx:450,hy:420,zr:75},
+];
+function getFormation(team) { return F442.map(s=>({role:s.role, hx:team==='home'?s.hx:PW-s.hx, hy:s.hy, zr:s.zr})); }
+const SURNAMES = '张李王刘陈杨赵黄周吴徐孙马朱胡林郭何高罗'.split('');
+const GIVEN1 = '伟强磊军勇明俊凯刚健志国宇鹏飞超波辉峰涛'.split('');
+const GIVEN2 = '文杰亮鑫浩龙华东翔彬威辰宁恒远博睿阳晨凡'.split('');
+function makeName(id) { const s=SURNAMES[id%SURNAMES.length]; const g=id%3===0?GIVEN1[id%GIVEN1.length]:GIVEN1[id%GIVEN1.length]+GIVEN2[(id*3)%GIVEN2.length]; return s+g; }
+
+function mkP(id,team,num,f,name) {
+  const pk = `${team}_${num}`; let att, traits;
+  if (savedProfiles[pk]) { const sp=savedProfiles[pk]; att={...sp.att}; traits={...sp.traits}; }
+  else {
+    att = { pace:Math.round((40+Math.random()*60)/5)*5, passing:Math.round((40+Math.random()*60)/5)*5, shooting:Math.round((40+Math.random()*60)/5)*5, defense:Math.round((40+Math.random()*60)/5)*5, awareness:Math.round((40+Math.random()*60)/5)*5 };
+    traits = defaultTraits(); TRAIT_KEYS.forEach(k=>traits[k]=clamp(Math.floor(20+Math.random()*60),0,100));
+    savedProfiles[pk] = { name, number:num, role:f.role, att:{...att}, traits:{...traits} };
+  }
+  return { id,team,number:num,role:f.role,name, x:f.hx+rng(-4,4),y:f.hy+rng(-4,4), hx:f.hx,hy:f.hy,zr:f.zr, vx:0,vy:0,radius:PR, dir:team==='home'?1:-1, speed:2.5,accel:0.12, holdTimer:0,att,traits };
+}
+function createPlayers() {
+  players=[]; const fh=getFormation('home'),fa=getFormation('away');
+  for(let i=0;i<11;i++){ players.push(mkP(i,'home',i+1,fh[i],makeName(i))); players.push(mkP(i+11,'away',i+1,fa[i],makeName(i+20))); }
+  saveProfiles();
+}
+function createBall() { ball={x:PW/2,y:PH/2,vx:0,vy:0,radius:BR,owner:null}; }
+
+// ═══════════════════════════════════════════════════════════════
+//  UTILITY
+// ═══════════════════════════════════════════════════════════════
+function d(a,b) { return Math.hypot(a.x-b.x, a.y-b.y); }
+function clamp(v,mn,mx) { return Math.max(mn,Math.min(mx,v)); }
+function rng(mn,mx) { return mn+Math.random()*(mx-mn); }
+function fmt(s) { return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`; }
+function inPA(team,x,y) { return team==='home'?x<PAW&&y>PT&&y<PB:x>PW-PAW&&y>PT&&y<PB; }
+
+// ═══════════════════════════════════════════════════════════════
+//  BALL
+// ═══════════════════════════════════════════════════════════════
+function updateBall() {
+  if(ball.owner){ball.x=ball.owner.x+ball.owner.dir*12;ball.y=ball.owner.y;ball.vx=0;ball.vy=0;return;}
+  ball.vx*=rulesConfig.ballFriction; ball.vy*=rulesConfig.ballFriction;
+  if(Math.abs(ball.vx)<0.05)ball.vx=0; if(Math.abs(ball.vy)<0.05)ball.vy=0;
+  ball.x+=ball.vx; ball.y+=ball.vy;
+}
+function checkOutOfPlay() {
+  const l=ball.x+BR<-OUT_W,r=ball.x-BR>PW+OUT_W,t=ball.y+BR<-OUT_W,b=ball.y-BR>PH+OUT_W;
+  if(!l&&!r&&!t&&!b) return; if(phase==='goal'||phase==='restart') return;
+  if(l&&ball.y>GT&&ball.y<GB||r&&ball.y>GT&&ball.y<GB) return;
+  if(l||r) {
+    const isLeft=l;
+    if(isLeft) { if(lastTouch==='home') triggerRestart('corner','away','left'); else triggerRestart('goalkick','home','left'); }
+    else { if(lastTouch==='home') triggerRestart('goalkick','away','right'); else triggerRestart('corner','home','right'); }
+    return;
+  }
+  triggerRestart('throwin',lastTouch==='home'?'away':'home', clamp(ball.x,20,PW-20), t?10:PH-10);
+}
+function triggerRestart(type,team,param1,param2) {
+  phase='restart'; phaseTimer=5; let bx,by;
+  if(type==='throwin'){bx=param1;by=param2;}
+  else if(type==='goalkick'){bx=team==='home'?25:PW-25; by=PH/2;}
+  else if(type==='corner'){const isL=param1==='left';const isT=ball.y<PH/2;bx=isL?3:PW-3;by=isT?3:PH-3;}
+  ball.x=clamp(bx,2,PW-2);ball.y=clamp(by,2,PH-2);ball.vx=0;ball.vy=0;ball.owner=null;
+  let taker=null;
+  if(type==='goalkick') taker=players.find(p=>p.team===team&&p.role==='GK');
+  else if(type==='corner') { taker=players.filter(p=>p.team===team&&(p.role==='LM'||p.role==='RM'||p.role==='ST')).sort((a,b)=>d(a,{x:bx,y:by})-d(b,{x:bx,y:by}))[0]; if(!taker) taker=players.filter(p=>p.team===team&&p.role!=='GK').sort((a,b)=>d(a,{x:bx,y:by})-d(b,{x:bx,y:by}))[0]; }
+  else taker=players.filter(p=>p.team===team&&p.role!=='GK').sort((a,b)=>d(a,{x:bx,y:by})-d(b,{x:bx,y:by}))[0];
+  players.forEach(p=>p.isTaker=false); if(taker){taker.isTaker=true;if(d(taker,{x:bx,y:by})>30){taker.vx=0;taker.vy=0;}}
+  log(`⏸ ${team==='home'?'红':'蓝'}队 ${type==='throwin'?'界外球':(type==='goalkick'?'球门球':'角球')}`);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  GK + GOAL + KICK + TACKLE
+// ═══════════════════════════════════════════════════════════════
+function gkSave(team) {
+  const gk=players.find(p=>p.team===team&&p.role==='GK'); if(!gk) return false;
+  const dGoal=team==='home'?Math.abs(ball.x):Math.abs(ball.x-PW); if(dGoal>PAW) return false;
+  if(Math.abs(gk.y-ball.y)>GH) return false;
+  if(Math.random()<rulesConfig.gkSaveBase+(1-dGoal/PAW)*rulesConfig.gkSaveRangeFactor) {
+    const dir=team==='home'?1:-1; ball.x=(team==='home'?10:PW-10)+dir*rng(5,15); ball.y=gk.y+rng(-20,20); ball.vx=dir*2; ball.vy=rng(-1,1);
+    ball.owner=gk; gk.holdTimer=0; log(`🧤 ${team==='home'?'红':'蓝'}队门将 扑出射门！`); return true;
+  } return false;
+}
+function gkClaim() {
+  for(const team of['home','away']){const gk=players.find(p=>p.team===team&&p.role==='GK'); if(!gk||ball.owner) continue;
+    if(inPA(team,ball.x,ball.y)&&d(gk,ball)<PR+BR+rulesConfig.gkClaimAdd){ball.owner=gk;ball.vx=0;ball.vy=0;lastTouch=team;gk.holdTimer=0;log(`🧤 ${team==='home'?'红':'蓝'}队门将 抱住球！`);return true;}}
+  return false;
+}
+function checkGoal() {
+  if(ball.x+BR<0&&ball.y>GT&&ball.y<GB){if(gkSave('home'))return;score.a++;document.getElementById('scoreAway').textContent=score.a;log(`⚽ 进球！蓝队破门！`);phase='goal';phaseTimer=2.5;}
+  if(ball.x-BR>PW&&ball.y>GT&&ball.y<GB){if(gkSave('away'))return;score.h++;document.getElementById('scoreHome').textContent=score.h;log(`⚽ 进球！红队破门！`);phase='goal';phaseTimer=2.5;}
+}
+function kickBall(p,tx,ty,power) {
+  const dx=tx-p.x,dy=ty-p.y,dist=Math.hypot(dx,dy); if(dist<1) return;
+  const acc=rulesConfig.passAccBase+p.att.passing/100*rulesConfig.passAccWeight;
+  const dev=(Math.random()-0.5)*(1-acc)*rulesConfig.passDeviation;
+  const ang=Math.atan2(dy,dx)+dev;
+  const sp=power*(rulesConfig.passSpdBase+p.att.passing/100*rulesConfig.passSpdWeight);
+  ball.vx=Math.cos(ang)*sp; ball.vy=Math.sin(ang)*sp; ball.owner=null; lastTouch=p.team;
+}
+function interact() {
+  const gd=PR+BR+8;
+  if(ball.owner){const o=ball.owner;if(o.role==='GK')return;for(const p of players){if(p.team!==o.team&&p.role!=='GK'&&d(p,o)<gd+10&&Math.random()<rulesConfig.tackleBase+p.traits.aggressiveness/rulesConfig.tackleAggWeight){ball.owner=null;const a=Math.random()*Math.PI*2;ball.vx=Math.cos(a)*2;ball.vy=Math.sin(a)*2;log(`💪 ${p.team==='home'?'红':'蓝'}${p.number}号 断球！`);return;}}return;}
+  if(gkClaim())return; let best=null,bestD=Infinity;
+  for(const p of players){if(p.role==='GK')continue;const dd=d(p,ball);if(dd<bestD){bestD=dd;best=p;}}
+  if(best&&bestD<gd){ball.owner=best;ball.vx=0;ball.vy=0;lastTouch=best.team;}
+}
+function resetPos(byTeam) {
+  ball.x=PW/2;ball.y=PH/2;ball.vx=0;ball.vy=0;ball.owner=null;
+  const fh=getFormation('home'),fa=getFormation('away');
+  for(let i=0;i<11;i++){players[i].x=fh[i].hx+rng(-4,4);players[i].y=fh[i].hy+rng(-4,4);players[i].hx=fh[i].hx;players[i].hy=fh[i].hy;players[i].vx=0;players[i].vy=0;players[i+11].x=fa[i].hx+rng(-4,4);players[i+11].y=fa[i].hy+rng(-4,4);players[i+11].hx=fa[i].hx;players[i+11].hy=fa[i].hy;players[i+11].vx=0;players[i+11].vy=0;}
+  const kt=byTeam==='home'?'away':(byTeam==='away'?'home':'home');
+  const kicker=players.find(p=>p.team===kt&&(p.role==='ST'||p.role==='CM'));
+  if(kicker) kickBall(kicker, kt==='home'?PW/2+40:PW/2-40, PH/2+rng(-15,15),2.5);
+  phase='kickoff'; phaseTimer=0.6; log('🔄 中圈开球！');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DECISION ENGINE — generic rule evaluator
+//  All role behavior is driven by rulesConfig.roles[role].
+//  NO role-specific hardcode. Change behavior by editing the rules JSON.
+// ═══════════════════════════════════════════════════════════════
+
+function nearestOnTeam(player) {
+  for(const p of players){if(p===player||p.team!==player.team||p.role==='GK')continue;if(d(p,ball)<d(player,ball))return false;}
+  return true;
+}
+
+function findBestPassTarget(player,candidates) {
+  if(!candidates||candidates.length===0)return null;
+  const fwd=player.team==='home'?1:-1; const ps=rulesConfig.passScore||{spaceWeight:0.6,forwardWeight:0.3,distIdeal:120,distPenalty:0.1};
+  let best=null,bestScore=-Infinity;
+  for(const t of candidates){
+    const no=players.filter(p=>p.team!==player.team&&p.role!=='GK').reduce((m,p)=>{const d2=d(t,p);return d2<m?d2:m;},Infinity);
+    const fv=(t.x-player.x)*fwd; const dv=d(player,t);
+    const score=no*(ps.spaceWeight||0.6)+Math.max(fv,0)*(ps.forwardWeight||0.3)-Math.abs(dv-(ps.distIdeal||120))*(ps.distPenalty||0.1);
+    if(score>bestScore){bestScore=score;best=t;}
+  }
+  return best;
+}
+
+function evalCond(cond,ctx) {
+  const keys=Object.keys(ctx); const vals=keys.map(k=>ctx[k]);
+  try{const fn=new Function(...keys,`return (${cond});`);return fn(...vals);}catch(e){return false;}
+}
+
+function evaluateRules(player,situation) {
+  const role=player.role; const rules=rulesConfig.roles;
+  if(!rules||!rules[role]||!rules[role][situation])return null;
+  const t=player.traits, agg=t.aggressiveness, self=t.selfishness, wr=t.workRate, risk=t.riskTaking, conf=t.confidence, disc=t.discipline;
+  const toBall=d(player,ball), nearest=nearestOnTeam(player), fwd=player.team==='home'?1:-1;
+  const dGoal=player.team==='home'?(PW-player.x):player.x, ownGoalX=player.team==='home'?0:PW;
+  const halfY=Math.abs(player.y-PH/2), distFromHome=d(player,{x:player.hx,y:player.hy});
+  const tmCount=players.filter(p=>p.team===player.team&&p!==player&&d(player,p)<250).length;
+  const shoot=player.att.shooting, crossRange=player.team==='home'?player.x>PW*0.7:player.x<PW*0.3;
+  const pr=80+agg*1.2+(wr>50?30:0);
+  const ctx={toBall,nearest,dGoal,distFromHome,agg,self,wr,risk,conf,disc,tmCount,halfY,shoot,crossRange,pr,fwd,ownGoalX,ball};
+  for(const rule of rules[role][situation]){try{if(evalCond(rule.cond,ctx))return{action:rule.action,target:rule.target,bias:rule.bias||0,desc:rule.desc};}catch(e){continue;}}
+  return null;
+}
+
+function resolveAction(player,rr){
+  if(!rr)return{a:'idle'};
+  const role=player.role, t=player.traits, fwd=player.team==='home'?1:-1;
+  const opX=player.team==='home'?PW:0, opY=PH/2, ownX=player.team==='home'?0:PW;
+  switch(rr.action){
+    case'chase':return{a:'chase',tx:ball.x-(ball.vx||0)*3,ty:ball.y-(ball.vy||0)*3};
+    case'retreat':{
+      const rR={CB:0.15,FB:0.10,CM:0.08,WM:0.08,ST:0.15}[role]||0.1, rM={CB:0.4,FB:0.3,CM:0.2,WM:0.25,ST:0.3}[role]||0.3;
+      const re=Math.min(rR+(1-t.aggressiveness/100)*0.1,rM);
+      return{a:'move',tx:clamp(player.hx+(ownX-player.hx)*re,15,PW-15),ty:clamp(Math.abs(player.hy-PH/2)>50?player.hy:player.hy+(ball.y-player.hy)*0.03,15,PH-15)};
+    }
+    case'pass':{
+      const tm=players.filter(p=>p.team===player.team&&p!==player&&d(player,p)>40&&d(player,p)<300); if(!tm.length)return{a:'idle'};
+      let target;
+      if(rr.target==='mostForward') target=tm.sort((a,b)=>(b.x-a.x)*fwd-(a.x-b.x)*fwd)[0];
+      else if(rr.target==='bestTeammate'){target=findBestPassTarget(player,tm);if(!target)target=tm[Math.floor(Math.random()*tm.length)];}
+      else if(rr.target==='forward') return{a:'pass',tx:clamp(player.x+fwd*80,20,PW-20),ty:player.y+rng(-30,30)};
+      else target=tm[Math.floor(Math.random()*tm.length)];
+      if(!target&&tm.length>0)target=tm[Math.floor(Math.random()*tm.length)];
+      if(!target)return{a:'idle'}; return{a:'pass',tx:target.x,ty:target.y};
+    }
+    case'dribbleFwd':{const dd={CB:20,FB:40,CM:30,WM:35,ST:25}[role]||30; const a=Math.atan2(opY-player.y,opX-player.x)+rng(-0.3,0.3); return{a:'dribble',tx:clamp(player.x+Math.cos(a)*dd,20,PW-20),ty:clamp(player.y+Math.sin(a)*dd,20,PH-20)};}
+    case'shoot':return{a:'shoot',tx:opX,ty:opY+rng(-GH*0.5,GH*0.5)};
+    case'moveHome':return{a:'move',tx:clamp(player.hx+fwd*(rr.bias||0),20,PW-20),ty:clamp(player.hy,20,PH-20)};
+    case'overlap':return{a:'move',tx:clamp(player.hx+fwd*(30+t.workRate*0.3),20,PW-20),ty:player.hy};
+    case'pushForward':return{a:'move',tx:clamp(player.hx+fwd*(25+t.workRate*0.2),20,PW-20),ty:clamp(player.hy+(ball.y-player.hy)*0.15,20,PH-20)};
+    case'runForward':return{a:'move',tx:clamp(player.hx+fwd*(30+rng(0,30)),20,PW-20),ty:clamp(player.hy+(ball.y-player.hy)*0.1,20,PH-20)};
+    case'cross':{const st=players.find(p=>p.team===player.team&&p.role==='ST');if(st)return{a:'pass',tx:st.x+rng(-20,20),ty:st.y+rng(-20,20)}; return resolveAction(player,{action:'dribbleFwd'});}
+    case'avoid':return{a:'move',tx:player.x-fwd*20,ty:player.y+rng(-30,30)};
+    case'drift':return{a:'move',tx:player.hx+(ball.x-player.hx)*0.02,ty:player.hy+(ball.y-player.hy)*0.02};
+    case'stand':return{a:'move',tx:player.hx,ty:player.hy};
+    default:return{a:'idle'};
+  }
+}
+
+function decide(player){
+  const role=player.role;
+  if(phase==='restart'){
+    if(player.isTaker){
+      if(d(player,ball)<12){
+        const tt=player.team, tm=players.filter(p=>p.team===tt&&p!==player&&d(player,p)>60&&d(player,p)<250);
+        if(tm.length){const s=tm.sort((a,b)=>d(a,ball)-d(b,ball));const tg=s[Math.floor(Math.random()*Math.min(3,s.length))];kickBall(player,tg.x,tg.y,3+rng(0,1.5));}
+        else{const dir=tt==='home'?1:-1;kickBall(player,ball.x+dir*80,ball.y+rng(-40,40),4+rng(0,1));}
+        player.isTaker=false;phase='playing';
+        const hint=window._restart?(window._restart.type==='throwin'?'界外球':(window._restart.type==='goalkick'?'球门球':'角球')):'';
+        log(`🔄 ${tt==='home'?'红':'蓝'}队 发出${hint}`);window._restart=null;return{a:'idle'};
+      }else return{a:'move',tx:ball.x,ty:ball.y};
+    }else{if(Math.random()<0.7)return{a:'idle'};return{a:'move',tx:player.hx,ty:player.hy};}
+  }
+  if(role==='GK'){
+    const gkX=player.team==='home'?25:PW-25;
+    if(ball.owner===player){
+      const no=players.filter(p=>p.team!==player.team&&p.role!=='GK').sort((a,b)=>d(a,player)-d(b,player))[0]||null;
+      const od=no?d(player,no):999,tm=players.filter(p=>p.team===player.team&&p!==player&&d(player,p)>40&&d(player,p)<350);
+      const ot=tm.map(p=>({p,no:players.filter(x=>x.team!==player.team&&d(x,p)<60).length,dist:d(player,p)})).sort((a,b)=>a.no-b.no);
+      if(od<rulesConfig.gkPressNear||player.holdTimer>rulesConfig.gkHoldLimit){
+        kickBall(player,player.team==='home'?PW-50:50,rng(PH*0.2,PH*0.8),rulesConfig.gkClearPower+rng(0,rulesConfig.gkClearRand));player.holdTimer=0;
+        if(od<rulesConfig.gkPressNear)log(`🧤 ${player.team==='home'?'红':'蓝'}队门将 大脚解围！`);else log(`🔄 ${player.team==='home'?'红':'蓝'}队门将 开出球`);return{a:'idle'};
+      }
+      if(od<rulesConfig.gkPressFar){
+        if(ot.length>0&&ot[0].no===0){const tg=ot[0].p;kickBall(player,tg.x,tg.y,rulesConfig.passPower+rng(0,rulesConfig.passPowerRand));player.holdTimer=0;log(`🔄 ${player.team==='home'?'红':'蓝'}队门将 快速抛球`);return{a:'idle'};}
+        kickBall(player,player.team==='home'?PW-50:50,rng(PH*0.2,PH*0.8),rulesConfig.gkLongPower+rng(0,1));player.holdTimer=0;log(`🔄 ${player.team==='home'?'红':'蓝'}队门将 大脚开出`);return{a:'idle'};
+      }
+      if(ot.length>0&&ot[0].no===0){const tg=ot[0].p;kickBall(player,tg.x,tg.y,d(player,tg)>150?rulesConfig.passPowerLong:rulesConfig.gkShortPower);player.holdTimer=0;return{a:'idle'};}
+      return{a:'move',tx:gkX,ty:clamp(player.y,GT+10,GB-10)};
+    }
+    if(ball.owner&&ball.owner.team!==player.team)return{a:'move',tx:gkX,ty:clamp(ball.y,GT+15,GB-15)};
+    if(!ball.owner&&inPA(player.team,ball.x,ball.y))return{a:'move',tx:ball.x,ty:ball.y};
+    return{a:'move',tx:gkX,ty:PH/2};
+  }
+  // Outfield: all driven by rulesConfig.roles
+  const rm={CB:'CB',LB:'FB',RB:'FB',CM:'CM',LM:'WM',RM:'WM',ST:'ST'}; const cr=rm[role]||role;
+  let sit;
+  if(ball.owner===player)sit='hasBall'; else if(ball.owner&&ball.owner.team!==player.team)sit='oppHasBall'; else if(!ball.owner)sit='looseBall'; else if(ball.owner&&ball.owner.team===player.team)sit='myTeamHasBall'; else sit='default';
+  let rr=evaluateRules(player,sit); if(!rr)rr=evaluateRules(player,'default'); if(!rr)return{a:'idle'};
+  return resolveAction(player,rr);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EXECUTE + PHYSICS
+// ═══════════════════════════════════════════════════════════════
+function execute(p,action){
+  switch(action.a){
+    case'move':case'chase':case'dribble':mvToward(p,action.tx,action.ty);break;
+    case'shoot':kickBall(p,action.tx,action.ty,rulesConfig.shootPowBase+rng(0,rulesConfig.shootPowRand));log(`⚡ ${p.team==='home'?'红':'蓝'}${p.number}号${p.name} ${(p.team==='home'?(PW-p.x):p.x)<60?'捅射':'射门'}！`);break;
+    case'pass':kickBall(p,action.tx,action.ty,rulesConfig.passPower+rng(0,rulesConfig.passPowerRand));break;
+    default:p.vx*=0.9;p.vy*=0.9;
+  }
+}
+function mvToward(p,tx,ty){
+  const safe={tx:clamp(tx,35,PW-35),ty:clamp(ty,35,PH-35)}; tx=safe.tx;ty=safe.ty;
+  const dx=tx-p.x,dy=ty-p.y,dist=Math.hypot(dx,dy); if(dist<4){p.vx*=0.9;p.vy*=0.9;return;}
+  const ms=p.speed*(0.65+p.att.pace/100*0.35); p.vx+=(dx/dist)*p.accel; p.vy+=(dy/dist)*p.accel;
+  const cs=Math.hypot(p.vx,p.vy); if(cs>ms){p.vx=(p.vx/cs)*ms;p.vy=(p.vy/cs)*ms;}
+  if(Math.abs(p.vx)>0.5)p.dir=p.vx>0?1:-1;
+  p.x=clamp(p.x,PR,PW-PR);p.y=clamp(p.y,PR,PH-PR);
+}
+function updateAI(){for(const p of players){if(p.role!=='GK'){const tb=d(p,ball);if(tb>200&&Math.random()<0.4)continue;if(tb>100&&Math.random()<0.2)continue;}if(p.role!=='GK'&&Math.random()<0.001*(1-p.att.awareness/100)){p.vx*=0.85;p.vy*=0.85;continue;}execute(p,decide(p));}}
+function updatePhysics(){for(const p of players){p.x+=p.vx;p.y+=p.vy;p.vx*=0.92;p.vy*=0.92;p.x=clamp(p.x,PR,PW-PR);p.y=clamp(p.y,PR,PH-PR);}}
+function separate(){const md=PR*2+2;for(let i=0;i<players.length;i++)for(let j=i+1;j<players.length;j++){const a=players[i],b=players[j],dx=a.x-b.x,dy=a.y-b.y,sq=dx*dx+dy*dy;if(sq<md*md&&sq>0.01){const d2=Math.sqrt(sq),ov=(md-d2)/2;a.x+=(dx/d2)*ov;a.y+=(dy/d2)*ov;b.x-=(dx/d2)*ov;b.y-=(dy/d2)*ov;}}
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  COMMENTARY + RENDER + CLOCK
+// ═══════════════════════════════════════════════════════════════
+function log(t){commentary.push({t:fmt(matchTime),text:t});if(commentary.length>30)commentary.shift();const el=document.getElementById('commentary');el.innerHTML=commentary.slice(-10).map(c=>`<div class="entry"><span class="time-tag">${c.t}</span>${c.text}</div>`).join('');el.scrollTop=el.scrollHeight;}
+function render(){ctx.clearRect(0,0,cv.width,cv.height);ctx.fillStyle='#2e7d32';ctx.fillRect(0,0,cv.width,cv.height);
+  for(let i=0;i<10;i++){const c=tc(i*105,0),c2=tc((i+1)*105,PH);ctx.fillStyle=i%2?'rgba(0,0,0,0.03)':'rgba(255,255,255,0.03)';ctx.fillRect(c.x,c.y,c2.x-c.x,c2.y-c.y+(cv.height-c2.y));}
+  ctx.save();ctx.strokeStyle='rgba(255,255,255,0.55)';ctx.lineWidth=1.5;const bl=tc(0,0),br=tc(PW,PH);ctx.strokeRect(bl.x,bl.y,br.x-bl.x,br.y-bl.y);
+  const ml=tc(PW/2,0),ml2=tc(PW/2,PH);ctx.beginPath();ctx.moveTo(ml.x,ml.y);ctx.lineTo(ml2.x,ml2.y);ctx.stroke();
+  const cc=tc(PW/2,PH/2);ctx.beginPath();ctx.arc(cc.x,cc.y,60*sx,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(cc.x,cc.y,3,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.6)';ctx.fill();
+  for(const[lx,ly]of[[0,PT],[PW-PAW,PT]]){const a=tc(lx,ly),b=tc(lx+PAW,ly+PAH);ctx.strokeRect(a.x,a.y,b.x-a.x,b.y-a.y);}
+  for(const[lx,ly]of[[0,255],[PW-50,255]]){const a=tc(lx,ly),b=tc(lx+50,ly+170);ctx.strokeRect(a.x,a.y,b.x-a.x,b.y-a.y);}
+  ctx.restore();
+  for(const left of[true,false]){const x=left?0:PW;const c1=tc(x,GT),c2=tc(x,GB),c3=tc(left?-GW:PW+GW,GT),c4=tc(left?-GW:PW+GW,GB);
+    ctx.save();ctx.strokeStyle='rgba(255,255,255,0.8)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(c1.x,c1.y);ctx.lineTo(c1.x,c2.y);ctx.stroke();ctx.beginPath();ctx.moveTo(c1.x,c1.y);ctx.lineTo(c3.x,c3.y);ctx.stroke();ctx.beginPath();ctx.moveTo(c2.x,c2.y);ctx.lineTo(c4.x,c4.y);ctx.stroke();ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=0.5;
+    for(let i=1;i<6;i++){const t=i/6;ctx.beginPath();ctx.moveTo(c1.x,c1.y+(c2.y-c1.y)*t);ctx.lineTo(c3.x,c3.y+(c4.y-c4.y)*t);ctx.stroke();}
+    for(let i=1;i<4;i++){const lx2=c1.x+(c3.x-c1.x)*(i/4);ctx.beginPath();ctx.moveTo(lx2,c1.y);ctx.lineTo(lx2,c2.y);ctx.stroke();}ctx.restore();}
+  for(const p of players){const pos=tc(p.x,p.y),r=PR*sx;
+    ctx.fillStyle='rgba(0,0,0,0.2)';ctx.beginPath();ctx.ellipse(pos.x+1,pos.y+2,r,r*0.6,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=p.team==='home'?'#e53935':'#1565c0';ctx.beginPath();ctx.arc(pos.x,pos.y,r,0,Math.PI*2);ctx.fill();
+    if(selectedPlayer===p){ctx.strokeStyle='#ffd54f';ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(pos.x,pos.y,r+5,0,Math.PI*2);ctx.stroke();}
+    ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.lineWidth=0.8;ctx.stroke();ctx.fillStyle='white';ctx.font=`bold ${Math.max(8,r*0.85)}px Arial`;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.strokeStyle='rgba(0,0,0,0.5)';ctx.lineWidth=1.5;ctx.strokeText(p.number,pos.x,pos.y);ctx.fillText(p.number,pos.x,pos.y);
+    if(p.role==='GK'){ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font=`${Math.max(6,r*0.55)}px Arial`;ctx.fillText('GK',pos.x,pos.y-r-6);}
+    if(ball.owner===p){ctx.strokeStyle='#ffd54f';ctx.lineWidth=2;ctx.setLineDash([3,3]);ctx.beginPath();ctx.arc(pos.x,pos.y,r+5,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);}}
+  const pos=tc(ball.x,ball.y),r=BR*sx*1.5;
+  ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.ellipse(pos.x+1,pos.y+2,r,r*0.5,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fafafa';ctx.beginPath();ctx.arc(pos.x,pos.y,r,0,Math.PI*2);ctx.fill();ctx.strokeStyle='rgba(0,0,0,0.12)';ctx.lineWidth=0.5;
+  for(let i=0;i<5;i++){const a=(i/5)*Math.PI*2-Math.PI/2;ctx.beginPath();ctx.moveTo(pos.x+Math.cos(a)*r*0.6,pos.y+Math.sin(a)*r*0.6);ctx.lineTo(pos.x+Math.cos(a+0.5)*r*0.9,pos.y+Math.sin(a+0.5)*r*0.9);ctx.stroke();}
+  ctx.strokeStyle='rgba(0,0,0,0.25)';ctx.lineWidth=0.8;ctx.beginPath();ctx.arc(pos.x,pos.y,r,0,Math.PI*2);ctx.stroke();
+  const spd=Math.hypot(ball.vx,ball.vy);if(spd>2){ctx.fillStyle=`rgba(255,255,255,${Math.min(spd/10,0.25)})`;ctx.beginPath();ctx.arc(pos.x,pos.y,r*2,0,Math.PI*2);ctx.fill();}
+  if(spd>3){ctx.fillStyle=`rgba(255,200,50,${Math.min(spd/15,0.12)})`;ctx.beginPath();ctx.arc(pos.x,pos.y,r*1.3,0,Math.PI*2);ctx.fill();}
+}
+function tickClock(){const el=document.getElementById('matchTime');if(matchTime>=halfLen){if(half===1){half=2;matchTime=0;log('🔄 上半场结束！进入下半场');resetPos(score.h>score.a?'home':(score.h<score.a?'away':null));}else{log(`🏁 全场比赛结束！${score.h}:${score.a}`);phase='goal';}return;}el.textContent=half===1?fmt(matchTime):fmt(halfLen+matchTime);}
+
+function loop(ts){if(!prevT)prevT=ts;let dt=(ts-prevT)/1000;prevT=ts;if(dt>0.05)dt=0.05;if(!paused){for(let s=0;s<spd;s++){const sd=dt/spd;if(phase==='goal'){phaseTimer-=sd;if(phaseTimer<=0)resetPos(lastTouch==='away'?'home':'away');continue;}
+  if(phase==='restart'){phaseTimer-=sd;if(phaseTimer<=0){players.forEach(p=>p.isTaker=false);window._restart=null;phase='playing';}else{updateAI();updatePhysics();}continue;}
+  if(phase==='kickoff'){phaseTimer-=sd;if(phaseTimer<=0){phase='playing';updateAI();updatePhysics();}else{// During kickoff countdown, players move to their positions
+    updateAI();updatePhysics();}continue;}
+  matchTime+=sd;updateAI();updatePhysics();for(const p of players){if(p.role==='GK'&&ball.owner===p)p.holdTimer+=sd;}
+  updateBall();checkGoal();if(phase==='playing')checkOutOfPlay();interact();tickClock();}}render();requestAnimationFrame(loop);}
+
+// ═══════════════════════════════════════════════════════════════
+//  PANEL UI
+// ═══════════════════════════════════════════════════════════════
+const panelEl=document.getElementById('panel');
+function findPlayerAtCanvas(x,y){const px=(x-14)/sx,py=(y-14)/sy;if(px<-10||px>PW+10||py<-10||py>PH+10)return null;let best=null,bestD=30;for(const p of players){const dd=Math.hypot(px-p.x,py-p.y);if(dd<bestD){bestD=dd;best=p;}}return best;}
+cv.addEventListener('click',function(e){const rect=cv.getBoundingClientRect();const sca=cv.width/rect.width,scb=cv.height/rect.height;const cx=(e.clientX-rect.left)*sca,cy=(e.clientY-rect.top)*scb;const p=findPlayerAtCanvas(cx,cy);if(p){selectedPlayer=p;panelMode='player';renderPanel();}else closePanel();});
+function closePanel(){panelMode='closed';selectedPlayer=null;panelEl.classList.remove('open');panelEl.innerHTML='';}
+function renderPanel(){panelEl.classList.add('open');if(panelMode==='player'&&selectedPlayer)renderPlayerPanel(selectedPlayer);else if(panelMode==='rules')renderRulesPanelFull();else closePanel();}
+
+function renderPlayerPanel(p){const t=p.traits;let html=`<button class="p-close" onclick="closePanel()">✕</button><div class="p-header"><div class="num-role"><span class="${p.team}">${p.team==='home'?'红队':'蓝队'}</span> · ${p.role} · #${p.number}</div><div class="name">${p.name}</div><div class="team-label">${p.team==='home'?'主队':'客队'}</div></div>`;
+  html+=`<div class="p-section"><div class="sec-title">能力属性 · 拖动修改</div>`;
+  const ac={pace:'#ff7043',passing:'#42a5f5',shooting:'#ef5350',defense:'#66bb6a',awareness:'#ffd54f'},al={pace:'速度',passing:'传球',shooting:'射门',defense:'防守',awareness:'意识'};
+  for(const[k,v]of Object.entries(p.att))html+=`<div class="attr-row"><div class="label">${al[k]}</div><input type="range" min="0" max="100" value="${v}" data-pid="${p.id}" data-att="${k}" oninput="onPaddleAttr(this)" /><span class="val" id="av_${p.id}_${k}">${v}</span></div>`;
+  html+=`</div><div class="p-section"><div class="sec-title">性格特点 · 拖动修改</div>`;
+  for(const key of TRAIT_KEYS){const m=TRAIT_META[key];html+=`<div class="trait-row"><div class="t-head"><div class="t-name">${m.label}</div><div class="t-val" id="tv_${p.id}_${key}">${t[key]}</div></div><div class="t-desc">${m.desc}</div><input type="range" min="0" max="100" value="${t[key]}" data-pid="${p.id}" data-key="${key}" oninput="onPaddleTrait(this)" /></div>`;}
+  html+=`</div><button class="btn-save" id="btnSavePanel" onclick="saveProfile()">💾 保存球员档案</button><div class="hint">保存后即时生效 · 持久化到本地存储</div>`;
+  panelEl.innerHTML=html;panelEl.scrollTop=0;
+}
+function onPaddleAttr(el){const pid=parseInt(el.dataset.pid),key=el.dataset.att,val=parseInt(el.value);document.getElementById(`av_${pid}_${key}`).textContent=val;const p=players.find(x=>x.id===pid);if(p)p.att[key]=val;}
+function onPaddleTrait(el){document.getElementById(`tv_${el.dataset.pid}_${el.dataset.key}`).textContent=el.value;}
+function saveProfile(){if(!selectedPlayer)return;const p=selectedPlayer;const t={},a={};for(const key of TRAIT_KEYS){const el=document.querySelector(`input[data-pid="${p.id}"][data-key="${key}"]`);if(el)t[key]=parseInt(el.value);}for(const key of Object.keys(p.att)){const el=document.querySelector(`input[data-pid="${p.id}"][data-att="${key}"]`);if(el)a[key]=parseInt(el.value);}
+  savedProfiles[profileKey(p)]={name:p.name,number:p.number,role:p.role,att:a,traits:t};Object.assign(p.traits,t);Object.assign(p.att,a);saveProfiles();
+  const btn=document.getElementById('btnSavePanel');if(btn){btn.textContent='✓ 已保存';btn.classList.add('saved');setTimeout(()=>{btn.textContent='💾 保存球员档案';btn.classList.remove('saved');},1500);}
+}
+function renderRulesPanelFull(){panelEl.classList.add('open');panelEl.innerHTML=renderRulesUI();panelEl.scrollTop=0;}
+function renderRulesUI(){
+  const ROLE_CN={CB:'中后卫',FB:'边后卫',CM:'中场',WM:'边前卫',ST:'前锋'};
+  const SIT_CN={hasBall:'控球时',oppHasBall:'对方控球时',looseBall:'无主球时',myTeamHasBall:'队友控球时',default:'默认'};
+  const ACT_CN={pass:'传球',chase:'追逐',retreat:'回撤',shoot:'射门',dribbleFwd:'盘带',moveHome:'归位',overlap:'套边',pushForward:'前插',runForward:'跑位',cross:'传中',avoid:'躲球',drift:'漂移',stand:'站位'};
+  const rConfig=rulesConfig; const roles=rConfig.roles||{};
+  let html=`<button class="p-close" onclick="closePanel()">✕</button><div class="p-header"><div class="num-role">⚙ 比赛规则</div><div class="name" style="font-size:12px;">拖动滑块 · 即时生效</div></div>`;
+
+  // ── 全局参数 ──
+  html+=`<div class="r-group"><div class="r-group-title">⚡ 全局参数</div>`;
+  const globals=[{k:'halfLen',l:'半场',min:60,max:7200,s:60,d:'分钟',f:v=>Math.floor(v/60)+'分'},{k:'ballFriction',l:'摩擦',min:0.9,max:1,s:0.001,d:'越高球越滑'},{k:'passDeviation',l:'偏移',min:0,max:2,s:0.01,d:'传球射门的随机误差'},
+    {k:'tackleBase',l:'抢断',min:0,max:0.5,s:0.01,d:'每次接触抢断概率',f:v=>Math.round(v*100)+'%'},{k:'gkSaveBase',l:'扑救',min:0,max:1,s:0.01,d:'门将扑救基础概率',f:v=>Math.round(v*100)+'%'},{k:'gkHoldLimit',l:'门将持球',min:0.5,max:10,s:0.1,d:'超时强制出球',f:v=>v+'秒'},
+    {k:'shootPowBase',l:'射门力量',min:1,max:10,s:0.5}];
+  for(const g of globals){const v=rConfig[g.k];html+=`<div class="r-row"><div class="r-lab">${g.l}</div><input type="range" min="${g.min}" max="${g.max}" step="${g.s}" value="${v}" onchange="onRGlob('${g.k}',this)"/><div class="r-val">${g.f?g.f(v):v}</div><div class="r-desc">${g.d||''}</div></div>`;}
+  html+=`</div>`;
+
+  // ── 角色决策表 ──
+  html+=`<div class="r-group"><div class="r-group-title">🎯 角色决策</div><div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:6px;">`;
+  for(const r of['CB','FB','CM','WM','ST'])html+=`<span class="r-role-btn on" data-r="${r}" onclick="onRRole(this)">${ROLE_CN[r]||r}</span>`;
+  html+=`</div>`;
+  for(const r of['CB','FB','CM','WM','ST']){
+    const rRules=roles[r]||{};
+    html+=`<div class="r-role-panel" data-r="${r}" style="display:${r==='CB'?'block':'none'}">`;
+    for(const sit of['hasBall','oppHasBall','looseBall','myTeamHasBall','default']){
+      const rules=sit==='hasBall'||sit==='default'?rRules[sit]||[]:rRules[sit]||[];
+      if(!rules.length)continue;
+      html+=`<div class="r-sit">${SIT_CN[sit]||sit}`;
+      // For oppHasBall, show the press threshold slider
+      if(sit==='oppHasBall')html+=` <span style="font-size:7px;opacity:0.3">基础+侵略×权重</span>`;
+      html+=`</div>`;
+      for(const rule of rules){
+        const cond=rule.cond||'';
+        // Extract numeric parameters from condition for slider editing
+        const act=rule.action||''; const tgt=rule.target||'';
+        if(cond==='true'){
+          html+=`<div class="r-rule"><div class="r-rule-desc">${rule.desc||''}</div><span class="r-rule-act" style="margin-left:auto">→${ACT_CN[act]||act}${tgt?'('+tgt+')':''}</span></div>`;
+        } else {
+          const threshMatch=cond.match(/rand<([0-9.]+)/); const distMatch=cond.match(/toBall<([0-9.]+)/);
+          const aggMatch=cond.match(/agg\*([0-9.]+)/); const aggMin=cond.match(/agg>([0-9.]+)/);
+          if(threshMatch){
+            const val=parseFloat(threshMatch[1]); const rKey=r+'_'+sit+'_'+rule.desc+'_th';
+            html+=`<div class="r-rule"><div class="r-rule-desc">${rule.desc||'概率'}</div>
+              <input type="range" min="0" max="1" step="0.01" value="${val}" onchange="onRTh('${r}','${sit}','${rule.desc||''}',this)"/>
+              <div class="r-val" style="width:28px;color:#ffd54f">${val.toFixed(2)}</div>
+              <span class="r-rule-act">→${ACT_CN[act]||act}</span></div>`;
+          } else if(distMatch&&!threshMatch){
+            const val=parseFloat(distMatch[1]); const distOnly=!/(\+\d)/.test(cond);
+            if(distOnly){
+              html+=`<div class="r-rule"><div class="r-rule-desc">${rule.desc||'距离'}</div>
+                <input type="range" min="20" max="300" step="5" value="${val}" onchange="onRDist('${r}','${sit}','${rule.desc||''}',this)"/>
+                <div class="r-val" style="width:28px;color:#ffd54f">${val}</div>
+                <span class="r-rule-act">px →${ACT_CN[act]||act}</span></div>`;
+            } else {
+              const baseMatch=cond.match(/toBall<\(([0-9.]+)/);
+              const base=baseMatch?parseFloat(baseMatch[1]):80;
+              const wt=aggMatch?parseFloat(aggMatch[1]):1.0;
+              html+=`<div class="r-rule"><div class="r-rule-desc">${rule.desc||'上抢'}</div>
+                <input type="range" min="20" max="250" step="5" value="${base}" onchange="onRPress('${r}','${sit}','${rule.desc||''}','base',this)"/>
+                <span style="font-size:7px;opacity:0.3">基础${base}</span>
+                +侵略×<input type="range" min="0.1" max="3" step="0.1" value="${wt}" style="width:40px;height:2px;display:inline;vertical-align:middle" onchange="onRPress('${r}','${sit}','${rule.desc||''}','wt',this)"/>
+                <span class="r-rule-act">→${ACT_CN[act]||act}</span></div>`;
+            }
+          } else if(aggMin){
+            const val=parseFloat(aggMin[1]);
+            html+=`<div class="r-rule"><div class="r-rule-desc">${rule.desc||'侵略'}</div>
+              <input type="range" min="0" max="100" step="5" value="${val}" onchange="onRAggMin('${r}','${sit}','${rule.desc||''}',this)"/>
+              <div class="r-val" style="width:22px;color:#ffd54f">${val}</div>
+              <span class="r-rule-act">→${ACT_CN[act]||act}</span></div>`;
+          } else {
+            html+=`<div class="r-rule"><div class="r-rule-desc">${rule.desc||''}</div><span class="r-rule-act" style="margin-left:auto">→${ACT_CN[act]||act}</span></div>`;
+          }
+        }
+      }
+    }
+    html+=`</div>`;
+  }
+  html+=`</div>`;
+
+  // ── 传球评分 ──
+  const ps=rConfig.passScore||{};
+  html+=`<div class="r-group"><div class="r-group-title">📤 传球目标评分</div>`;
+  html+=`<div class="r-row"><div class="r-lab">空间</div><input type="range" min="0" max="2" step="0.1" value="${ps.spaceWeight||0.6}" onchange="onRPS('spaceWeight',this)"/><div class="r-val">${ps.spaceWeight||0.6}</div><div class="r-desc">目标距防守者越远越好</div></div>`;
+  html+=`<div class="r-row"><div class="r-lab">前插</div><input type="range" min="0" max="2" step="0.1" value="${ps.forwardWeight||0.3}" onchange="onRPS('forwardWeight',this)"/><div class="r-val">${ps.forwardWeight||0.3}</div><div class="r-desc">越向前越优先</div></div>`;
+  html+=`<div class="r-row"><div class="r-lab">理想距离</div><input type="range" min="30" max="300" step="10" value="${ps.distIdeal||120}" onchange="onRPS('distIdeal',this)"/><div class="r-val">${ps.distIdeal||120}</div><div class="r-desc">px</div></div>`;
+  html+=`</div>`;
+
+  html+=`<button class="btn-reset" onclick="resetRulesJSON()">↺ 恢复默认值</button>`;
+  html+=`<div class="hint">所有修改即时生效 · 自动保存</div>`;
+  return html;
+}
+
+// ── Rules UI event handlers ──
+let _panelRole='CB';
+function onRRole(el){_panelRole=el.dataset.r;document.querySelectorAll('.r-role-btn').forEach(b=>b.classList.toggle('on',b===el));document.querySelectorAll('.r-role-panel').forEach(p=>p.style.display=p.dataset.r===_panelRole?'block':'none');}
+function onRGlob(k,el){rulesConfig[k]=parseFloat(el.value);saveRules();el.parentElement.querySelector('.r-val').textContent=el.value;if(k==='halfLen')applyRules();}
+function onRTh(role,sit,desc,el){const v=parseFloat(el.value);const rules=rulesConfig.roles[role][sit];for(const r of rules){if(r.desc===desc&&r.cond.includes('rand<')){r.cond=r.cond.replace(/rand<[0-9.]+/,'rand<'+v.toFixed(2));break;}}saveRules();el.parentElement.querySelector('.r-val').textContent=v.toFixed(2);}
+function onRDist(role,sit,desc,el){const v=parseInt(el.value);const rules=rulesConfig.roles[role][sit];for(const r of rules){if(r.desc===desc&&r.cond.includes('toBall<')){r.cond=r.cond.replace(/toBall<\d+/,'toBall<'+v);break;}}saveRules();el.parentElement.querySelector('.r-val').textContent=v;}
+function onRPress(role,sit,desc,field,el){const v=parseFloat(el.value);const rules=rulesConfig.roles[role][sit];for(const r of rules){if(r.desc===desc){const m=r.cond.match(/toBall<\(([0-9.]+)\+agg\*([0-9.]+)/);if(m){const base=m[1],wt=m[2];const nb=field==='base'?v:parseFloat(base);const nw=field==='wt'?v:parseFloat(wt);r.cond=r.cond.replace(/toBall<\([0-9.]+\+agg\*[0-9.]+\)/,'toBall<('+nb+'+agg*'+nw+')');break;}}}saveRules();}
+function onRAggMin(role,sit,desc,el){const v=parseInt(el.value);const rules=rulesConfig.roles[role][sit];for(const r of rules){if(r.desc===desc&&r.cond.includes('agg>')){r.cond=r.cond.replace(/agg>\d+/,'agg>'+v);break;}}saveRules();el.parentElement.querySelector('.r-val').textContent=v;}
+function onRPS(k,el){const v=parseFloat(el.value);rulesConfig.passScore=rulesConfig.passScore||{};rulesConfig.passScore[k]=v;saveRules();el.parentElement.querySelector('.r-val').textContent=v;}
+
+// ── Apply JSON (keep old function for compatibility) ──
+function applyRulesJSON(){const el=document.getElementById('rulesEditor'),fb=document.getElementById('rulesFeedback');if(!el)return;try{const p=JSON.parse(el.value);Object.assign(rulesConfig,p);saveRules();applyRules();if(fb){fb.textContent='✓ 已应用并保存';fb.style.color='#66bb6a';setTimeout(()=>{fb.style.color='';fb.textContent='';},2000);}}catch(e){if(fb){fb.textContent='❌ JSON 格式错误';fb.style.color='#ef5350';}}}
+function resetRulesJSON(){resetRules();if(panelMode==='rules')renderRulesPanelFull();log('⚙ 比赛规则已恢复默认');}
+
+// ═══════════════════════════════════════════════════════════════
+//  UI CONTROLS + INIT
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('btnPause').onclick=function(){paused=!paused;this.textContent=paused?'▶ 继续':'⏸ 暂停';if(!paused)prevT=0;};
+document.querySelectorAll('.speed-group button').forEach(b=>b.onclick=function(){document.querySelectorAll('.speed-group button').forEach(x=>x.classList.remove('on'));this.classList.add('on');spd=parseInt(this.dataset.speed);});
+document.getElementById('btnRules').onclick=function(){panelMode='rules';selectedPlayer=null;renderRulesPanelFull();};
+document.getElementById('btnReset').onclick=function(){score={h:0,a:0};matchTime=0;half=1;phase='goal';phaseTimer=0.5;lastTouch=null;commentary=[];document.getElementById('scoreHome').textContent='0';document.getElementById('scoreAway').textContent='0';document.getElementById('matchTime').textContent='00:00';log('🔄 比赛重置！');createPlayers();createBall();setTimeout(()=>resetPos(null),500);document.getElementById('btnPause').textContent='⏸ 暂停';paused=false;closePanel();};
+
+loadRules();applyRules();if(!loadProfiles())savedProfiles={};
+createPlayers();createBall();resetPos(null);
+log('🎙 比赛开始！红队 vs 蓝队 · 4-4-2');
+log('💡 点击球员编辑属性 · ⚙ 规则编辑完整比赛规则');
+prevT=0;requestAnimationFrame(loop);
+</script>
+</body>
+</html>

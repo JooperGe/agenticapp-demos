@@ -19,7 +19,7 @@ body { background: #0a0f0a; font-family: 'Segoe UI', system-ui, -apple-system, s
 .scoreboard .time { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; background: rgba(0,0,0,0.3); padding: 4px 14px; border-radius: 8px; letter-spacing: 1px; min-width: 72px; text-align: center; }
 .canvas-wrap { position: relative; background: #1b5e20; border-radius: 12px; overflow: hidden; margin-bottom: 8px; cursor: pointer; }
 canvas { display: block; width: 100%; height: auto; }
-.commentary { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 8px 12px; height: 60px; overflow-y: auto; color: rgba(255,255,255,0.7); font-size: 11px; line-height: 1.6; margin-bottom: 8px; }
+.commentary { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 8px 12px; height: 100px; overflow-y: auto; color: rgba(255,255,255,0.7); font-size: 11px; line-height: 1.6; margin-bottom: 8px; }
 .commentary::-webkit-scrollbar { width: 4px; }
 .commentary::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
 .commentary .entry { display: flex; gap: 8px; align-items: flex-start; }
@@ -63,6 +63,72 @@ canvas { display: block; width: 100%; height: auto; }
 .panel .btn-reset { width: 100%; padding: 8px; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; background: transparent; color: rgba(255,255,255,0.5); transition: all 0.2s; margin-top: 6px; }
 .panel .btn-reset:hover { background: rgba(255,255,255,0.05); color: #fff; border-color: rgba(255,255,255,0.2); }
 .panel .hint { font-size: 9px; opacity: 0.3; text-align: center; margin-top: 6px; }
+.panel .p-tabs { display: flex; gap: 4px; margin-bottom: 10px; background: rgba(0,0,0,0.25); padding: 3px; border-radius: 8px; }
+.panel .p-tab { flex:1; padding: 6px 0; text-align: center; font-size: 10px; font-weight: 700; border-radius: 6px; cursor: pointer; background: transparent; color: rgba(255,255,255,0.35); border: none; transition: all 0.15s; }
+.panel .p-tab.on { background: rgba(255,213,79,0.18); color: #ffd54f; }
+.panel .skill-row { background: rgba(255,255,255,0.03); border-radius: 6px; padding: 6px 8px; margin-bottom: 5px; }
+.panel .skill-row.locked { opacity: 0.35; }
+.panel .skill-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+.panel .skill-name { font-size: 11px; font-weight: 600; }
+.panel .skill-meta { display: flex; align-items: center; gap: 6px; }
+.panel .skill-lv { font-size: 9px; font-weight: 700; color: #ffd54f; min-width: 28px; text-align: right; }
+.panel .skill-stars { font-size: 8px; letter-spacing: 1px; color: #ffd54f; }
+.panel .skill-stars .empty { color: rgba(255,255,255,0.15); }
+.panel .skill-xp { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; margin: 3px 0 4px; }
+.panel .skill-xp-fill { height: 100%; background: linear-gradient(90deg, #66bb6a, #4fc3f7); border-radius: 2px; transition: width 0.3s; }
+.panel .skill-xp-txt { font-size: 8px; opacity: 0.4; display: flex; justify-content: space-between; }
+.panel .skill-up { background: rgba(102,187,107,0.18); border: 1px solid rgba(102,187,107,0.3); color: #66bb6a; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
+.panel .skill-up:hover:not(:disabled) { background: rgba(102,187,107,0.3); }
+.panel .skill-up:disabled { opacity: 0.25; cursor: not-allowed; }
+.panel .evo-banner { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,213,79,0.1); border: 1px solid rgba(255,213,79,0.25); border-radius: 6px; margin-bottom: 8px; }
+.panel .evo-banner .evo-lab { font-size: 10px; font-weight: 700; color: #ffd54f; }
+.panel .evo-banner .evo-val { font-size: 14px; font-weight: 800; color: #ffd54f; }
+.panel .tactic-node { background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 6px 8px; margin-bottom: 6px; }
+.panel .tn-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.panel .tn-id { font-size: 9px; font-weight: 700; opacity: 0.6; letter-spacing: 0.3px; }
+.panel .tn-prio { font-size: 8px; opacity: 0.5; display: flex; align-items: center; gap: 4px; }
+.panel .tn-prio input { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #ffd54f; border-radius: 3px; padding: 1px 3px; font-size: 9px; }
+.panel .tn-skills { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 5px; }
+.panel .tchip { font-size: 8px; padding: 2px 5px; border-radius: 8px; background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.3); cursor: pointer; transition: all 0.12s; user-select: none; }
+.panel .tchip.on { background: rgba(79,195,247,0.22); color: #4fc3f7; }
+.panel .tchip:hover { background: rgba(255,255,255,0.1); }
+.panel .tn-cond { font-size: 8px; }
+.panel .cond-true { font-size: 8px; opacity: 0.3; font-style: italic; }
+.panel .cond-op { font-size: 7px; font-weight: 800; color: #ffd54f; opacity: 0.6; letter-spacing: 0.5px; }
+.panel .cond-clause { display: flex; align-items: center; gap: 4px; margin: 2px 0; }
+.panel .cond-clause .cm { font-size: 8px; opacity: 0.6; min-width: 56px; }
+.panel .cond-clause .cop { font-size: 8px; font-weight: 700; color: #ef5350; min-width: 14px; }
+.panel .cond-clause input[type=range] { flex: 1; height: 2px; -webkit-appearance: none; appearance: none; background: rgba(255,255,255,0.08); border-radius: 2px; outline: none; }
+.panel .cond-clause input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 8px; height: 8px; border-radius: 50%; background: #ffd54f; cursor: pointer; border: none; }
+.panel .cond-clause .cval { font-size: 8px; font-weight: 700; color: #4fc3f7; min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+.panel .coach-team { display: flex; gap: 4px; margin-bottom: 10px; background: rgba(0,0,0,0.25); padding: 3px; border-radius: 8px; }
+.panel .coach-team-btn { flex:1; padding: 6px 0; text-align: center; font-size: 10px; font-weight: 700; border-radius: 6px; cursor: pointer; background: transparent; color: rgba(255,255,255,0.35); border: none; transition: all 0.15s; }
+.panel .coach-team-btn.on.home { background: rgba(239,83,80,0.22); color: #ef5350; }
+.panel .coach-team-btn.on.away { background: rgba(66,165,245,0.22); color: #42a5f5; }
+.panel .style-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: 10px; }
+.panel .style-btn { padding: 6px 4px; text-align: center; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.4); border: 1px solid rgba(255,255,255,0.06); transition: all 0.15s; }
+.panel .style-btn.on { background: rgba(255,213,79,0.18); color: #ffd54f; border-color: rgba(255,213,79,0.3); }
+.panel .style-btn:hover { background: rgba(255,255,255,0.1); }
+.panel .manual-pl-select { display: flex; gap: 4px; margin-bottom: 8px; }
+.panel .manual-pl-btn { flex:1; padding: 4px 0; text-align: center; font-size: 10px; font-weight: 700; border-radius: 6px; cursor: pointer; background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.4); border: 1px solid rgba(255,255,255,0.06); }
+.panel .manual-pl-btn.home { border-color: rgba(239,83,80,0.2); }
+.panel .manual-pl-btn.away { border-color: rgba(66,165,245,0.2); }
+.panel .manual-pl-btn.home.on { background: rgba(239,83,80,0.18); color: #ef5350; border-color: rgba(239,83,80,0.4); }
+.panel .manual-pl-btn.away.on { background: rgba(66,165,245,0.18); color: #42a5f5; border-color: rgba(66,165,245,0.4); }
+.panel .manual-pl-list { max-height: 140px; overflow-y: auto; margin-bottom: 10px; }
+.panel .manual-pl-item { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 11px; transition: background 0.15s; }
+.panel .manual-pl-item:hover { background: rgba(255,255,255,0.06); }
+.panel .manual-pl-item.on { background: rgba(255,213,79,0.12); }
+.panel .manual-pl-item .num { font-size: 9px; font-weight: 700; opacity: 0.5; min-width: 18px; }
+.panel .manual-pl-item .role { font-size: 8px; opacity: 0.4; min-width: 22px; }
+.panel .manual-pl-item .nm { flex:1; }
+.panel .manual-skill-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
+.panel .manual-skill-btn { padding: 8px 4px; text-align: center; font-size: 10px; font-weight: 700; border-radius: 6px; cursor: pointer; background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.06); transition: all 0.15s; }
+.panel .manual-skill-btn:hover:not(:disabled) { background: rgba(76,175,80,0.2); color: #fff; border-color: rgba(76,175,80,0.4); transform: translateY(-1px); }
+.panel .manual-skill-btn:active:not(:disabled) { transform: translateY(0); }
+.panel .manual-skill-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+.panel .manual-skill-btn .sk-lv { font-size: 8px; opacity: 0.6; }
+.panel .manual-skill-type { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; opacity: 0.35; margin: 8px 0 4px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.04); }
 .panel .r-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
 .panel .r-tab { flex:1; padding: 6px 0; text-align: center; font-size: 10px; font-weight: 600; border-radius: 6px; cursor: pointer; background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.3); border: none; }
 .panel .r-tab.on { background: rgba(255,255,255,0.1); color: #fff; }
@@ -96,11 +162,20 @@ canvas { display: block; width: 100%; height: auto; }
   </div>
   <div class="canvas-wrap"><canvas id="pitch" width="860" height="560"></canvas></div>
   <div class="commentary" id="commentary"></div>
+  <div class="decision-chart-wrap" style="background:rgba(0,0,0,0.3);border-radius:10px;padding:8px 12px;margin-bottom:8px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <span style="font-size:10px;font-weight:700;color:#ffd54f;letter-spacing:0.5px;">📈 决策曲线 · 选定球员每帧动作</span>
+      <button id="btnClearChart" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);padding:2px 8px;border-radius:4px;font-size:9px;cursor:pointer;">清空</button>
+    </div>
+    <canvas id="decisionChart" width="836" height="280" style="display:block;width:100%;height:auto;background:rgba(0,0,0,0.25);border-radius:6px;"></canvas>
+  </div>
   <div class="controls">
     <button id="btnPause">⏸ 暂停</button>
     <div class="speed-group"><button data-speed="1" class="on">1×</button><button data-speed="2">2×</button><button data-speed="4">4×</button></div>
     <button id="btnReset">↺ 重置</button>
     <button id="btnRules">⚙ 规则</button>
+    <button id="btnCoach">🎌 打法</button>
+    <button id="btnManual">🎮 手动</button>
   </div>
 </div>
 <div class="panel" id="panel"></div>
@@ -115,8 +190,644 @@ const BR = 5, PR = 10;
 const OUT_W = 8;
 
 // ═══════════════════════════════════════════════════════════════
-//  RULES CONFIG — the complete rule book for the football simulation.
-//  This is the SINGLE SOURCE OF TRUTH for ALL player behavior.
+//  SKILL LAYER — each player owns an independent, upgradable skill set.
+// ═══════════════════════════════════════════════════════════════
+
+class Skill {
+  constructor(def, level = 1) {
+    this.id = def.id;
+    this.name = def.name;
+    this.type = def.type;
+    this.level = clamp(Math.round(level), 1, 5);
+    this.xp = 0;
+    this.params = { ...def.params };
+    this.unlocked = def.unlocked !== false;
+    this.cooldown = 0;
+    this.maxCooldown = def.cooldown || 0;
+  }
+  maxXp() { return 100 * this.level; }
+  gainXp(n) {
+    if (!this.unlocked) return false;
+    this.xp += n;
+    if (this.xp >= this.maxXp() && this.level < 5) { this.level++; this.xp = 0; return true; }
+    return false;
+  }
+  levelBonus() { return 1 + (this.level - 1) * 0.12; }
+  tick(dt) { if (this.cooldown > 0) this.cooldown = Math.max(0, this.cooldown - dt); }
+  accuracyFactor(player) {
+    const fat = (player.stamina ?? 100) / 100;
+    const base = this.params.baseAccuracy || 0.7;
+    let attBoost = player.att.awareness / 100;
+    if (this.type === 'pass') attBoost = player.att.passing / 100;
+    else if (this.type === 'shoot') attBoost = player.att.shooting / 100;
+    else if (this.type === 'defense') attBoost = player.att.defense / 100;
+    return clamp(base * this.levelBonus() * (0.7 + 0.6 * fat) * (0.5 + 0.5 * attBoost), 0.05, 0.99);
+  }
+}
+
+const SKILL_CATALOG = {
+  moveTo:      { id:'moveTo',      name:'跑位',   type:'movement', params:{ staminaCost:0.08 }, cooldown:0 },
+  sprint:      { id:'sprint',      name:'冲刺',   type:'movement', params:{ boost:1.6, staminaCost:0.6, duration:0.4 }, cooldown:0 },
+  dribble:     { id:'dribble',     name:'盘带',   type:'movement', params:{ baseSpeed:2.4, control:0.75, staminaCost:0.25 }, cooldown:0 },
+  shortPass:   { id:'shortPass',   name:'短传',   type:'pass',     params:{ baseAccuracy:0.82, power:3.2, maxDist:200, staminaCost:0.35 }, cooldown:0 },
+  throughPass: { id:'throughPass', name:'直塞',   type:'pass',     params:{ baseAccuracy:0.62, power:4.0, maxDist:240, staminaCost:0.55 }, cooldown:0 },
+  longPass:    { id:'longPass',    name:'长传',   type:'pass',     params:{ baseAccuracy:0.52, power:5.5, maxDist:450, staminaCost:0.70 }, cooldown:0 },
+  cross:       { id:'cross',       name:'传中',   type:'pass',     params:{ baseAccuracy:0.58, power:4.3, maxDist:260, staminaCost:0.55 }, cooldown:0 },
+  shoot:       { id:'shoot',       name:'射门',   type:'shoot',    params:{ baseAccuracy:0.55, power:4.5, staminaCost:0.75 }, cooldown:0 },
+  tackle:      { id:'tackle',      name:'抢断',   type:'defense',  params:{ baseSuccess:0.22, range:18, staminaCost:0.45 }, cooldown:0.25 },
+  slideTackle: { id:'slideTackle', name:'铲球',   type:'defense',  params:{ baseSuccess:0.42, range:22, staminaCost:0.90, foulRisk:0.18 }, cooldown:0.8 },
+  mark:        { id:'mark',        name:'盯人',   type:'defense',  params:{ range:26, staminaCost:0.25 }, cooldown:0 },
+  intercept:   { id:'intercept',   name:'拦截',   type:'defense',  params:{ baseSuccess:0.28, range:20, staminaCost:0.35 }, cooldown:0.2 },
+  gkSave:      { id:'gkSave',      name:'扑救',   type:'gk',       params:{ baseSuccess:0.45, range:35, staminaCost:0.40 }, cooldown:0 },
+  gkClaim:     { id:'gkClaim',     name:'出击抱球', type:'gk',     params:{ range:45, staminaCost:0.35 }, cooldown:0 },
+  gkClear:     { id:'gkClear',     name:'大脚解围', type:'gk',     params:{ baseAccuracy:0.45, power:7.0, staminaCost:0.45 }, cooldown:0 }
+};
+
+// 角色主力技能的初始等级（1-5）。其它技能默认 level 1。
+// 这层差异化让 CB 更会防守、ST 更会射门、CM 更会传球，行为从开局就有区分度。
+const ROLE_SKILL_LEVELS = {
+  GK:  { gkSave: 3, gkClaim: 2, gkClear: 2 },
+  CB:  { mark: 2, tackle: 2, slideTackle: 1, intercept: 2, shortPass: 2 },
+  FB:  { mark: 2, tackle: 2, intercept: 1, sprint: 2, cross: 2, shortPass: 2 },
+  CM:  { shortPass: 3, throughPass: 2, longPass: 2, dribble: 2, intercept: 1, mark: 1 },
+  WM:  { dribble: 2, sprint: 2, cross: 2, shortPass: 2, throughPass: 1 },
+  ST:  { shoot: 3, dribble: 2, sprint: 2, shortPass: 1 }
+};
+function createSkillSet(role, saved) {
+  const set = {};
+  const boost = ROLE_SKILL_LEVELS[role] || {};
+  for (const key in SKILL_CATALOG) {
+    const def = SKILL_CATALOG[key];
+    const initLevel = boost[key] || 1;
+    const s = new Skill(def, initLevel);
+    // 若存档里有该技能快照，覆盖等级/xp/解锁状态（Phase 3/4 持久化）
+    if (saved && saved[key]) {
+      s.level = clamp(Math.round(saved[key].level ?? initLevel), 1, 5);
+      s.xp = saved[key].xp ?? 0;
+      if (saved[key].unlocked !== undefined) s.unlocked = saved[key].unlocked;
+    }
+    set[key] = s;
+  }
+  return set;
+}
+
+// Executor turns a SkillRequest {skillId, target} into physical effects.
+// 它产出结构化 SkillResult：
+//   { skillId, type, success, xpGain,           ← xp 反馈用
+//     target, intendedPower, intendedAngle,      ← 意图层（球员"想"做什么）
+//     accuracy, staminaCost, risk, actualPower,  ← 评估层（实际加了噪声后的执行参数）
+//     ballKicked, ownerChanged,                  ← 副作用标记
+//     signal }                                   ← 意图信号，给队友意识响应用
+// signal = { type:'pass'|'dribble'|'shoot', direction:角度, urgency:0~1 }
+//   持球者发出信号后，附近的队友根据球商+打法决定是否跑位接应。
+const Executor = {
+  run(req, player) {
+    const skill = player.skillSet[req.skillId];
+    if (!skill || !skill.unlocked || skill.cooldown > 0) return null;
+    skill.cooldown = skill.maxCooldown;
+    const staminaCost = (skill.params.staminaCost || 0) * 10;
+    player.stamina = Math.max(0, (player.stamina ?? 100) - staminaCost);
+    let res;
+    switch (skill.type) {
+      case 'movement': res = this.execMovement(req, player, skill); break;
+      case 'pass':     res = this.execPass(req, player, skill); break;
+      case 'shoot':    res = this.execShoot(req, player, skill); break;
+      case 'defense':  res = this.execDefense(req, player, skill); break;
+      case 'gk':       res = this.execGk(req, player, skill); break;
+      default: return null;
+    }
+    if (res) { res.staminaCost = staminaCost; res.skillId = req.skillId; }
+    // 信号机制：持球者的动作产生意图信号，存到 player.signal 供队友读取
+    // （只有持球或刚触球的动作才发信号；movement/defense 不发）
+    if (res) {
+      if (res.type === 'pass' || res.type === 'shoot') {
+        // urgency：射门最紧急，直塞次之，短传最低
+        const urgency = res.type === 'shoot' ? 0.9 : (skill.id === 'throughPass' || skill.id === 'longPass' ? 0.6 : 0.3);
+        player.signal = { type: res.type, direction: res.intendedAngle, urgency, ts: matchTime };
+      } else if (res.type === 'movement' && (req.skillId === 'dribble' || req.skillId === 'sprint')) {
+        player.signal = { type: 'dribble', direction: res.intendedAngle, urgency: 0.4, ts: matchTime };
+      }
+    }
+    return res;
+  },
+
+  execMovement(req, player, skill) {
+    const target = req.target || { x: player.hx, y: player.hy };
+    const boost = req.skillId === 'sprint' ? skill.params.boost || 1.5 : 1;
+    const intendedAngle = Math.atan2(target.y - player.y, target.x - player.x);
+    mvToward(player, target.x, target.y, boost);
+    return { success:true, type:'movement', xpGain:0.05,
+             target:{x:target.x,y:target.y}, intendedPower:0, intendedAngle,
+             accuracy:1, risk:0, ballKicked:false, ownerChanged:false };
+  },
+
+  execPass(req, player, skill) {
+    const target = req.target || player;
+    const acc = skill.accuracyFactor(player);
+    const dist = d(player, target);
+    // 距离越远被拦截风险越高；Phase 1 简单估计，给 Phase 2 留接口
+    const risk = clamp(dist / (skill.params.maxDist || 300) * 0.4, 0, 0.6);
+    const intendedAngle = Math.atan2(target.y - player.y, target.x - player.x);
+    const intendedPower = skill.params.power;
+    const actualPower = intendedPower * (0.9 + Math.random() * 0.2);
+    kickBall(player, target.x, target.y, actualPower, acc);
+    return { success:true, type:'pass', xpGain:3,
+             target:{x:target.x,y:target.y}, intendedPower, intendedAngle,
+             accuracy:acc, risk, actualPower, ballKicked:true, ownerChanged:true };
+  },
+
+  execShoot(req, player, skill) {
+    const target = req.target || { x: player.team==='home'?PW:0, y: PH/2 };
+    const acc = skill.accuracyFactor(player);
+    const intendedAngle = Math.atan2(target.y - player.y, target.x - player.x);
+    const intendedPower = skill.params.power;
+    const actualPower = intendedPower * (0.9 + Math.random() * 0.2);
+    kickBall(player, target.x, target.y, actualPower, acc);
+    return { success:true, type:'shoot', xpGain:5,
+             target:{x:target.x,y:target.y}, intendedPower, intendedAngle,
+             accuracy:acc, risk:0.1, actualPower, ballKicked:true, ownerChanged:true };
+  },
+
+  execDefense(req, player, skill) {
+    const r = { success:true, type:'defense', xpGain:2, target:null,
+                intendedPower:0, intendedAngle:0, accuracy:0, risk:0,
+                ballKicked:false, ownerChanged:false };
+    if (req.skillId === 'tackle' || req.skillId === 'slideTackle') {
+      const t = tryTackle(player, skill);
+      r.success = t.success; r.ownerChanged = t.ownerChanged; r.ballKicked = t.ballKicked;
+      r.target = t.target; r.accuracy = t.acc; r.risk = t.risk;
+      if (t.success) r.xpGain = 4;  // 成功抢断经验更高
+    } else if (req.skillId === 'mark') {
+      // 盯人：向目标对手移动，不开球
+      const tgt = req.target || nearestOpponent(player);
+      if (tgt) { mvToward(player, tgt.x, tgt.y, 1); r.target = {x:tgt.x,y:tgt.y}; r.intendedAngle = Math.atan2(tgt.y-player.y, tgt.x-player.x); }
+    } else if (req.skillId === 'intercept') {
+      // 拦截：移向预判球路
+      const tgt = req.target || { x: ball.x + (ball.vx||0)*6, y: ball.y + (ball.vy||0)*6 };
+      mvToward(player, tgt.x, tgt.y, 1.1);
+      r.target = {x:tgt.x,y:tgt.y};
+      r.intendedAngle = Math.atan2(tgt.y-player.y, tgt.x-player.x);
+    }
+    return r;
+  },
+
+  execGk(req, player, skill) {
+    const r = { success:true, type:'gk', xpGain:2, target:null,
+                intendedPower:0, intendedAngle:0, accuracy:0, risk:0,
+                ballKicked:false, ownerChanged:false };
+    if (req.skillId === 'gkClear') {
+      const acc = skill.accuracyFactor(player);
+      const tx = player.team === 'home' ? PW - 50 : 50;
+      const ty = rng(PH * 0.2, PH * 0.8);
+      const intendedPower = skill.params.power;
+      kickBall(player, tx, ty, intendedPower, acc);
+      r.target = {x:tx,y:ty}; r.intendedPower = intendedPower;
+      r.intendedAngle = Math.atan2(ty-player.y, tx-player.x);
+      r.accuracy = acc; r.ballKicked = true; r.ownerChanged = true;
+    } else if (req.skillId === 'gkClaim') {
+      // 出击抱球：移向球（实际抱球仍由 gkClaim() 全局函数处理）
+      const tgt = { x: ball.x, y: ball.y };
+      mvToward(player, tgt.x, tgt.y, 1.1);
+      r.target = tgt; r.intendedAngle = Math.atan2(tgt.y-player.y, tgt.x-player.x);
+    } else if (req.skillId === 'gkSave') {
+      // 扑救：向球方向移动（实际扑救由 gkSave() 全局概率函数处理）
+      const tgt = { x: ball.x, y: ball.y };
+      mvToward(player, tgt.x, tgt.y, 1.2);
+      r.target = tgt; r.intendedAngle = Math.atan2(tgt.y-player.y, tgt.x-player.x);
+    }
+    return r;
+  }
+};
+
+// 找离球员最近的对方非门将球员
+function nearestOpponent(player) {
+  let best = null, bestD = Infinity;
+  for (const p of players) {
+    if (p.team === player.team || p.role === 'GK') continue;
+    const dd = d(player, p);
+    if (dd < bestD) { bestD = dd; best = p; }
+  }
+  return best;
+}
+
+// 技能式抢断：被 Executor 调用。和全局 interact() 的接触抢断并存——
+// interact() 处理自动碰撞抢断（不依赖技能），tryTackle 处理球员主动选择的抢断技能。
+// Phase 1 没人主动调用它，但补上避免 Phase 2 接管 tactic 后 ReferenceError。
+function tryTackle(player, skill) {
+  const range = skill.params.range || 18;
+  const opp = nearestOpponent(player);
+  if (!opp || d(player, opp) > range) {
+    return { success:false, ownerChanged:false, ballKicked:false, target:opp, acc:0, risk:0 };
+  }
+  const acc = skill.accuracyFactor(player);
+  const successProb = (skill.params.baseSuccess || 0.2) * skill.levelBonus() * (0.6 + 0.4 * acc);
+  const success = Math.random() < successProb;
+  const risk = skill.params.foulRisk || 0;
+  if (success) {
+    if (ball.owner === opp) {
+      ball.owner = player; ball.vx = 0; ball.vy = 0;
+      lastTouch = player.team;
+      log(`💪 ${player.team==='home'?'红':'蓝'}${player.number}号 ${skill.name}成功！`);
+      return { success:true, ownerChanged:true, ballKicked:false, target:opp, acc, risk };
+    } else {
+      // 把 loose ball 踢开
+      const a = Math.random() * Math.PI * 2;
+      ball.vx = Math.cos(a) * 2; ball.vy = Math.sin(a) * 2;
+      if (ball.owner) ball.owner = null;
+      return { success:true, ownerChanged:false, ballKicked:true, target:opp, acc, risk };
+    }
+  }
+  if (risk > 0 && Math.random() < risk) {
+    log(`🟨 ${player.team==='home'?'红':'蓝'}${player.number}号 ${skill.name}犯规！`);
+  }
+  return { success:false, ownerChanged:false, ballKicked:false, target:opp, acc, risk };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TACTIC LAYER — each player owns an independent Tactic instance.
+//  替代旧的字符串条件 + new Function 路径。
+//  结构化 Condition 可序列化、可被 UI 编辑，不再需要 eval。
+// ═══════════════════════════════════════════════════════════════
+
+// 构建球员视角的世界状态（替代旧 evaluateRules 里的 ctx）
+function buildWorldState(player) {
+  const t = player.traits;
+  const toBall = d(player, ball);
+  const nearest = nearestOnTeam(player);
+  const fwd = player.team === 'home' ? 1 : -1;
+  const dGoal = player.team === 'home' ? (PW - player.x) : player.x;
+  const ownGoalX = player.team === 'home' ? 0 : PW;
+  const halfY = Math.abs(player.y - PH/2);
+  const distFromHome = d(player, { x: player.hx, y: player.hy });
+  const tmCount = players.filter(p => p.team === player.team && p !== player && d(player, p) < 250).length;
+  const shoot = player.att.shooting;
+  const crossRange = player.team === 'home' ? player.x > PW*0.7 : player.x < PW*0.3;
+  const pr = 80 + t.aggressiveness*1.2 + (t.workRate > 50 ? 30 : 0);
+  const ballInOwnHalf = player.team === 'home' ? ball.x < PW/2 : ball.x > PW/2;
+  return {
+    toBall, nearest, dGoal, distFromHome, halfY, tmCount, shoot, crossRange, pr, fwd, ownGoalX,
+    ballX: ball.x, ballY: ball.y, ballInOwnHalf,
+    agg: t.aggressiveness, self: t.selfishness, wr: t.workRate,
+    risk: t.riskTaking, conf: t.confidence, disc: t.discipline,
+    rand: Math.random()
+  };
+}
+
+// 结构化条件评估器
+// Condition 形式：
+//   true / null / undefined           → 永真
+//   { op:'and', clauses:[clause,...] }
+//   { op:'or',  clauses:[clause,...] }
+//   clause: { metric, op, value }
+//     metric: 'toBall' | 'nearest' | 'rand' | 'agg' | ... (见 buildWorldState)
+//     op: '<' | '<=' | '>' | '>=' | '==' | '!='
+//     value: number | boolean | { base, attrMul:[{attr,factor}], condBonus:[{attr,gt,bonus}] }
+function evalCondition(cond, ws) {
+  if (cond === true || cond == null) return true;
+  if (cond.op === 'and') return cond.clauses.every(c => evalClause(c, ws));
+  if (cond.op === 'or')  return cond.clauses.some(c => evalClause(c, ws));
+  return evalClause(cond, ws);
+}
+function evalClause(c, ws) {
+  const v = ws[c.metric] !== undefined ? ws[c.metric] : 0;
+  const target = resolveValue(c.value, ws);
+  switch (c.op) {
+    case '<':  return v < target;
+    case '<=': return v <= target;
+    case '>':  return v > target;
+    case '>=': return v >= target;
+    case '==': return v === target;
+    case '!=': return v !== target;
+  }
+  return false;
+}
+function resolveValue(val, ws) {
+  if (typeof val === 'number' || typeof val === 'boolean') return val;
+  if (val && typeof val === 'object') {
+    let r = val.base || 0;
+    if (val.attrMul) for (const am of val.attrMul) r += (ws[am.attr] || 0) * am.factor;
+    if (val.condBonus) for (const cb of val.condBonus) {
+      if (cb.gt !== undefined && (ws[cb.attr] || 0) > cb.gt) r += cb.bonus;
+    }
+    return r;
+  }
+  return 0;
+}
+
+// 目标解析器：把 targetPicker 字符串转成 {x, y}，替代旧 resolveAction 的目标计算
+function resolveTarget(picker, player, ws) {
+  const fwd = ws.fwd;
+  const opX = player.team === 'home' ? PW : 0;
+  const opY = PH / 2;
+  const ownX = player.team === 'home' ? 0 : PW;
+  const bias = ws.bias || 0;
+  switch (picker) {
+    case 'ball': return { x: ball.x - (ball.vx||0)*3, y: ball.y - (ball.vy||0)*3 };
+    case 'retreat': {
+      const role = player.role;
+      const rR = {CB:0.15,FB:0.10,CM:0.08,WM:0.08,LB:0.10,RB:0.10,LM:0.08,RM:0.08,ST:0.15}[role]||0.1;
+      const rM = {CB:0.4,FB:0.3,CM:0.2,WM:0.25,LB:0.3,RB:0.3,LM:0.25,RM:0.25,ST:0.3}[role]||0.3;
+      const re = Math.min(rR + (1 - player.traits.aggressiveness/100)*0.1, rM);
+      return { x: clamp(player.hx + (ownX - player.hx)*re, 15, PW-15),
+               y: clamp(Math.abs(player.hy - PH/2) > 50 ? player.hy : player.hy + (ball.y - player.hy)*0.03, 15, PH-15) };
+    }
+    case 'bestTeammate': {
+      const tm = players.filter(p => p.team === player.team && p !== player && d(player,p) > 40 && d(player,p) < 300);
+      if (!tm.length) return null;
+      const t = findBestPassTarget(player, tm);
+      return t ? { x: t.x, y: t.y } : null;
+    }
+    case 'mostForward': {
+      const tm = players.filter(p => p.team === player.team && p !== player && d(player,p) > 40 && d(player,p) < 300);
+      if (!tm.length) return null;
+      const t = tm.sort((a,b) => (b.x - a.x)*fwd - (a.x - b.x)*fwd)[0];
+      return { x: t.x, y: t.y };
+    }
+    case 'forward': return { x: clamp(player.x + fwd*80, 20, PW-20), y: player.y + rng(-30, 30) };
+    case 'goal': return { x: opX, y: opY + rng(-GH*0.5, GH*0.5) };
+    case 'home': { const eh = coaches[player.team].effectiveHome(player); return { x: clamp(eh.x + fwd*bias, 20, PW-20), y: clamp(eh.y, 20, PH-20) }; }
+    case 'overlap': { const eh = coaches[player.team].effectiveHome(player); return { x: clamp(eh.x + fwd*(30 + player.traits.workRate*0.3), 20, PW-20), y: eh.y }; }
+    case 'pushForward': { const eh = coaches[player.team].effectiveHome(player); return { x: clamp(eh.x + fwd*(25 + player.traits.workRate*0.2), 20, PW-20), y: clamp(eh.y + (ball.y - player.hy)*0.15, 20, PH-20) }; }
+    case 'runForward': { const eh = coaches[player.team].effectiveHome(player); return { x: clamp(eh.x + fwd*(30 + rng(0,30)), 20, PW-20), y: clamp(eh.y + (ball.y - player.hy)*0.1, 20, PH-20) }; }
+    case 'cross': {
+      const st = players.find(p => p.team === player.team && p.role === 'ST');
+      return st ? { x: st.x + rng(-20,20), y: st.y + rng(-20,20) } : { x: clamp(player.x + fwd*60, 20, PW-20), y: player.y };
+    }
+    case 'avoid': return { x: player.x - fwd*20, y: player.y + rng(-30, 30) };
+    case 'drift': { const eh = coaches[player.team].effectiveHome(player); return { x: eh.x + (ball.x - eh.x)*0.02, y: eh.y + (ball.y - eh.y)*0.02 }; }
+    case 'dribbleFwd': {
+      const dd = {CB:20,FB:40,CM:30,WM:35,ST:25,LB:40,RB:40,LM:35,RM:35}[player.role]||30;
+      const a = Math.atan2(opY - player.y, opX - player.x) + rng(-0.3, 0.3);
+      return { x: clamp(player.x + Math.cos(a)*dd, 20, PW-20), y: clamp(player.y + Math.sin(a)*dd, 20, PH-20) };
+    }
+    default: return { x: player.hx, y: player.hy };
+  }
+}
+
+// 判断当前情境
+function currentSituation(player) {
+  if (ball.owner === player) return 'hasBall';
+  if (ball.owner && ball.owner.team !== player.team) return 'oppHasBall';
+  if (!ball.owner) return 'looseBall';
+  if (ball.owner && ball.owner.team === player.team) return 'myTeamHasBall';
+  return 'default';
+}
+
+// TacticNode：单个决策节点
+class TacticNode {
+  constructor({ id, situation, condition, preferredSkills, priority=1, targetPicker, bias=0 }) {
+    this.id = id;
+    this.situation = situation;
+    this.condition = condition;
+    this.preferredSkills = preferredSkills;
+    this.priority = priority;
+    this.targetPicker = targetPicker;
+    this.bias = bias;
+  }
+  evaluate(player, ws) {
+    if (!evalCondition(this.condition, ws)) return null;
+    // 在 preferredSkills 里挑一个可用且等级加权最高的
+    let best = null, bestScore = -Infinity;
+    for (const sid of this.preferredSkills) {
+      const sk = player.skillSet[sid];
+      if (!sk || !sk.unlocked || sk.cooldown > 0) continue;
+      const score = this.priority * sk.levelBonus();
+      if (score > bestScore) { bestScore = score; best = sid; }
+    }
+    if (!best) return null;
+    const target = resolveTarget(this.targetPicker, player, { ...ws, bias: this.bias });
+    return { score: bestScore, chosenSkill: best, target, bias: this.bias, nodeId: this.id };
+  }
+}
+
+// Tactic：每个球员独立持有的策略实例
+class Tactic {
+  constructor(template) {
+    this.role = template.role;
+    this.nodes = template.nodes.map(n => new TacticNode(n));
+  }
+  decide(player, ws) {
+    const sit = currentSituation(player);
+    // ── hasBall 情境：走通用足球智能决策器（基于效用评估）──
+    // 用户未配置 tactic 节点时，球员仍有足球常识：拿到球会分析局势选最优动作
+    if (sit === 'hasBall') {
+      const r = this.decideHasBall(player, ws);
+      if (r) return r;
+    }
+    // ── 走用户配置的 tactic 节点（如有）──
+    const candidates = [];
+    for (const node of this.nodes) {
+      if (node.situation !== sit && node.situation !== 'default') continue;
+      const r = node.evaluate(player, ws);
+      if (r) candidates.push(r);
+    }
+    if (!candidates.length) return null;
+    candidates.sort((a, b) => b.score - a.score);
+    return candidates[0];
+  }
+
+  // 持球决策器：基于足球常识评估各选项，选最高分
+  // 返回 { score, chosenSkill, target, trace }
+  decideHasBall(player, ws) {
+    const fwd = ws.fwd;
+    const goalX = player.team === 'home' ? PW : 0;
+    const goalY = PH / 2;
+    const dGoal = ws.dGoal;  // 到对方球门距离
+
+    // 局势感知
+    const opponents = players.filter(p => p.team !== player.team && p.role !== 'GK');
+    const teammates = players.filter(p => p.team === player.team && p !== player && p.role !== 'GK');
+    const nearestOpp = opponents.reduce((best, p) => {
+      const dd = d(player, p);
+      return (!best || dd < best.dd) ? { p, dd } : best;
+    }, null);
+    const pressDist = nearestOpp ? nearestOpp.dd : 999;  // 最近对手距离
+    const pressCount = opponents.filter(p => d(player, p) < 80).length;  // 80 内对手数
+    const inShootingRange = dGoal < 280;  // 射门区域
+    const inWideArea = ws.crossRange;  // 边路传中区域
+    const hasSpaceAhead = opponents.filter(p => {
+      const dx = (p.x - player.x) * fwd;
+      return dx > 0 && dx < 80 && Math.abs(p.y - player.y) < 60;
+    }).length === 0;  // 前方 80 单位内无对手
+
+    // 评估各选项，记录推理过程
+    const trace = {
+      player: player.name + '#' + player.number,
+      situation: `距球门 ${dGoal.toFixed(0)}，最近对手 ${pressDist.toFixed(0)}，${pressCount}人逼抢` + (inShootingRange ? '，射门区域' : '') + (inWideArea ? '，边路' : '') + (hasSpaceAhead ? '，前方有空间' : '，前方有防守'),
+      options: [],
+    };
+
+    const options = [];
+
+    // 1. 射门：距球门近 + 射门属性高 + 角度好
+    if (inShootingRange && player.skillSet.shoot && player.skillSet.shoot.unlocked) {
+      const angleToGoal = Math.abs(Math.atan2(goalY - player.y, goalX - player.x));
+      const angleScore = 1 - angleToGoal / Math.PI;  // 越正对球门越高
+      // 检查射门路线是否被挡
+      const blocked = opponents.some(p => {
+        const dx = (goalX - player.x), dy = (goalY - player.y);
+        const t = ((p.x - player.x) * dx + (p.y - player.y) * dy) / (dx*dx + dy*dy);
+        if (t < 0 || t > 1) return false;
+        const projX = player.x + t * dx, projY = player.y + t * dy;
+        return d({x:projX,y:projY}, p) < 25;
+      });
+      const blockPenalty = blocked ? 0.4 : 0;
+      // 射门是禁区内的最高优先级：离球门越近分数越高
+      const shootScore = (1 - dGoal/280) * 0.9 * (player.att.shooting/100) * angleScore * (1 - blockPenalty);
+      if (shootScore > 0.05) {
+        options.push({
+          skill: 'shoot', target: { x: goalX, y: goalY + rng(-GH*0.3, GH*0.3) },
+          score: shootScore,
+          reason: `距球门${dGoal.toFixed(0)}·射门${player.att.shooting}·角度${(angleScore*100).toFixed(0)}%·${blocked?'被挡':'路线通'}`
+        });
+      }
+    }
+
+    // 2. 直塞：前方有前插队友 + 风险型球员偏好
+    const forwardTeammates = teammates.filter(p => {
+      const dx = (p.x - player.x) * fwd;
+      return dx > 30 && dx < 200 && d(player, p) < 240;
+    });
+    if (forwardTeammates.length && player.skillSet.throughPass && player.skillSet.throughPass.unlocked) {
+      let best = null;
+      for (const tm of forwardTeammates) {
+        const oppNear = opponents.filter(o => d(o, tm) < 40).length;
+        const spaceScore = 1 - oppNear / 3;
+        const dx = (tm.x - player.x) * fwd;
+        const score = (dx/200) * 0.4 * spaceScore * (player.att.passing/100) * (0.5 + player.traits.riskTaking/200);
+        if (!best || score > best.score) best = { tm, score, oppNear };
+      }
+      if (best) {
+        options.push({
+          skill: 'throughPass', target: { x: best.tm.x + fwd*30, y: best.tm.y },
+          score: best.score,
+          reason: `${best.tm.name}#${best.tm.number}前插·附近${best.oppNear}防守`
+        });
+      }
+    }
+
+    // 3. 短传：最佳空位队友
+    const passCandidates = teammates.filter(p => d(player, p) > 40 && d(player, p) < 200);
+    if (passCandidates.length && player.skillSet.shortPass && player.skillSet.shortPass.unlocked) {
+      const best = findBestPassTarget(player, passCandidates);
+      if (best) {
+        const oppNear = opponents.filter(o => d(o, best) < 40).length;
+        const spaceScore = 1 - oppNear / 4;
+        const forwardBonus = ((best.x - player.x) * fwd > 0) ? 1.2 : 0.8;
+        const score = spaceScore * 0.5 * (player.att.passing/100) * forwardBonus;
+        options.push({
+          skill: 'shortPass', target: { x: best.x, y: best.y },
+          score,
+          reason: `${best.name}#${best.number}空位·附近${oppNear}防守·${((best.x-player.x)*fwd>0)?'向前':'回传'}`
+        });
+      }
+    }
+
+    // 4. 长传：前方远距离队友 + 直接度高
+    const farTeammates = teammates.filter(p => d(player, p) > 150 && d(player, p) < 450);
+    if (farTeammates.length && player.skillSet.longPass && player.skillSet.longPass.unlocked) {
+      const best = farTeammates.sort((a,b) => (b.x - a.x)*fwd - (a.x - b.x)*fwd)[0];
+      const oppNear = opponents.filter(o => d(o, best) < 50).length;
+      const spaceScore = 1 - oppNear / 3;
+      const cp = coaches[player.team].params;
+      const score = spaceScore * 0.4 * (player.att.passing/100) * (0.5 + cp.directness * 0.5);
+      options.push({
+        skill: 'longPass', target: { x: best.x, y: best.y },
+        score,
+        reason: `${best.name}#${best.number}远方·附近${oppNear}防守`
+      });
+    }
+
+    // 5. 传中：在边路 + 禁区有队友
+    if (inWideArea && player.skillSet.cross && player.skillSet.cross.unlocked) {
+      const stInBox = teammates.find(p => {
+        const dx = (p.x - player.x) * fwd;
+        return dx > 30 && dx < 150 && Math.abs(p.y - PH/2) < 120;
+      });
+      if (stInBox) {
+        const score = 0.5 * (player.att.passing/100) * (dGoal < 200 ? 1.2 : 0.8);
+        options.push({
+          skill: 'cross', target: { x: stInBox.x, y: stInBox.y },
+          score,
+          reason: `边路·${stInBox.name}#${stInBox.number}在禁区`
+        });
+      }
+    }
+
+    // 6. 带球：前方有空间 + 盘带属性。离球门近时降低带球倾向（禁区里应射门/传球）
+    if (hasSpaceAhead && player.skillSet.dribble && player.skillSet.dribble.unlocked) {
+      const dribbleDist = 50 + (1 - pressCount/4) * 50;
+      const goalDistFactor = dGoal < 200 ? 0.4 : 1;  // 禁区内带球降权
+      const score = (hasSpaceAhead ? 0.4 : 0.15) * (player.att.pace/100) * (1 - pressCount/5) * goalDistFactor;
+      const tx = player.x + fwd * dribbleDist;
+      const ty = player.y + (goalY - player.y) * 0.3;
+      options.push({
+        skill: 'dribble', target: { x: clamp(tx, 20, PW-20), y: clamp(ty, 20, PH-20) },
+        score,
+        reason: `前方有空间·盘带${dribbleDist.toFixed(0)}${dGoal<200?'·禁区内降权':''}`
+      });
+    }
+
+    // 7. 护球/回传：被逼抢时的保底选项
+    if (pressDist < 60 || pressCount >= 2) {
+      const backPass = teammates.filter(p => (p.x - player.x) * fwd < 0).sort((a,b) => d(a,player) - d(b,player))[0];
+      if (backPass && player.skillSet.shortPass && player.skillSet.shortPass.unlocked) {
+        const score = 0.35 + pressCount * 0.05;  // 越被逼抢越倾向回传
+        options.push({
+          skill: 'shortPass', target: { x: backPass.x, y: backPass.y },
+          score,
+          reason: `被逼抢·回传${backPass.name}#${backPass.number}`
+        });
+      }
+    }
+
+    // 记录推理过程
+    trace.options = options.map(o => ({ skill: o.skill, score: o.score.toFixed(2), reason: o.reason }));
+
+    if (!options.length) {
+      trace.options.push({ skill: 'none', score: '0', reason: '无可用选项' });
+      return { score: 0, chosenSkill: null, target: null, trace };
+    }
+
+    options.sort((a, b) => b.score - a.score);
+    const chosen = options[0];
+    trace.chosen = { skill: chosen.skill, score: chosen.score.toFixed(2), reason: chosen.reason };
+
+    return { score: chosen.score, chosenSkill: chosen.skill, target: chosen.target, trace };
+  }
+}
+
+// 角色策略模板：空模板，无任何预设节点。
+// 球员的 Tactic 初始为空，没有节点就没有决策，没有决策就没有动作。
+// 所有行为节点都应由用户通过训练 UI 添加，或由进化系统生成。
+const ROLE_TEMPLATES = {
+  CB: { role:'CB', nodes:[] },
+  FB: { role:'FB', nodes:[] },
+  CM: { role:'CM', nodes:[] },
+  WM: { role:'WM', nodes:[] },
+  ST: { role:'ST', nodes:[] },
+};
+
+// 角色名归一：把 LB/RB/LM/RM 映射到 FB/WM 模板
+function roleTemplateKey(role) {
+  if (role === 'LB' || role === 'RB') return 'FB';
+  if (role === 'LM' || role === 'RM') return 'WM';
+  return role;  // GK/CB/CM/WM/FB/ST
+}
+function createTactic(role, saved) {
+  const key = roleTemplateKey(role);
+  const tpl = ROLE_TEMPLATES[key];
+  if (!tpl) return null;
+  const tac = new Tactic(tpl);
+  // 若存档里有 tactic 节点快照，用存档覆盖（保留用户对条件/优先级/偏好技能的编辑）
+  if (saved && saved.nodes) {
+    tac.nodes = saved.nodes.map(n => new TacticNode(JSON.parse(JSON.stringify(n))));
+  }
+  return tac;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RULES CONFIG — global match parameters (role rules moved to ROLE_TEMPLATES)
 // ═══════════════════════════════════════════════════════════════
 const DEFAULT_RULES = {
   halfLen: 1800,              // 半场时长（秒）
@@ -152,54 +863,48 @@ const DEFAULT_RULES = {
   goalTop: 270,
   goalBottom: 410,
 
-  // ════ ROLE DECISION RULES ════
-  // conditions use: toBall, nearest, dGoal, agg, self, wr, risk, conf, disc, tmCount, halfY, shoot, distFromHome
-  roles: {
-    CB: {
-      hasBall: [
-        { desc:"传", cond:"tmCount>0 && rand<0.6", action:"pass", target:"bestTeammate" },
-        { desc:"开", cond:"true", action:"pass", target:"forward" }
-      ],
-      oppHasBall: [
-        { desc:"上抢门槛", cond:"nearest && toBall<(120+agg*1.5)", action:"chase" },
-        { desc:"回撤系数", cond:"true", action:"retreat" }
-      ],
-      looseBall:[{ desc:"追球距离", cond:"nearest && toBall<150", action:"chase" }],
-      default:[{ desc:"归位距离", cond:"distFromHome>(30+disc*0.5)", action:"moveHome", bias:20 },{ desc:"漂移", cond:"true", action:"drift" }]
-    },
-    FB: {
-      hasBall:[{ desc:"传", cond:"tmCount>0 && rand<0.5", action:"pass", target:"bestTeammate" },{ desc:"盘", cond:"true", action:"dribbleFwd" }],
-      oppHasBall:[{ desc:"上抢", cond:"nearest && toBall<(100+agg*1.2)", action:"chase" },{ desc:"回撤", cond:"true", action:"retreat" }],
-      looseBall:[{ desc:"追球", cond:"nearest && toBall<120", action:"chase" }],
-      myTeamHasBall:[{ desc:"套边", cond:"wr>30 && rand<wr/200", action:"overlap" }],
-      default:[{ desc:"归位", cond:"distFromHome>(40+disc*0.3)", action:"moveHome", bias:20 },{ desc:"站住", cond:"true", action:"stand" }]
-    },
-    CM: {
-      hasBall:[{ desc:"塞", cond:"tmCount>0 && rand<(0.4+risk*0.005)", action:"pass", target:"mostForward" },{ desc:"传", cond:"tmCount>0", action:"pass", target:"bestTeammate" },{ desc:"盘", cond:"true", action:"dribbleFwd" }],
-      oppHasBall:[{ desc:"上抢", cond:"(nearest||toBall<pr*0.6) && toBall<(80+agg*1.2+(wr>50?30:0))", action:"chase" },{ desc:"回撤", cond:"true", action:"retreat" }],
-      looseBall:[{ desc:"追球", cond:"nearest && toBall<150", action:"chase" }],
-      myTeamHasBall:[{ desc:"拖后", cond:"abs(halfY)>60", action:"moveHome", bias:15 },{ desc:"前插", cond:"true", action:"pushForward" }],
-      default:[{ desc:"归位", cond:"distFromHome>(40+disc*0.4)", action:"moveHome" },{ desc:"漂移", cond:"true", action:"drift" }]
-    },
-    WM: {
-      hasBall:[{ desc:"传", cond:"tmCount>0 && rand<0.3", action:"pass", target:"bestTeammate" },{ desc:"中", cond:"crossRange && rand<0.3", action:"cross" },{ desc:"盘", cond:"true", action:"dribbleFwd" }],
-      oppHasBall:[{ desc:"上抢", cond:"nearest && toBall<(90+agg*1.0)", action:"chase" },{ desc:"回撤", cond:"true", action:"retreat" }],
-      looseBall:[{ desc:"追球", cond:"nearest && toBall<120", action:"chase" }],
-      default:[{ desc:"归位", cond:"distFromHome>(50+disc*0.3)", action:"moveHome" },{ desc:"站住", cond:"true", action:"stand" }]
-    },
-    ST: {
-      hasBall:[{ desc:"射", cond:"dGoal<280 && rand<(0.3+self*0.005+shoot/300)", action:"shoot" },{ desc:"传", cond:"tmCount>0", action:"pass", target:"bestTeammate" },{ desc:"盘", cond:"true", action:"dribbleFwd" }],
-      oppHasBall:[{ desc:"逼抢", cond:"nearest && toBall<(40+agg*0.8+(wr>50?30:0)) && agg>20", action:"chase" },{ desc:"回", cond:"wr>70 && ball.x<PW*0.4", action:"moveHome", bias:-40 },{ desc:"站", cond:"true", action:"stand" }],
-      looseBall:[{ desc:"追", cond:"nearest && toBall<100", action:"chase" },{ desc:"躲", cond:"conf<30 && toBall<80", action:"avoid" }],
-      myTeamHasBall:[{ desc:"前插", cond:"rand<(0.2+conf*0.003+wr*0.0033)", action:"runForward" }],
-      default:[{ desc:"归位", cond:"distFromHome>50", action:"moveHome" },{ desc:"站位", cond:"true", action:"stand" }]
-    }
-  },
   passScore: { spaceWeight:0.6, forwardWeight:0.3, distIdeal:120, distPenalty:0.1 }
 };
 
 let rulesConfig = {};
 const RULES_KEY = 'aifc_match_rules_v2';
+
+// ═══════════════════════════════════════════════════════════════
+//  COACH LAYER — 队伍级打法（教练）
+//  每队一个 Coach 实例，提供打法参数，影响所有球员的决策权重和阵型偏移。
+//  打法可预设切换 + 参数微调，比赛中实时生效。
+// ═══════════════════════════════════════════════════════════════
+// 打法预设：空。没有预设打法，Coach 初始参数为中性 0.5（不影响决策权重）。
+// 打法应由用户通过训练 UI 配置，或由进化系统生成。
+const COACH_STYLES = {};
+class Coach {
+  constructor(team) {
+    this.team = team;
+    this.style = null;  // 无预设打法
+    // 中性参数：0.5 = 不偏不倚，不影响传球评分和阵型偏移
+    this.params = { pressLine:0.5, tempo:0.5, width:0.5, directness:0.5 };
+  }
+  applyStyle(style) {
+    const preset = COACH_STYLES[style];
+    if (!preset) return;
+    this.style = style;
+    for (const k in preset) if (k !== 'label') this.params[k] = preset[k];
+  }
+  // 阵型整体偏移：pressLine 高=整体压上，低=退守
+  // 返回 {x, y} 偏移量，加到球员的 hx/hy 上
+  formationShiftFor(player) {
+    const fwd = player.team === 'home' ? 1 : -1;
+    const xShift = (this.params.pressLine - 0.5) * 160 * fwd;  // -80~+80
+    const yShift = 0;
+    return { x: xShift, y: yShift };
+  }
+  // 有效 home 位（含 coach 偏移）
+  effectiveHome(player) {
+    const sh = this.formationShiftFor(player);
+    return { x: player.hx + sh.x, y: player.hy + sh.y };
+  }
+}
+const coaches = { home: new Coach('home'), away: new Coach('away') };
 function loadRules() {
   try {
     const d = localStorage.getItem(RULES_KEY);
@@ -221,7 +926,7 @@ function tc(x,y) { return { x:14+x*sx, y:14+y*sy }; }
 let paused = false, spd = 1, matchTime = 0, half = 1, prevT = 0, commentary = [];
 let ball, players, score = { h:0, a:0 };
 let phase = 'kickoff', phaseTimer = 0, lastTouch = null;
-let selectedPlayer = null, panelMode = 'closed';
+let selectedPlayer = null, panelMode = 'closed', playerPanelTab = 'attrs';
 
 // ═══════════════════════════════════════════════════════════════
 //  PROFILES
@@ -257,7 +962,10 @@ function mkP(id,team,num,f,name) {
     traits = defaultTraits(); TRAIT_KEYS.forEach(k=>traits[k]=clamp(Math.floor(20+Math.random()*60),0,100));
     savedProfiles[pk] = { name, number:num, role:f.role, att:{...att}, traits:{...traits} };
   }
-  return { id,team,number:num,role:f.role,name, x:f.hx+rng(-4,4),y:f.hy+rng(-4,4), hx:f.hx,hy:f.hy,zr:f.zr, vx:0,vy:0,radius:PR, dir:team==='home'?1:-1, speed:2.5,accel:0.12, holdTimer:0,att,traits };
+  // evoPoints: 用于手动升级技能的进化点。初始 3 点供测试，后续可由比赛奖励获得（Phase 4）。
+  const sp = savedProfiles[pk];
+  const evoPoints = sp?.evoPoints ?? 3;
+  return { id,team,number:num,role:f.role,name, x:f.hx+rng(-4,4),y:f.hy+rng(-4,4), hx:f.hx,hy:f.hy,zr:f.zr, vx:0,vy:0,radius:PR, dir:team==='home'?1:-1, speed:2.5,accel:0.12, holdTimer:0, stamina:100, skillSet:createSkillSet(f.role, sp?.skills), tactic:createTactic(f.role, sp?.tactic), evoPoints, att,traits };
 }
 function createPlayers() {
   players=[]; const fh=getFormation('home'),fa=getFormation('away');
@@ -331,17 +1039,34 @@ function checkGoal() {
   if(ball.x+BR<0&&ball.y>GT&&ball.y<GB){if(gkSave('home'))return;score.a++;document.getElementById('scoreAway').textContent=score.a;log(`⚽ 进球！蓝队破门！`);phase='goal';phaseTimer=2.5;}
   if(ball.x-BR>PW&&ball.y>GT&&ball.y<GB){if(gkSave('away'))return;score.h++;document.getElementById('scoreHome').textContent=score.h;log(`⚽ 进球！红队破门！`);phase='goal';phaseTimer=2.5;}
 }
-function kickBall(p,tx,ty,power) {
+let lastKickTime = -10;  // 上次踢球时间，用于 interact 防止刚踢出的球被重新吸附
+function kickBall(p,tx,ty,power,accuracy) {
   const dx=tx-p.x,dy=ty-p.y,dist=Math.hypot(dx,dy); if(dist<1) return;
-  const acc=rulesConfig.passAccBase+p.att.passing/100*rulesConfig.passAccWeight;
+  const acc=accuracy!==undefined?accuracy:(rulesConfig.passAccBase+p.att.passing/100*rulesConfig.passAccWeight);
   const dev=(Math.random()-0.5)*(1-acc)*rulesConfig.passDeviation;
   const ang=Math.atan2(dy,dx)+dev;
   const sp=power*(rulesConfig.passSpdBase+p.att.passing/100*rulesConfig.passSpdWeight);
   ball.vx=Math.cos(ang)*sp; ball.vy=Math.sin(ang)*sp; ball.owner=null; lastTouch=p.team;
+  lastKickTime = matchTime;  // 记录踢球时间，interact 在 0.3 秒内不重新吸附球
 }
 function interact() {
   const gd=PR+BR+8;
-  if(ball.owner){const o=ball.owner;if(o.role==='GK')return;for(const p of players){if(p.team!==o.team&&p.role!=='GK'&&d(p,o)<gd+10&&Math.random()<rulesConfig.tackleBase+p.traits.aggressiveness/rulesConfig.tackleAggWeight){ball.owner=null;const a=Math.random()*Math.PI*2;ball.vx=Math.cos(a)*2;ball.vy=Math.sin(a)*2;log(`💪 ${p.team==='home'?'红':'蓝'}${p.number}号 断球！`);return;}}return;}
+  if(ball.owner){
+    const o=ball.owner;
+    if(o.role==='GK')return;
+    for(const p of players){
+      if(p.team!==o.team&&p.role!=='GK'&&d(p,o)<gd+10&&Math.random()<rulesConfig.tackleBase+p.traits.aggressiveness/rulesConfig.tackleAggWeight){
+        // 断球：清理原持球者信号，新持球者暂时无信号
+        o.signal=null;
+        ball.owner=p;ball.vx=0;ball.vy=0;lastTouch=p.team;
+        log(`💪 ${p.team==='home'?'红':'蓝'}${p.number}号 断球！`);
+        return;
+      }
+    }
+    return;
+  }
+  // 球刚被踢出（0.3 秒内），不立即被球员重新吸附，让球飞起来
+  if (matchTime - lastKickTime < 0.3) return;
   if(gkClaim())return; let best=null,bestD=Infinity;
   for(const p of players){if(p.role==='GK')continue;const dd=d(p,ball);if(dd<bestD){bestD=dd;best=p;}}
   if(best&&bestD<gd){ball.owner=best;ball.vx=0;ball.vy=0;lastTouch=best.team;}
@@ -349,17 +1074,24 @@ function interact() {
 function resetPos(byTeam) {
   ball.x=PW/2;ball.y=PH/2;ball.vx=0;ball.vy=0;ball.owner=null;
   const fh=getFormation('home'),fa=getFormation('away');
-  for(let i=0;i<11;i++){players[i].x=fh[i].hx+rng(-4,4);players[i].y=fh[i].hy+rng(-4,4);players[i].hx=fh[i].hx;players[i].hy=fh[i].hy;players[i].vx=0;players[i].vy=0;players[i+11].x=fa[i].hx+rng(-4,4);players[i+11].y=fa[i].hy+rng(-4,4);players[i+11].hx=fa[i].hx;players[i+11].hy=fa[i].hy;players[i+11].vx=0;players[i+11].vy=0;}
-  const kt=byTeam==='home'?'away':(byTeam==='away'?'home':'home');
-  const kicker=players.find(p=>p.team===kt&&(p.role==='ST'||p.role==='CM'));
-  if(kicker) kickBall(kicker, kt==='home'?PW/2+40:PW/2-40, PH/2+rng(-15,15),2.5);
+  // players 数组是交替排列的（home#1,away#1,home#2,away#2,...），
+  // 不能按 players[0..10]=home / players[11..21]=away 来赋位置，需按 team 过滤。
+  const homePl=players.filter(p=>p.team==='home'), awayPl=players.filter(p=>p.team==='away');
+
+  for(let i=0;i<11;i++){
+    const h=homePl[i], a=awayPl[i];
+    h.x=fh[i].hx+rng(-4,4); h.y=fh[i].hy+rng(-4,4); h.hx=fh[i].hx; h.hy=fh[i].hy; h.vx=0; h.vy=0;
+    a.x=fa[i].hx+rng(-4,4); a.y=fa[i].hy+rng(-4,4); a.hx=fa[i].hx; a.hy=fa[i].hy; a.vx=0; a.vy=0;
+  }
+
+  // 开球：球放在中圈，但不自动踢出。
+  // 没有球员的 tactic 里有"开球"节点，所以没有人知道要踢球，球会停在中圈。
+  // 开球动作需要由用户配置 tactic 节点（如 hasBall 情境 + 距球近条件）后才会发生。
   phase='kickoff'; phaseTimer=0.6; log('🔄 中圈开球！');
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  DECISION ENGINE — generic rule evaluator
-//  All role behavior is driven by rulesConfig.roles[role].
-//  NO role-specific hardcode. Change behavior by editing the rules JSON.
+//  DECISION ENGINE — each player decides via its own Tactic instance
 // ═══════════════════════════════════════════════════════════════
 
 function nearestOnTeam(player) {
@@ -369,135 +1101,321 @@ function nearestOnTeam(player) {
 
 function findBestPassTarget(player,candidates) {
   if(!candidates||candidates.length===0)return null;
-  const fwd=player.team==='home'?1:-1; const ps=rulesConfig.passScore||{spaceWeight:0.6,forwardWeight:0.3,distIdeal:120,distPenalty:0.1};
+  const fwd=player.team==='home'?1:-1;
+  const ps=rulesConfig.passScore||{spaceWeight:0.6,forwardWeight:0.3,distIdeal:120,distPenalty:0.1};
+  // Coach 打法影响传球目标评分：directness 高=更偏好向前传球
+  const cp = coaches[player.team].params;
+  const forwardWeight = (ps.forwardWeight||0.3) * (0.5 + cp.directness);
+  const spaceWeight = (ps.spaceWeight||0.6) * (0.7 + (1-cp.directness)*0.6);
   let best=null,bestScore=-Infinity;
   for(const t of candidates){
     const no=players.filter(p=>p.team!==player.team&&p.role!=='GK').reduce((m,p)=>{const d2=d(t,p);return d2<m?d2:m;},Infinity);
     const fv=(t.x-player.x)*fwd; const dv=d(player,t);
-    const score=no*(ps.spaceWeight||0.6)+Math.max(fv,0)*(ps.forwardWeight||0.3)-Math.abs(dv-(ps.distIdeal||120))*(ps.distPenalty||0.1);
+    const score=no*spaceWeight+Math.max(fv,0)*forwardWeight-Math.abs(dv-(ps.distIdeal||120))*(ps.distPenalty||0.1);
     if(score>bestScore){bestScore=score;best=t;}
   }
   return best;
 }
 
-function evalCond(cond,ctx) {
-  const keys=Object.keys(ctx); const vals=keys.map(k=>ctx[k]);
-  try{const fn=new Function(...keys,`return (${cond});`);return fn(...vals);}catch(e){return false;}
+// decide: 返回 SkillRequest {skillId, target} 或 null（不动作）
+// 每帧收集所有候选意图 → 按优先级评分竞争 → 选最高分执行
+// 候选来源：手动指令 / 意识响应 / tactic 决策（含 decideHasBall）
+function decide(player){
+  const ws = buildWorldState(player);
+  const candidates = [];
+
+  // ── 候选1: 手动指令 ──
+  // 用户在手动面板点了技能后，每帧重新评估是否还要执行
+  // 清除条件：到达目标 / 拿到球（trackBall 场景下目标已达成）/ 球被踢出
+  if(player.manualIntent){
+    const mi = player.manualIntent;
+    const tgt = mi.trackBall ? { x: ball.x, y: ball.y } : mi.target;
+    // trackBall 且已持球：目标达成，清除意图，让 decideHasBall 接管
+    if(mi.trackBall && ball.owner === player){
+      player.manualIntent = null;
+    } else if(d(player, tgt) < 8){
+      player.manualIntent = null;  // 到达目标，清除
+    } else {
+      // 手动指令作为候选参与竞争，分数低于战术决策的高分选项
+      candidates.push({
+        skillId: mi.skillId, target: tgt,
+        score: 0.5,
+        source: 'manual'
+      });
+    }
+  }
+
+  // ── 候选2: 意识响应（队友持球时跑位接应）──
+  if (ball.owner && ball.owner.team === player.team && ball.owner !== player && ball.owner.signal) {
+    const sig = ball.owner.signal;
+    const sigAge = matchTime - (sig.ts || 0);
+    if (sigAge < 1.5 && d(player, ball.owner) < 280) {
+      const awareness = player.att.awareness / 100;
+      const tempo = coaches[player.team].params.tempo;
+      const distFactor = 1 - d(player, ball.owner) / 280;
+      const prob = awareness * (0.3 + 0.5 * tempo) * (0.4 + 0.6 * sig.urgency) * (0.5 + 0.5 * distFactor);
+      if (Math.random() < prob) {
+        const target = pickSupportRun(player, sig, ws);
+        if (target) candidates.push({
+          skillId: 'moveTo', target,
+          score: 0.3 + prob * 0.3,  // 意识响应分：0.3~0.6
+          source: 'awareness'
+        });
+      }
+    }
+  }
+
+  // ── 候选3: tactic 决策（含 decideHasBall）──
+  if(player.tactic){
+    let decision;
+    try {
+      decision = player.tactic.decide(player, ws);
+    } catch(e) {
+      if (player === manualSelectedPlayer) {
+        commentary.push({ t: fmt(matchTime), text: `<span style="color:#ef5350;">⚠ 决策异常: ${e.message}</span>`, isTrace: true });
+        const el = document.getElementById('commentary');
+        el.innerHTML = commentary.slice(-12).map(c => c.isTrace ? c.text : `<div class="entry"><span class="time-tag">${c.t}</span>${c.text}</div>`).join('');
+        console.error('decideHasBall error:', e);
+      }
+      decision = null;
+    }
+    if (decision && decision.target) {
+      candidates.push({
+        skillId: decision.chosenSkill, target: decision.target,
+        score: decision.score,
+        source: 'tactic',
+        trace: decision.trace
+      });
+    }
+  }
+
+  // ── 选优先级最高的候选 ──
+  if (!candidates.length) {
+    // 无候选：选中球员仍记录一帧"无动作"，让曲线图持续更新
+    if (player === manualSelectedPlayer) {
+      logDecisionTrace(player, { skillId:'none', score:0, source:'none', target:null }, [], ws);
+    }
+    return null;
+  }
+  candidates.sort((a, b) => b.score - a.score);
+  const chosen = candidates[0];
+  if (player === manualSelectedPlayer) {
+    console.log('[decide候选]', candidates.map(c => `${c.skillId}(${c.score.toFixed(2)})[${c.source}]`).join(' | '), '→ 胜出:', chosen.skillId);
+  }
+
+  // 选中球员每帧输出决策 trace（含所有候选竞争过程）
+  if (player === manualSelectedPlayer) {
+    logDecisionTrace(player, chosen, candidates, ws);
+  }
+  return { skillId: chosen.skillId, target: chosen.target };
 }
 
-function evaluateRules(player,situation) {
-  const role=player.role; const rules=rulesConfig.roles;
-  if(!rules||!rules[role]||!rules[role][situation])return null;
-  const t=player.traits, agg=t.aggressiveness, self=t.selfishness, wr=t.workRate, risk=t.riskTaking, conf=t.confidence, disc=t.discipline;
-  const toBall=d(player,ball), nearest=nearestOnTeam(player), fwd=player.team==='home'?1:-1;
-  const dGoal=player.team==='home'?(PW-player.x):player.x, ownGoalX=player.team==='home'?0:PW;
-  const halfY=Math.abs(player.y-PH/2), distFromHome=d(player,{x:player.hx,y:player.hy});
-  const tmCount=players.filter(p=>p.team===player.team&&p!==player&&d(player,p)<250).length;
-  const shoot=player.att.shooting, crossRange=player.team==='home'?player.x>PW*0.7:player.x<PW*0.3;
-  const pr=80+agg*1.2+(wr>50?30:0);
-  const ctx={toBall,nearest,dGoal,distFromHome,agg,self,wr,risk,conf,disc,tmCount,halfY,shoot,crossRange,pr,fwd,ownGoalX,ball};
-  for(const rule of rules[role][situation]){try{if(evalCond(rule.cond,ctx))return{action:rule.action,target:rule.target,bias:rule.bias||0,desc:rule.desc};}catch(e){continue;}}
+// ── 决策曲线图 ──
+// Y 轴：动作类别（离散）；X 轴：帧序号
+// 每帧记录选定球员的最终动作，绘制为散点连线图
+const DECISION_SKILLS_ORDER = ['shoot','throughPass','shortPass','longPass','cross','dribble','sprint','moveTo','mark','intercept','tackle','slideTackle','gkSave','gkClaim','gkClear','none'];
+const DECISION_SKILL_LABELS = { shoot:'射门', throughPass:'直塞', shortPass:'短传', longPass:'长传', cross:'传中', dribble:'带球', sprint:'冲刺', moveTo:'跑位', mark:'盯人', intercept:'拦截', tackle:'抢断', slideTackle:'铲球', gkSave:'扑救', gkClaim:'出击', gkClear:'解围', none:'无' };
+const DECISION_SKILL_COLORS = {
+  shoot:'#ef5350', throughPass:'#ff7043', shortPass:'#42a5f5', longPass:'#5c6bc0',
+  cross:'#26c6da', dribble:'#66bb6a', sprint:'#9ccc65', moveTo:'#bdbdbd',
+  mark:'#8d6e63', intercept:'#ab47bc', tackle:'#ec407a', slideTackle:'#c2185b',
+  gkSave:'#ffa726', gkClaim:'#ffca28', gkClear:'#ffee58', none:'#424242'
+};
+const decisionHistory = [];  // [{frame, skill, score, source, dGoal, toBall, situation}]
+let decisionFrameCounter = 0;
+
+function pushDecisionFrame(player, chosen, candidates, ws) {
+  decisionHistory.push({
+    frame: decisionFrameCounter++,
+    skill: chosen.skillId || 'none',
+    score: chosen.score,
+    source: chosen.source,
+    dGoal: ws.dGoal,
+    toBall: ws.toBall,
+    situation: currentSituation(player),
+  });
+  if (decisionHistory.length > 300) decisionHistory.shift();  // 保留最近 300 帧
+  drawDecisionChart();
+}
+
+function drawDecisionChart() {
+  const cv = document.getElementById('decisionChart');
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const padL = 56, padR = 12, padT = 8, padB = 20;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+  const nSkills = DECISION_SKILLS_ORDER.length;
+  const rowH = plotH / nSkills;
+
+  // 背景行 + Y 轴标签
+  ctx.font = '9px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (let i = 0; i < nSkills; i++) {
+    const sk = DECISION_SKILLS_ORDER[i];
+    const y = padT + i * rowH + rowH / 2;
+    // 交替行背景
+    ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)';
+    ctx.fillRect(padL, padT + i * rowH, plotW, rowH);
+    // 标签
+    ctx.fillStyle = DECISION_SKILL_COLORS[sk];
+    ctx.fillText(DECISION_SKILL_LABELS[sk] || sk, padL - 6, y);
+  }
+
+  // 网格竖线
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 10; i++) {
+    const x = padL + (plotW * i) / 10;
+    ctx.beginPath();
+    ctx.moveTo(x, padT);
+    ctx.lineTo(x, padT + plotH);
+    ctx.stroke();
+  }
+
+  if (decisionHistory.length === 0) {
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('选定球员后开始记录决策…', W / 2, H / 2);
+    return;
+  }
+
+  // 数据点：X = 帧序号，Y = 动作行
+  const maxFrame = decisionHistory[decisionHistory.length - 1].frame;
+  const minFrame = decisionHistory[0].frame;
+  const frameRange = Math.max(1, maxFrame - minFrame);
+
+  // 连线（相邻同动作的连成一段）
+  ctx.lineWidth = 1.5;
+  let prevPt = null;
+  for (let i = 0; i < decisionHistory.length; i++) {
+    const d = decisionHistory[i];
+    const skIdx = DECISION_SKILLS_ORDER.indexOf(d.skill);
+    const x = padL + ((d.frame - minFrame) / frameRange) * plotW;
+    const y = padT + skIdx * rowH + rowH / 2;
+    if (prevPt) {
+      ctx.strokeStyle = DECISION_SKILL_COLORS[d.skill] || '#666';
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(prevPt.x, prevPt.y);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    prevPt = { x, y };
+  }
+
+  // 散点
+  for (let i = 0; i < decisionHistory.length; i++) {
+    const d = decisionHistory[i];
+    const skIdx = DECISION_SKILLS_ORDER.indexOf(d.skill);
+    const x = padL + ((d.frame - minFrame) / frameRange) * plotW;
+    const y = padT + skIdx * rowH + rowH / 2;
+    // 点大小按分数（0~1 映射 2~6）
+    const r = 2 + Math.min(1, Math.max(0, d.score)) * 4;
+    ctx.fillStyle = DECISION_SKILL_COLORS[d.skill] || '#666';
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // X 轴标签（帧序号）
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.font = '8px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`帧 ${minFrame}`, padL, H - 6);
+  ctx.textAlign = 'right';
+  ctx.fillText(`帧 ${maxFrame}`, W - padR, H - 6);
+
+  // 最新动作高亮标注
+  const last = decisionHistory[decisionHistory.length - 1];
+  const lastSkIdx = DECISION_SKILLS_ORDER.indexOf(last.skill);
+  const lastX = padL + ((last.frame - minFrame) / frameRange) * plotW;
+  const lastY = padT + lastSkIdx * rowH + rowH / 2;
+  ctx.strokeStyle = DECISION_SKILL_COLORS[last.skill] || '#fff';
+  ctx.lineWidth = 1;
+  ctx.globalAlpha = 0.6;
+  ctx.beginPath();
+  ctx.arc(lastX, lastY, 7, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  // 标注最新动作名
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 9px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`${DECISION_SKILL_LABELS[last.skill]} ${last.score.toFixed(2)}`, lastX + 9, lastY);
+}
+
+// 输出决策推理过程：记录到曲线图 + 简短日志
+// 详细候选竞争信息已通过曲线图可视化，日志只保留关键变化
+function logDecisionTrace(player, chosen, candidates, ws) {
+  // 记录到决策曲线数据
+  pushDecisionFrame(player, chosen, candidates, ws);
+  const skName = DECISION_SKILL_LABELS[chosen.skillId] || chosen.skillId;
+  const srcName = { manual:'手动', awareness:'意识', tactic:'战术' }[chosen.source] || chosen.source;
+  log(`📊 ${player.name}#${player.number} → ${skName}(${chosen.score.toFixed(2)})[${srcName}]`);
+}
+
+// 意识跑位：根据持球者信号和 Coach 打法选择接应跑位目标
+// - pass 信号：跑到传球方向的前方接应（前插/拉边）
+// - dribble 信号：拉开空间（远离持球者方向）
+// - shoot 信号：跟进补射（冲向球门方向）
+function pickSupportRun(player, sig, ws) {
+  const coach = coaches[player.team];
+  const handler = ball.owner;
+  const fwd = player.team === 'home' ? 1 : -1;
+  const cp = coach.params;
+
+  // 基础跑位方向：受打法 directness（直接度）和 width（宽度）影响
+  if (sig.type === 'pass') {
+    // 传球信号：跑到传球方向的前方接应
+    // directness 高 → 更向前前插；width 高 → 更拉开宽度
+    const forwardDist = 60 + cp.directness * 80;  // 60~140
+    const wideDist = (cp.width - 0.5) * 80;  // -40~+40
+    const dir = sig.direction;
+    const tx = player.x + Math.cos(dir) * forwardDist * 0.5 + fwd * forwardDist * 0.5;
+    const ty = player.y + Math.sin(dir) * forwardDist * 0.5 + wideDist;
+    // 避免跑进越位区域（简单处理：不超过对方最后一名后卫太多）
+    return { x: clamp(tx, 20, PW-20), y: clamp(ty, 20, PH-20) };
+  }
+  if (sig.type === 'dribble') {
+    // 盘带信号：拉开空间，跑到远离持球者的方向
+    const awayAngle = Math.atan2(player.y - handler.y, player.x - handler.x) + rng(-0.5, 0.5);
+    const dist = 50 + cp.width * 50;  // 50~100
+    const tx = player.x + Math.cos(awayAngle) * dist;
+    const ty = player.y + Math.sin(awayAngle) * dist;
+    return { x: clamp(tx, 20, PW-20), y: clamp(ty, 20, PH-20) };
+  }
+  if (sig.type === 'shoot') {
+    // 射门信号：跟进补射，冲向球门方向
+    const goalX = player.team === 'home' ? PW : 0;
+    const goalY = PH / 2;
+    const dist = 80 + rng(0, 40);
+    const a = Math.atan2(goalY - player.y, goalX - player.x) + rng(-0.3, 0.3);
+    return { x: clamp(player.x + Math.cos(a) * dist, 20, PW-20), y: clamp(player.y + Math.sin(a) * dist, 20, PH-20) };
+  }
   return null;
 }
 
-function resolveAction(player,rr){
-  if(!rr)return{a:'idle'};
-  const role=player.role, t=player.traits, fwd=player.team==='home'?1:-1;
-  const opX=player.team==='home'?PW:0, opY=PH/2, ownX=player.team==='home'?0:PW;
-  switch(rr.action){
-    case'chase':return{a:'chase',tx:ball.x-(ball.vx||0)*3,ty:ball.y-(ball.vy||0)*3};
-    case'retreat':{
-      const rR={CB:0.15,FB:0.10,CM:0.08,WM:0.08,ST:0.15}[role]||0.1, rM={CB:0.4,FB:0.3,CM:0.2,WM:0.25,ST:0.3}[role]||0.3;
-      const re=Math.min(rR+(1-t.aggressiveness/100)*0.1,rM);
-      return{a:'move',tx:clamp(player.hx+(ownX-player.hx)*re,15,PW-15),ty:clamp(Math.abs(player.hy-PH/2)>50?player.hy:player.hy+(ball.y-player.hy)*0.03,15,PH-15)};
-    }
-    case'pass':{
-      const tm=players.filter(p=>p.team===player.team&&p!==player&&d(player,p)>40&&d(player,p)<300); if(!tm.length)return{a:'idle'};
-      let target;
-      if(rr.target==='mostForward') target=tm.sort((a,b)=>(b.x-a.x)*fwd-(a.x-b.x)*fwd)[0];
-      else if(rr.target==='bestTeammate'){target=findBestPassTarget(player,tm);if(!target)target=tm[Math.floor(Math.random()*tm.length)];}
-      else if(rr.target==='forward') return{a:'pass',tx:clamp(player.x+fwd*80,20,PW-20),ty:player.y+rng(-30,30)};
-      else target=tm[Math.floor(Math.random()*tm.length)];
-      if(!target&&tm.length>0)target=tm[Math.floor(Math.random()*tm.length)];
-      if(!target)return{a:'idle'}; return{a:'pass',tx:target.x,ty:target.y};
-    }
-    case'dribbleFwd':{const dd={CB:20,FB:40,CM:30,WM:35,ST:25}[role]||30; const a=Math.atan2(opY-player.y,opX-player.x)+rng(-0.3,0.3); return{a:'dribble',tx:clamp(player.x+Math.cos(a)*dd,20,PW-20),ty:clamp(player.y+Math.sin(a)*dd,20,PH-20)};}
-    case'shoot':return{a:'shoot',tx:opX,ty:opY+rng(-GH*0.5,GH*0.5)};
-    case'moveHome':return{a:'move',tx:clamp(player.hx+fwd*(rr.bias||0),20,PW-20),ty:clamp(player.hy,20,PH-20)};
-    case'overlap':return{a:'move',tx:clamp(player.hx+fwd*(30+t.workRate*0.3),20,PW-20),ty:player.hy};
-    case'pushForward':return{a:'move',tx:clamp(player.hx+fwd*(25+t.workRate*0.2),20,PW-20),ty:clamp(player.hy+(ball.y-player.hy)*0.15,20,PH-20)};
-    case'runForward':return{a:'move',tx:clamp(player.hx+fwd*(30+rng(0,30)),20,PW-20),ty:clamp(player.hy+(ball.y-player.hy)*0.1,20,PH-20)};
-    case'cross':{const st=players.find(p=>p.team===player.team&&p.role==='ST');if(st)return{a:'pass',tx:st.x+rng(-20,20),ty:st.y+rng(-20,20)}; return resolveAction(player,{action:'dribbleFwd'});}
-    case'avoid':return{a:'move',tx:player.x-fwd*20,ty:player.y+rng(-30,30)};
-    case'drift':return{a:'move',tx:player.hx+(ball.x-player.hx)*0.02,ty:player.hy+(ball.y-player.hy)*0.02};
-    case'stand':return{a:'move',tx:player.hx,ty:player.hy};
-    default:return{a:'idle'};
-  }
-}
-
-function decide(player){
-  const role=player.role;
-  if(phase==='restart'){
-    if(player.isTaker){
-      if(d(player,ball)<12){
-        const tt=player.team, tm=players.filter(p=>p.team===tt&&p!==player&&d(player,p)>60&&d(player,p)<250);
-        if(tm.length){const s=tm.sort((a,b)=>d(a,ball)-d(b,ball));const tg=s[Math.floor(Math.random()*Math.min(3,s.length))];kickBall(player,tg.x,tg.y,3+rng(0,1.5));}
-        else{const dir=tt==='home'?1:-1;kickBall(player,ball.x+dir*80,ball.y+rng(-40,40),4+rng(0,1));}
-        player.isTaker=false;phase='playing';
-        const hint=window._restart?(window._restart.type==='throwin'?'界外球':(window._restart.type==='goalkick'?'球门球':'角球')):'';
-        log(`🔄 ${tt==='home'?'红':'蓝'}队 发出${hint}`);window._restart=null;return{a:'idle'};
-      }else return{a:'move',tx:ball.x,ty:ball.y};
-    }else{if(Math.random()<0.7)return{a:'idle'};return{a:'move',tx:player.hx,ty:player.hy};}
-  }
-  if(role==='GK'){
-    const gkX=player.team==='home'?25:PW-25;
-    if(ball.owner===player){
-      const no=players.filter(p=>p.team!==player.team&&p.role!=='GK').sort((a,b)=>d(a,player)-d(b,player))[0]||null;
-      const od=no?d(player,no):999,tm=players.filter(p=>p.team===player.team&&p!==player&&d(player,p)>40&&d(player,p)<350);
-      const ot=tm.map(p=>({p,no:players.filter(x=>x.team!==player.team&&d(x,p)<60).length,dist:d(player,p)})).sort((a,b)=>a.no-b.no);
-      if(od<rulesConfig.gkPressNear||player.holdTimer>rulesConfig.gkHoldLimit){
-        kickBall(player,player.team==='home'?PW-50:50,rng(PH*0.2,PH*0.8),rulesConfig.gkClearPower+rng(0,rulesConfig.gkClearRand));player.holdTimer=0;
-        if(od<rulesConfig.gkPressNear)log(`🧤 ${player.team==='home'?'红':'蓝'}队门将 大脚解围！`);else log(`🔄 ${player.team==='home'?'红':'蓝'}队门将 开出球`);return{a:'idle'};
-      }
-      if(od<rulesConfig.gkPressFar){
-        if(ot.length>0&&ot[0].no===0){const tg=ot[0].p;kickBall(player,tg.x,tg.y,rulesConfig.passPower+rng(0,rulesConfig.passPowerRand));player.holdTimer=0;log(`🔄 ${player.team==='home'?'红':'蓝'}队门将 快速抛球`);return{a:'idle'};}
-        kickBall(player,player.team==='home'?PW-50:50,rng(PH*0.2,PH*0.8),rulesConfig.gkLongPower+rng(0,1));player.holdTimer=0;log(`🔄 ${player.team==='home'?'红':'蓝'}队门将 大脚开出`);return{a:'idle'};
-      }
-      if(ot.length>0&&ot[0].no===0){const tg=ot[0].p;kickBall(player,tg.x,tg.y,d(player,tg)>150?rulesConfig.passPowerLong:rulesConfig.gkShortPower);player.holdTimer=0;return{a:'idle'};}
-      return{a:'move',tx:gkX,ty:clamp(player.y,GT+10,GB-10)};
-    }
-    if(ball.owner&&ball.owner.team!==player.team)return{a:'move',tx:gkX,ty:clamp(ball.y,GT+15,GB-15)};
-    if(!ball.owner&&inPA(player.team,ball.x,ball.y))return{a:'move',tx:ball.x,ty:ball.y};
-    return{a:'move',tx:gkX,ty:PH/2};
-  }
-  // Outfield: all driven by rulesConfig.roles
-  const rm={CB:'CB',LB:'FB',RB:'FB',CM:'CM',LM:'WM',RM:'WM',ST:'ST'}; const cr=rm[role]||role;
-  let sit;
-  if(ball.owner===player)sit='hasBall'; else if(ball.owner&&ball.owner.team!==player.team)sit='oppHasBall'; else if(!ball.owner)sit='looseBall'; else if(ball.owner&&ball.owner.team===player.team)sit='myTeamHasBall'; else sit='default';
-  let rr=evaluateRules(player,sit); if(!rr)rr=evaluateRules(player,'default'); if(!rr)return{a:'idle'};
-  return resolveAction(player,rr);
-}
-
 // ═══════════════════════════════════════════════════════════════
-//  EXECUTE + PHYSICS
+//  PHYSICS
 // ═══════════════════════════════════════════════════════════════
-function execute(p,action){
-  switch(action.a){
-    case'move':case'chase':case'dribble':mvToward(p,action.tx,action.ty);break;
-    case'shoot':kickBall(p,action.tx,action.ty,rulesConfig.shootPowBase+rng(0,rulesConfig.shootPowRand));log(`⚡ ${p.team==='home'?'红':'蓝'}${p.number}号${p.name} ${(p.team==='home'?(PW-p.x):p.x)<60?'捅射':'射门'}！`);break;
-    case'pass':kickBall(p,action.tx,action.ty,rulesConfig.passPower+rng(0,rulesConfig.passPowerRand));break;
-    default:p.vx*=0.9;p.vy*=0.9;
-  }
-}
-function mvToward(p,tx,ty){
+function mvToward(p,tx,ty,boost=1){
   const safe={tx:clamp(tx,35,PW-35),ty:clamp(ty,35,PH-35)}; tx=safe.tx;ty=safe.ty;
   const dx=tx-p.x,dy=ty-p.y,dist=Math.hypot(dx,dy); if(dist<4){p.vx*=0.9;p.vy*=0.9;return;}
-  const ms=p.speed*(0.65+p.att.pace/100*0.35); p.vx+=(dx/dist)*p.accel; p.vy+=(dy/dist)*p.accel;
+  const ms=p.speed*(0.65+p.att.pace/100*0.35)*boost; p.vx+=(dx/dist)*p.accel; p.vy+=(dy/dist)*p.accel;
   const cs=Math.hypot(p.vx,p.vy); if(cs>ms){p.vx=(p.vx/cs)*ms;p.vy=(p.vy/cs)*ms;}
   if(Math.abs(p.vx)>0.5)p.dir=p.vx>0?1:-1;
   p.x=clamp(p.x,PR,PW-PR);p.y=clamp(p.y,PR,PH-PR);
 }
-function updateAI(){for(const p of players){if(p.role!=='GK'){const tb=d(p,ball);if(tb>200&&Math.random()<0.4)continue;if(tb>100&&Math.random()<0.2)continue;}if(p.role!=='GK'&&Math.random()<0.001*(1-p.att.awareness/100)){p.vx*=0.85;p.vy*=0.85;continue;}execute(p,decide(p));}}
+function updateAI(){for(const p of players){for(const sid in p.skillSet)p.skillSet[sid].tick(1/60);if(p.role!=='GK'){const tb=d(p,ball);if(tb>200&&Math.random()<0.4)continue;if(tb>100&&Math.random()<0.2)continue;}if(p.role!=='GK'&&Math.random()<0.001*(1-p.att.awareness/100)){p.vx*=0.85;p.vy*=0.85;continue;}const req=decide(p);const res=req?Executor.run(req,p):null;if(res){if(res.ballKicked)p.manualIntent=null;if(res.xpGain){const lvUp=p.skillSet[res.skillId].gainXp(res.xpGain);if(lvUp)log(`⬆ ${p.name} 的 ${p.skillSet[res.skillId].name} 升至 Lv.${p.skillSet[res.skillId].level}`);}}}}
 function updatePhysics(){for(const p of players){p.x+=p.vx;p.y+=p.vy;p.vx*=0.92;p.vy*=0.92;p.x=clamp(p.x,PR,PW-PR);p.y=clamp(p.y,PR,PH-PR);}}
 function separate(){const md=PR*2+2;for(let i=0;i<players.length;i++)for(let j=i+1;j<players.length;j++){const a=players[i],b=players[j],dx=a.x-b.x,dy=a.y-b.y,sq=dx*dx+dy*dy;if(sq<md*md&&sq>0.01){const d2=Math.sqrt(sq),ov=(md-d2)/2;a.x+=(dx/d2)*ov;a.y+=(dy/d2)*ov;b.x-=(dx/d2)*ov;b.y-=(dy/d2)*ov;}}
 }
@@ -548,31 +1466,232 @@ function loop(ts){if(!prevT)prevT=ts;let dt=(ts-prevT)/1000;prevT=ts;if(dt>0.05)
 // ═══════════════════════════════════════════════════════════════
 const panelEl=document.getElementById('panel');
 function findPlayerAtCanvas(x,y){const px=(x-14)/sx,py=(y-14)/sy;if(px<-10||px>PW+10||py<-10||py>PH+10)return null;let best=null,bestD=30;for(const p of players){const dd=Math.hypot(px-p.x,py-p.y);if(dd<bestD){bestD=dd;best=p;}}return best;}
-cv.addEventListener('click',function(e){const rect=cv.getBoundingClientRect();const sca=cv.width/rect.width,scb=cv.height/rect.height;const cx=(e.clientX-rect.left)*sca,cy=(e.clientY-rect.top)*scb;const p=findPlayerAtCanvas(cx,cy);if(p){selectedPlayer=p;panelMode='player';renderPanel();}else closePanel();});
+cv.addEventListener('click',function(e){const rect=cv.getBoundingClientRect();const sca=cv.width/rect.width,scb=cv.height/rect.height;const cx=(e.clientX-rect.left)*sca,cy=(e.clientY-rect.top)*scb;const p=findPlayerAtCanvas(cx,cy);if(p){selectedPlayer=p;panelMode='player';playerPanelTab='attrs';renderPanel();}else closePanel();});
 function closePanel(){panelMode='closed';selectedPlayer=null;panelEl.classList.remove('open');panelEl.innerHTML='';}
-function renderPanel(){panelEl.classList.add('open');if(panelMode==='player'&&selectedPlayer)renderPlayerPanel(selectedPlayer);else if(panelMode==='rules')renderRulesPanelFull();else closePanel();}
+function renderPanel(){panelEl.classList.add('open');if(panelMode==='player'&&selectedPlayer)renderPlayerPanel(selectedPlayer);else if(panelMode==='rules')renderRulesPanelFull();else if(panelMode==='coach')renderCoachPanel();else if(panelMode==='manual')renderManualPanel();else closePanel();}
 
 function renderPlayerPanel(p){const t=p.traits;let html=`<button class="p-close" onclick="closePanel()">✕</button><div class="p-header"><div class="num-role"><span class="${p.team}">${p.team==='home'?'红队':'蓝队'}</span> · ${p.role} · #${p.number}</div><div class="name">${p.name}</div><div class="team-label">${p.team==='home'?'主队':'客队'}</div></div>`;
-  html+=`<div class="p-section"><div class="sec-title">能力属性 · 拖动修改</div>`;
-  const ac={pace:'#ff7043',passing:'#42a5f5',shooting:'#ef5350',defense:'#66bb6a',awareness:'#ffd54f'},al={pace:'速度',passing:'传球',shooting:'射门',defense:'防守',awareness:'意识'};
-  for(const[k,v]of Object.entries(p.att))html+=`<div class="attr-row"><div class="label">${al[k]}</div><input type="range" min="0" max="100" value="${v}" data-pid="${p.id}" data-att="${k}" oninput="onPaddleAttr(this)" /><span class="val" id="av_${p.id}_${k}">${v}</span></div>`;
-  html+=`</div><div class="p-section"><div class="sec-title">性格特点 · 拖动修改</div>`;
-  for(const key of TRAIT_KEYS){const m=TRAIT_META[key];html+=`<div class="trait-row"><div class="t-head"><div class="t-name">${m.label}</div><div class="t-val" id="tv_${p.id}_${key}">${t[key]}</div></div><div class="t-desc">${m.desc}</div><input type="range" min="0" max="100" value="${t[key]}" data-pid="${p.id}" data-key="${key}" oninput="onPaddleTrait(this)" /></div>`;}
-  html+=`</div><button class="btn-save" id="btnSavePanel" onclick="saveProfile()">💾 保存球员档案</button><div class="hint">保存后即时生效 · 持久化到本地存储</div>`;
+  // 子标签：属性 | 技能 | 策略
+  html+=`<div class="p-tabs"><button class="p-tab ${playerPanelTab==='attrs'?'on':''}" onclick="switchPlayerTab('attrs')">属性</button><button class="p-tab ${playerPanelTab==='skills'?'on':''}" onclick="switchPlayerTab('skills')">技能</button><button class="p-tab ${playerPanelTab==='tactic'?'on':''}" onclick="switchPlayerTab('tactic')">策略</button></div>`;
+  if(playerPanelTab==='attrs'){
+    html+=`<div class="p-section"><div class="sec-title">能力属性 · 拖动修改</div>`;
+    const ac={pace:'#ff7043',passing:'#42a5f5',shooting:'#ef5350',defense:'#66bb6a',awareness:'#ffd54f'},al={pace:'速度',passing:'传球',shooting:'射门',defense:'防守',awareness:'意识'};
+    for(const[k,v]of Object.entries(p.att))html+=`<div class="attr-row"><div class="label">${al[k]}</div><input type="range" min="0" max="100" value="${v}" data-pid="${p.id}" data-att="${k}" oninput="onPaddleAttr(this)" /><span class="val" id="av_${p.id}_${k}">${v}</span></div>`;
+    html+=`</div><div class="p-section"><div class="sec-title">性格特点 · 拖动修改</div>`;
+    for(const key of TRAIT_KEYS){const m=TRAIT_META[key];html+=`<div class="trait-row"><div class="t-head"><div class="t-name">${m.label}</div><div class="t-val" id="tv_${p.id}_${key}">${t[key]}</div></div><div class="t-desc">${m.desc}</div><input type="range" min="0" max="100" value="${t[key]}" data-pid="${p.id}" data-key="${key}" oninput="onPaddleTrait(this)" /></div>`;}
+  } else if(playerPanelTab==='skills'){
+    html+=renderSkillsSection(p);
+  } else if(playerPanelTab==='tactic'){
+    html+=renderTacticSection(p);
+  }
+  html+=`<button class="btn-save" id="btnSavePanel" onclick="saveProfile()">💾 保存球员档案</button><button class="btn-reset" onclick="resetPlayerDev()">↺ 重置进化（技能/策略）</button><div class="hint">保存后即时生效 · 持久化到本地存储</div>`;
   panelEl.innerHTML=html;panelEl.scrollTop=0;
+}
+function switchPlayerTab(tab){playerPanelTab=tab;if(selectedPlayer)renderPlayerPanel(selectedPlayer);}
+
+// 技能列表：名字 + 等级星 + XP 进度条 + 升级按钮（消耗 evoPoints）
+function renderSkillsSection(p){
+  const evo=p.evoPoints??0;
+  let html=`<div class="evo-banner"><div class="evo-lab">⚡ 进化点</div><div class="evo-val">${evo}</div></div>`;
+  html+=`<div class="p-section"><div class="sec-title">技能 · 点击升级消耗 1 点</div>`;
+  // 按类型分组展示，便于阅读
+  const typeOrder=['movement','pass','shoot','defense','gk'];
+  const typeLabel={movement:'移动',pass:'传球',shoot:'射门',defense:'防守',gk:'门将'};
+  for(const ty of typeOrder){
+    const skills=Object.values(p.skillSet).filter(s=>s.type===ty);
+    if(!skills.length) continue;
+    html+=`<div class="r-sit">${typeLabel[ty]||ty}</div>`;
+    for(const s of skills){
+      const locked=!s.unlocked;
+      const stars='★'.repeat(s.level)+'<span class="empty">'+'★'.repeat(5-s.level)+'</span>';
+      const xpPct=s.level>=5?100:Math.floor(s.xp/s.maxXp()*100);
+      const xpTxt=s.level>=5?'MAX':`${s.xp}/${s.maxXp()}`;
+      const canUp=!locked&&s.level<5&&evo>0;
+      html+=`<div class="skill-row${locked?' locked':''}">`;
+      html+=`<div class="skill-head"><div class="skill-name">${s.name}${locked?' 🔒':''}</div><div class="skill-meta"><span class="skill-stars">${stars}</span><button class="skill-up" data-pid="${p.id}" data-sid="${s.id}" onclick="upgradeSkill(${p.id},'${s.id}')" ${canUp?'':'disabled'}>＋</button></div></div>`;
+      html+=`<div class="skill-xp"><div class="skill-xp-fill" style="width:${xpPct}%"></div></div>`;
+      html+=`<div class="skill-xp-txt"><span>Lv.${s.level}</span><span>${xpTxt}</span></div>`;
+      html+=`</div>`;
+    }
+  }
+  html+=`</div>`;
+  return html;
+}
+// 升级技能：消耗 1 进化点，等级 +1（上限 5）
+function upgradeSkill(pid,sid){
+  const p=players.find(x=>x.id===pid); if(!p) return;
+  const s=p.skillSet[sid]; if(!s||!s.unlocked||s.level>=5) return;
+  if((p.evoPoints??0)<=0) return;
+  p.evoPoints--; s.level++; s.xp=0;
+  log(`⬆ ${p.name} 的 ${s.name} 升至 Lv.${s.level}`);
+  renderPlayerPanel(p);
+}
+// 重置该球员的进化进度：技能回角色默认等级、XP 清零、策略回角色模板、进化点回 3
+function resetPlayerDev(){
+  if(!selectedPlayer) return;
+  const p=selectedPlayer;
+  p.skillSet=createSkillSet(p.role);
+  p.tactic=createTactic(p.role);
+  p.evoPoints=3;
+  // 同步清除存档里的进化字段，下次保存时写入干净状态
+  const pk=profileKey(p);
+  if(savedProfiles[pk]){
+    delete savedProfiles[pk].skills;
+    delete savedProfiles[pk].tactic;
+    savedProfiles[pk].evoPoints=3;
+  }
+  saveProfiles();
+  log(`↺ ${p.name} 进化进度已重置`);
+  renderPlayerPanel(p);
+}
+
+// ── 策略节点编辑 UI ──
+// 把嵌套 condition 树里的叶子 clause 拍平，便于按索引定位修改
+function flattenClauses(cond, out=[]){
+  if(cond===true||cond==null) return out;
+  if(cond.op==='and'||cond.op==='or'){ for(const c of cond.clauses) flattenClauses(c, out); return out; }
+  out.push(cond); return out;
+}
+function renderTacticSection(p){
+  if(!p.tactic) return '<div class="p-section"><div class="sec-title">策略</div><div style="font-size:10px;opacity:0.4;padding:8px;">该球员无策略（GK 走独立路径）</div></div>';
+  let html=`<div class="p-section"><div class="sec-title">策略节点 · ${p.tactic.role} 模板</div>`;
+  // 按情境分组展示
+  const bySit={};
+  for(const n of p.tactic.nodes){ (bySit[n.situation] ||= []).push(n); }
+  const sitLabel={hasBall:'持球',oppHasBall:'对方持球',looseBall:'无主球',myTeamHasBall:'队友持球',default:'默认/防守位'};
+  const sitOrder=['hasBall','oppHasBall','looseBall','myTeamHasBall','default'];
+  for(const sit of sitOrder){
+    if(!bySit[sit]) continue;
+    html+=`<div class="r-sit">${sitLabel[sit]||sit}</div>`;
+    for(const node of bySit[sit]) html+=renderTacticNode(p, node);
+  }
+  html+=`</div>`;
+  return html;
+}
+function renderTacticNode(p, node){
+  let html=`<div class="tactic-node">`;
+  html+=`<div class="tn-head"><span class="tn-id">${node.id}</span><span class="tn-prio">优先级 <input type="number" min="0.1" max="3" step="0.1" value="${(+node.priority).toFixed(1)}" data-pid="${p.id}" data-nid="${node.id}" onchange="onTacticPriority(this)"/></span></div>`;
+  // preferredSkills：点击 chip 切换是否包含
+  html+=`<div class="tn-skills">`;
+  for(const sid in SKILL_CATALOG){
+    const sk=SKILL_CATALOG[sid];
+    const on=node.preferredSkills.includes(sid);
+    html+=`<span class="tchip${on?' on':''}" onclick="togglePreferredSkill(${p.id},'${node.id}','${sid}')">${sk.name}</span>`;
+  }
+  html+=`</div>`;
+  // condition：拍平叶子 clause，每个数字/对象值都给滑块
+  const leaves=flattenClauses(node.condition);
+  if(!leaves.length){
+    html+=`<div class="tn-cond"><div class="cond-true">始终满足</div></div>`;
+  } else {
+    html+=`<div class="tn-cond">`;
+    // 简单显示组合关系（and/or）
+    const op = node.condition && node.condition.op ? node.condition.op.toUpperCase() : '';
+    if(op) html+=`<div class="cond-op">${op}</div>`;
+    leaves.forEach((c, i) => { html+=renderClause(p, node.id, c, i); });
+    html+=`</div>`;
+  }
+  html+=`</div>`;
+  return html;
+}
+function renderClause(p, nid, c, idx){
+  const v=c.value;
+  // 结构化值 {base, attrMul, condBonus}：只暴露 base 给滑块，其余以提示展示
+  if(v && typeof v==='object'){
+    const base=v.base ?? 0;
+    const mulHint=v.attrMul && v.attrMul.length ? '+'+v.attrMul.map(a=>a.attr+'×'+a.factor).join(',') : '';
+    const max = c.metric==='rand' ? 1 : (c.metric==='toBall'||c.metric==='dGoal' ? 400 : 250);
+    const step = c.metric==='rand' ? 0.01 : 1;
+    return `<div class="cond-clause"><span class="cm">${c.metric}${mulHint?'*':''}</span><span class="cop">${c.op}</span><input type="range" min="0" max="${max}" step="${step}" value="${base}" data-pid="${p.id}" data-nid="${nid}" data-cidx="${idx}" oninput="onClauseValue(this)"/><span class="cval">${base}${mulHint?' '+mulHint:''}</span></div>`;
+  }
+  if(typeof v==='number'){
+    const max = c.metric==='rand' ? 1 : (c.metric==='toBall'||c.metric==='dGoal' ? 400 : 200);
+    const step = c.metric==='rand' ? 0.01 : 1;
+    return `<div class="cond-clause"><span class="cm">${c.metric}</span><span class="cop">${c.op}</span><input type="range" min="0" max="${max}" step="${step}" value="${v}" data-pid="${p.id}" data-nid="${nid}" data-cidx="${idx}" oninput="onClauseValue(this)"/><span class="cval">${v}</span></div>`;
+  }
+  // 布尔值：只读
+  return `<div class="cond-clause"><span class="cm">${c.metric}</span><span class="cop">${c.op}</span><span class="cval">${v}</span></div>`;
+}
+function findNode(p, nid){ return p.tactic ? p.tactic.nodes.find(n=>n.id===nid) : null; }
+function onTacticPriority(el){
+  const p=players.find(x=>x.id===parseInt(el.dataset.pid)); if(!p) return;
+  const n=findNode(p, el.dataset.nid); if(!n) return;
+  n.priority=clamp(parseFloat(el.value)||1, 0.1, 3);
+}
+function togglePreferredSkill(pid, nid, sid){
+  const p=players.find(x=>x.id===pid); if(!p||!p.tactic) return;
+  const n=findNode(p, nid); if(!n) return;
+  const i=n.preferredSkills.indexOf(sid);
+  if(i>=0) n.preferredSkills.splice(i,1); else n.preferredSkills.push(sid);
+  renderPlayerPanel(p);
+}
+function onClauseValue(el){
+  const p=players.find(x=>x.id===parseInt(el.dataset.pid)); if(!p||!p.tactic) return;
+  const n=findNode(p, el.dataset.nid); if(!n) return;
+  const idx=parseInt(el.dataset.cidx);
+  const leaves=flattenClauses(n.condition);
+  const c=leaves[idx]; if(!c) return;
+  const newVal=parseFloat(el.value);
+  if(c.value && typeof c.value==='object'){ c.value.base=newVal; }
+  else { c.value=newVal; }
+  // 更新显示值
+  const valEl=el.parentElement.querySelector('.cval');
+  if(valEl){
+    if(c.value && typeof c.value==='object'){
+      const mulHint=c.value.attrMul && c.value.attrMul.length ? '+'+c.value.attrMul.map(a=>a.attr+'×'+a.factor).join(',') : '';
+      valEl.textContent=newVal+(mulHint?' '+mulHint:'');
+    } else {
+      valEl.textContent=newVal;
+    }
+  }
 }
 function onPaddleAttr(el){const pid=parseInt(el.dataset.pid),key=el.dataset.att,val=parseInt(el.value);document.getElementById(`av_${pid}_${key}`).textContent=val;const p=players.find(x=>x.id===pid);if(p)p.att[key]=val;}
 function onPaddleTrait(el){document.getElementById(`tv_${el.dataset.pid}_${el.dataset.key}`).textContent=el.value;}
 function saveProfile(){if(!selectedPlayer)return;const p=selectedPlayer;const t={},a={};for(const key of TRAIT_KEYS){const el=document.querySelector(`input[data-pid="${p.id}"][data-key="${key}"]`);if(el)t[key]=parseInt(el.value);}for(const key of Object.keys(p.att)){const el=document.querySelector(`input[data-pid="${p.id}"][data-att="${key}"]`);if(el)a[key]=parseInt(el.value);}
-  savedProfiles[profileKey(p)]={name:p.name,number:p.number,role:p.role,att:a,traits:t};Object.assign(p.traits,t);Object.assign(p.att,a);saveProfiles();
+  // 持久化技能快照（id→{level,xp,unlocked}）、进化点和策略节点（用户编辑的条件/优先级/偏好技能），使升级与编辑在重载后保留
+  const skills={}; for(const sid in p.skillSet){const s=p.skillSet[sid]; skills[sid]={level:s.level,xp:s.xp,unlocked:s.unlocked}; }
+  const tactic = p.tactic ? { role:p.tactic.role, nodes:p.tactic.nodes.map(n=>({id:n.id,situation:n.situation,condition:JSON.parse(JSON.stringify(n.condition)),preferredSkills:[...n.preferredSkills],priority:n.priority,targetPicker:n.targetPicker,bias:n.bias})) } : null;
+  savedProfiles[profileKey(p)]={name:p.name,number:p.number,role:p.role,att:a,traits:t,evoPoints:p.evoPoints??0,skills,tactic};Object.assign(p.traits,t);Object.assign(p.att,a);saveProfiles();
   const btn=document.getElementById('btnSavePanel');if(btn){btn.textContent='✓ 已保存';btn.classList.add('saved');setTimeout(()=>{btn.textContent='💾 保存球员档案';btn.classList.remove('saved');},1500);}
 }
 function renderRulesPanelFull(){panelEl.classList.add('open');panelEl.innerHTML=renderRulesUI();panelEl.scrollTop=0;}
+
+// ── Coach 打法面板 ──
+function renderCoachPanel(){
+  panelEl.classList.add('open');
+  const c = coaches[coachPanelTeam];
+  let html=`<button class="p-close" onclick="closePanel()">✕</button><div class="p-header"><div class="num-role">🎌 队伍打法</div><div class="name" style="font-size:12px;">教练战术 · 比赛中实时生效</div></div>`;
+  // 队伍切换
+  html+=`<div class="coach-team"><button class="coach-team-btn home ${coachPanelTeam==='home'?'on':''}" onclick="switchCoachTeam('home')">🔴 红队</button><button class="coach-team-btn away ${coachPanelTeam==='away'?'on':''}" onclick="switchCoachTeam('away')">🔵 蓝队</button></div>`;
+  // 打法预设
+  html+=`<div class="r-group"><div class="r-group-title">📋 打法预设</div><div class="style-grid">`;
+  for(const k in COACH_STYLES){
+    const s=COACH_STYLES[k];
+    html+=`<button class="style-btn ${c.style===k?'on':''}" onclick="applyCoachStyle('${k}')">${s.label}</button>`;
+  }
+  html+=`</div></div>`;
+  // 参数微调
+  html+=`<div class="r-group"><div class="r-group-title">🔧 参数微调</div>`;
+  const params=[
+    {k:'pressLine',l:'逼抢线',d:'0=退守 1=压上',f:v=>Math.round(v*100)+'%'},
+    {k:'tempo',l:'节奏',d:'影响传球频率和跑动',f:v=>Math.round(v*100)+'%'},
+    {k:'width',l:'宽度',d:'阵型拉开程度',f:v=>Math.round(v*100)+'%'},
+    {k:'directness',l:'直接度',d:'0=短传渗透 1=长传冲吊',f:v=>Math.round(v*100)+'%'},
+  ];
+  for(const p of params){
+    const v=c.params[p.k];
+    html+=`<div class="r-row"><div class="r-lab">${p.l}</div><input type="range" min="0" max="1" step="0.05" value="${v}" oninput="onCoachParam('${p.k}',this)"/><div class="r-val">${p.f(v)}</div><div class="r-desc">${p.d}</div></div>`;
+  }
+  html+=`</div>`;
+  // 说明
+  html+=`<div class="r-group"><div class="r-group-title">💡 说明</div><div style="font-size:10px;opacity:0.4;padding:8px;line-height:1.5;">打法影响全队：逼抢线控制阵型整体压上程度，节奏影响传球频率和队友前插意愿，直接度影响传球目标选择（短传 vs 长传），宽度影响阵型横向拉开。<br/>比赛中可随时切换，立即生效。</div></div>`;
+  panelEl.innerHTML=html;panelEl.scrollTop=0;
+}
+function switchCoachTeam(t){coachPanelTeam=t;renderCoachPanel();}
+function applyCoachStyle(style){coaches[coachPanelTeam].applyStyle(style);log(`🎌 ${coachPanelTeam==='home'?'红':'蓝'}队切换打法：${COACH_STYLES[style].label}`);renderCoachPanel();}
+function onCoachParam(k,el){coaches[coachPanelTeam].params[k]=parseFloat(el.value);el.parentElement.querySelector('.r-val').textContent=Math.round(el.value*100)+'%';}
 function renderRulesUI(){
-  const ROLE_CN={CB:'中后卫',FB:'边后卫',CM:'中场',WM:'边前卫',ST:'前锋'};
-  const SIT_CN={hasBall:'控球时',oppHasBall:'对方控球时',looseBall:'无主球时',myTeamHasBall:'队友控球时',default:'默认'};
-  const ACT_CN={pass:'传球',chase:'追逐',retreat:'回撤',shoot:'射门',dribbleFwd:'盘带',moveHome:'归位',overlap:'套边',pushForward:'前插',runForward:'跑位',cross:'传中',avoid:'躲球',drift:'漂移',stand:'站位'};
-  const rConfig=rulesConfig; const roles=rConfig.roles||{};
+  const rConfig=rulesConfig;
   let html=`<button class="p-close" onclick="closePanel()">✕</button><div class="p-header"><div class="num-role">⚙ 比赛规则</div><div class="name" style="font-size:12px;">拖动滑块 · 即时生效</div></div>`;
 
   // ── 全局参数 ──
@@ -583,66 +1702,9 @@ function renderRulesUI(){
   for(const g of globals){const v=rConfig[g.k];html+=`<div class="r-row"><div class="r-lab">${g.l}</div><input type="range" min="${g.min}" max="${g.max}" step="${g.s}" value="${v}" onchange="onRGlob('${g.k}',this)"/><div class="r-val">${g.f?g.f(v):v}</div><div class="r-desc">${g.d||''}</div></div>`;}
   html+=`</div>`;
 
-  // ── 角色决策表 ──
-  html+=`<div class="r-group"><div class="r-group-title">🎯 角色决策</div><div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:6px;">`;
-  for(const r of['CB','FB','CM','WM','ST'])html+=`<span class="r-role-btn on" data-r="${r}" onclick="onRRole(this)">${ROLE_CN[r]||r}</span>`;
-  html+=`</div>`;
-  for(const r of['CB','FB','CM','WM','ST']){
-    const rRules=roles[r]||{};
-    html+=`<div class="r-role-panel" data-r="${r}" style="display:${r==='CB'?'block':'none'}">`;
-    for(const sit of['hasBall','oppHasBall','looseBall','myTeamHasBall','default']){
-      const rules=sit==='hasBall'||sit==='default'?rRules[sit]||[]:rRules[sit]||[];
-      if(!rules.length)continue;
-      html+=`<div class="r-sit">${SIT_CN[sit]||sit}`;
-      // For oppHasBall, show the press threshold slider
-      if(sit==='oppHasBall')html+=` <span style="font-size:7px;opacity:0.3">基础+侵略×权重</span>`;
-      html+=`</div>`;
-      for(const rule of rules){
-        const cond=rule.cond||'';
-        // Extract numeric parameters from condition for slider editing
-        const act=rule.action||''; const tgt=rule.target||'';
-        if(cond==='true'){
-          html+=`<div class="r-rule"><div class="r-rule-desc">${rule.desc||''}</div><span class="r-rule-act" style="margin-left:auto">→${ACT_CN[act]||act}${tgt?'('+tgt+')':''}</span></div>`;
-        } else {
-          const threshMatch=cond.match(/rand<([0-9.]+)/); const distMatch=cond.match(/toBall<([0-9.]+)/);
-          const aggMatch=cond.match(/agg\*([0-9.]+)/); const aggMin=cond.match(/agg>([0-9.]+)/);
-          if(threshMatch){
-            const val=parseFloat(threshMatch[1]); const rKey=r+'_'+sit+'_'+rule.desc+'_th';
-            html+=`<div class="r-rule"><div class="r-rule-desc">${rule.desc||'概率'}</div>
-              <input type="range" min="0" max="1" step="0.01" value="${val}" onchange="onRTh('${r}','${sit}','${rule.desc||''}',this)"/>
-              <div class="r-val" style="width:28px;color:#ffd54f">${val.toFixed(2)}</div>
-              <span class="r-rule-act">→${ACT_CN[act]||act}</span></div>`;
-          } else if(distMatch&&!threshMatch){
-            const val=parseFloat(distMatch[1]); const distOnly=!/(\+\d)/.test(cond);
-            if(distOnly){
-              html+=`<div class="r-rule"><div class="r-rule-desc">${rule.desc||'距离'}</div>
-                <input type="range" min="20" max="300" step="5" value="${val}" onchange="onRDist('${r}','${sit}','${rule.desc||''}',this)"/>
-                <div class="r-val" style="width:28px;color:#ffd54f">${val}</div>
-                <span class="r-rule-act">px →${ACT_CN[act]||act}</span></div>`;
-            } else {
-              const baseMatch=cond.match(/toBall<\(([0-9.]+)/);
-              const base=baseMatch?parseFloat(baseMatch[1]):80;
-              const wt=aggMatch?parseFloat(aggMatch[1]):1.0;
-              html+=`<div class="r-rule"><div class="r-rule-desc">${rule.desc||'上抢'}</div>
-                <input type="range" min="20" max="250" step="5" value="${base}" onchange="onRPress('${r}','${sit}','${rule.desc||''}','base',this)"/>
-                <span style="font-size:7px;opacity:0.3">基础${base}</span>
-                +侵略×<input type="range" min="0.1" max="3" step="0.1" value="${wt}" style="width:40px;height:2px;display:inline;vertical-align:middle" onchange="onRPress('${r}','${sit}','${rule.desc||''}','wt',this)"/>
-                <span class="r-rule-act">→${ACT_CN[act]||act}</span></div>`;
-            }
-          } else if(aggMin){
-            const val=parseFloat(aggMin[1]);
-            html+=`<div class="r-rule"><div class="r-rule-desc">${rule.desc||'侵略'}</div>
-              <input type="range" min="0" max="100" step="5" value="${val}" onchange="onRAggMin('${r}','${sit}','${rule.desc||''}',this)"/>
-              <div class="r-val" style="width:22px;color:#ffd54f">${val}</div>
-              <span class="r-rule-act">→${ACT_CN[act]||act}</span></div>`;
-          } else {
-            html+=`<div class="r-rule"><div class="r-rule-desc">${rule.desc||''}</div><span class="r-rule-act" style="margin-left:auto">→${ACT_CN[act]||act}</span></div>`;
-          }
-        }
-      }
-    }
-    html+=`</div>`;
-  }
+  // ── 策略节点（已迁移到球员面板的"策略"标签页）──
+  html+=`<div class="r-group"><div class="r-group-title">🎯 策略节点</div>`;
+  html+=`<div style="font-size:10px;opacity:0.45;padding:8px;line-height:1.5;">每个球员持有独立 Tactic 实例（结构化 TacticNode）。<br/>👉 点击场上任意球员 → 切换到「策略」标签页即可编辑该球员的节点条件、优先级与偏好技能。</div>`;
   html+=`</div>`;
 
   // ── 传球评分 ──
@@ -658,18 +1720,179 @@ function renderRulesUI(){
   return html;
 }
 
-// ── Rules UI event handlers ──
-let _panelRole='CB';
-function onRRole(el){_panelRole=el.dataset.r;document.querySelectorAll('.r-role-btn').forEach(b=>b.classList.toggle('on',b===el));document.querySelectorAll('.r-role-panel').forEach(p=>p.style.display=p.dataset.r===_panelRole?'block':'none');}
-function onRGlob(k,el){rulesConfig[k]=parseFloat(el.value);saveRules();el.parentElement.querySelector('.r-val').textContent=el.value;if(k==='halfLen')applyRules();}
-function onRTh(role,sit,desc,el){const v=parseFloat(el.value);const rules=rulesConfig.roles[role][sit];for(const r of rules){if(r.desc===desc&&r.cond.includes('rand<')){r.cond=r.cond.replace(/rand<[0-9.]+/,'rand<'+v.toFixed(2));break;}}saveRules();el.parentElement.querySelector('.r-val').textContent=v.toFixed(2);}
-function onRDist(role,sit,desc,el){const v=parseInt(el.value);const rules=rulesConfig.roles[role][sit];for(const r of rules){if(r.desc===desc&&r.cond.includes('toBall<')){r.cond=r.cond.replace(/toBall<\d+/,'toBall<'+v);break;}}saveRules();el.parentElement.querySelector('.r-val').textContent=v;}
-function onRPress(role,sit,desc,field,el){const v=parseFloat(el.value);const rules=rulesConfig.roles[role][sit];for(const r of rules){if(r.desc===desc){const m=r.cond.match(/toBall<\(([0-9.]+)\+agg\*([0-9.]+)/);if(m){const base=m[1],wt=m[2];const nb=field==='base'?v:parseFloat(base);const nw=field==='wt'?v:parseFloat(wt);r.cond=r.cond.replace(/toBall<\([0-9.]+\+agg\*[0-9.]+\)/,'toBall<('+nb+'+agg*'+nw+')');break;}}}saveRules();}
-function onRAggMin(role,sit,desc,el){const v=parseInt(el.value);const rules=rulesConfig.roles[role][sit];for(const r of rules){if(r.desc===desc&&r.cond.includes('agg>')){r.cond=r.cond.replace(/agg>\d+/,'agg>'+v);break;}}saveRules();el.parentElement.querySelector('.r-val').textContent=v;}
-function onRPS(k,el){const v=parseFloat(el.value);rulesConfig.passScore=rulesConfig.passScore||{};rulesConfig.passScore[k]=v;saveRules();el.parentElement.querySelector('.r-val').textContent=v;}
+// ── Manual 手动控制面板 ──
+// 用户选球员 → 看技能列表 → 点技能按钮 → 立即执行该技能
+// 用于调试/训练：验证技能效果，观察单个球员的动作
+const MANUAL_SKILL_DESC = {
+  moveTo: '向球移动', sprint: '向前冲刺', dribble: '带球前进',
+  shortPass: '传给最佳队友', throughPass: '直塞最前队友', longPass: '长传前方', cross: '传中找前锋',
+  shoot: '射门', tackle: '抢最近对手', slideTackle: '铲最近对手', mark: '盯最近对手', intercept: '拦截球路',
+  gkSave: '扑救', gkClaim: '出击抱球', gkClear: '大脚解围',
+};
+function renderManualPanel(){
+  panelEl.classList.add('open');
+  let html=`<button class="p-close" onclick="closePanel()">✕</button><div class="p-header"><div class="num-role">🎮 手动控制</div><div class="name" style="font-size:12px;">选球员 → 点技能 → 立即执行</div></div>`;
+  // 队伍切换
+  html+=`<div class="manual-pl-select"><button class="manual-pl-btn home ${manualPanelTeam==='home'?'on':''}" onclick="switchManualTeam('home')">🔴 红队</button><button class="manual-pl-btn away ${manualPanelTeam==='away'?'on':''}" onclick="switchManualTeam('away')">🔵 蓝队</button></div>`;
+  // 球员列表
+  const teamPl = players.filter(p=>p.team===manualPanelTeam);
+  html+=`<div class="manual-pl-list">`;
+  for(const p of teamPl){
+    const on = manualSelectedPlayer===p;
+    html+=`<div class="manual-pl-item ${on?'on':''}" onclick="selectManualPlayer(${players.indexOf(p)})"><span class="num">#${p.number}</span><span class="role">${p.role}</span><span class="nm">${p.name}</span>${ball.owner===p?'<span style="font-size:9px;">⚽</span>':''}</div>`;
+  }
+  html+=`</div>`;
+  // 选中球员的技能列表
+  if(manualSelectedPlayer){
+    const p = manualSelectedPlayer;
+    html+=`<div class="p-section"><div class="sec-title">${p.name} · #${p.number} · ${p.role} · 体力 ${Math.round(p.stamina??100)}%</div>`;
+    // 给球测试：把球交给该球员，下一帧决策系统自动运行并输出 trace
+    html+=`<button class="manual-skill-btn" style="width:100%;margin-bottom:8px;background:rgba(255,213,79,0.18);color:#ffd54f;border-color:rgba(255,213,79,0.3);" onclick="giveBallToSelected()">⚽ 给球测试决策</button>`;
+    // 按类型分组显示技能
+    const types = [
+      {key:'movement', label:'移动'},
+      {key:'pass',     label:'传球'},
+      {key:'shoot',    label:'射门'},
+      {key:'defense',  label:'防守'},
+      {key:'gk',       label:'门将'},
+    ];
+    for(const tp of types){
+      // GK 才显示 gk 类型；非 GK 不显示
+      if(tp.key==='gk' && p.role!=='GK') continue;
+      const skills = Object.values(SKILL_CATALOG).filter(s=>s.type===tp.key);
+      if(!skills.length) continue;
+      html+=`<div class="manual-skill-type">${tp.label}</div><div class="manual-skill-grid">`;
+      for(const s of skills){
+        const sk = p.skillSet[s.id];
+        if(!sk) continue;
+        const cd = sk.cooldown > 0;
+        const desc = MANUAL_SKILL_DESC[s.id] || '';
+        html+=`<button class="manual-skill-btn" ${cd?'disabled':''} onclick="executeManualSkill('${s.id}')" title="${desc}">${sk.name}<div class="sk-lv">Lv.${sk.level}${cd?' · CD '+sk.cooldown.toFixed(1)+'s':''}</div></button>`;
+      }
+      html+=`</div>`;
+    }
+    html+=`</div>`;
+    // 操作提示
+    html+=`<div style="font-size:9px;opacity:0.4;padding:6px;line-height:1.5;margin-top:6px;">💡 传球/射门类技能会先把球放到球员脚下再执行，方便观察效果。移动/防守类技能直接执行。比赛暂停时也可使用。</div>`;
+  } else {
+    html+=`<div style="font-size:10px;opacity:0.3;padding:12px;text-align:center;">↑ 选择一名球员查看技能</div>`;
+  }
+  panelEl.innerHTML=html;panelEl.scrollTop=0;
+}
+function switchManualTeam(t){manualPanelTeam=t;manualSelectedPlayer=null;renderManualPanel();}
+function selectManualPlayer(idx){manualSelectedPlayer=players[idx];renderManualPanel();}
+// 给球测试：把球放到选定球员脚下，下一帧 decideHasBall 自动运行并输出决策 trace
+function giveBallToSelected(){
+  const p = manualSelectedPlayer;
+  if(!p){return;}
+  ball.x = p.x; ball.y = p.y; ball.vx = 0; ball.vy = 0; ball.owner = p;
+  // kickoff/restart 阶段会跳过 updateBall()，导致球不跟随 owner。强制切到 playing 确保测试可见。
+  if(phase !== 'playing'){ phase = 'playing'; phaseTimer = 0; }
+  paused = false;  // 确保比赛未暂停，decide 才会运行
+  document.getElementById('btnPause').textContent = '⏸ 暂停';
+  console.log('[给球]', p.name+'#'+p.number, 'pos:', p.x.toFixed(0), p.y.toFixed(0), 'phase:', phase);
+  log(`⚽ 给球：${p.team==='home'?'红':'蓝'}${p.number}号 ${p.name} 获得球权，观察决策…`);
+}
 
-// ── Apply JSON (keep old function for compatibility) ──
-function applyRulesJSON(){const el=document.getElementById('rulesEditor'),fb=document.getElementById('rulesFeedback');if(!el)return;try{const p=JSON.parse(el.value);Object.assign(rulesConfig,p);saveRules();applyRules();if(fb){fb.textContent='✓ 已应用并保存';fb.style.color='#66bb6a';setTimeout(()=>{fb.style.color='';fb.textContent='';},2000);}}catch(e){if(fb){fb.textContent='❌ JSON 格式错误';fb.style.color='#ef5350';}}}
+// 手动执行技能：用智能默认 target，让用户一键看到效果
+function executeManualSkill(skillId){
+  const p = manualSelectedPlayer;
+  if(!p){return;}
+  const sk = p.skillSet[skillId];
+  if(!sk || !sk.unlocked || sk.cooldown > 0) return;
+  // 计算智能默认 target
+  const target = computeManualTarget(skillId, p);
+  if(!target){return;}
+  // 传球/射门类：先把球放到球员脚下，保证能看到效果
+  if(sk.type==='pass' || sk.type==='shoot'){
+    ball.x = p.x; ball.y = p.y; ball.vx = 0; ball.vy = 0; ball.owner = p;
+  }
+  // 移动/防守类（无 ballKicked）：设置持续意图，每帧由 decide() 重新评估优先级
+  // 不设超时，清除条件是到达目标；执行与否由候选优先级竞争决定
+  if(sk.type==='movement' || (sk.type==='defense' && !skillId.includes('tackle'))){
+    const trackBall = (skillId === 'moveTo');
+    p.manualIntent = { skillId, target: {...target}, trackBall, skillName: sk.name };
+    log(`🎮 ${p.team==='home'?'红':'蓝'}${p.number}号 ${p.name} 执行 ${sk.name}（${MANUAL_SKILL_DESC[skillId] || sk.name}）`);
+    renderManualPanel();
+    return;
+  }
+  // 执行（传球/射门/抢断等一次性技能）
+  // 清理旧的 manualIntent：一次性技能执行后，之前的持续意图（如跑位）不再适用
+  p.manualIntent = null;
+  const req = { skillId, target };
+  const res = Executor.run(req, p);
+  if(res){
+    if(res.xpGain){
+      const lvUp = p.skillSet[skillId].gainXp(res.xpGain);
+      if(lvUp) log(`⬆ ${p.name} 的 ${sk.name} 升至 Lv.${sk.level}`);
+    }
+    const desc = MANUAL_SKILL_DESC[skillId] || sk.name;
+    log(`🎮 ${p.team==='home'?'红':'蓝'}${p.number}号 ${p.name} 执行 ${sk.name}（${desc}）`);
+  } else {
+    log(`⚠ ${p.name} 的 ${sk.name} 执行失败`);
+  }
+  // 刷新面板（更新冷却显示）
+  renderManualPanel();
+}
+
+// 为手动执行的技能计算智能默认 target
+function computeManualTarget(skillId, p){
+  const fwd = p.team==='home' ? 1 : -1;
+  const goalX = p.team==='home' ? PW : 0;
+  const goalY = PH / 2;
+  switch(skillId){
+    case 'moveTo':    // 跟球
+      return { x: ball.x, y: ball.y };
+    case 'sprint':    // 向前冲刺
+      return { x: clamp(p.x + fwd*100, 20, PW-20), y: p.y + rng(-20,20) };
+    case 'dribble':   // 带球向对方球门
+      return { x: clamp(p.x + fwd*60, 20, PW-20), y: clamp(p.y + (goalY-p.y)*0.3, 20, PH-20) };
+    case 'shortPass': {  // 传给最佳队友
+      const tm = players.filter(q=>q.team===p.team && q!==p && d(p,q)>40 && d(p,q)<200);
+      if(!tm.length) return null;
+      const t = findBestPassTarget(p, tm);
+      return t ? { x:t.x, y:t.y } : null;
+    }
+    case 'throughPass': {  // 直塞最前队友
+      const tm = players.filter(q=>q.team===p.team && q!==p && d(p,q)>40 && d(p,q)<300);
+      if(!tm.length) return null;
+      const t = tm.sort((a,b)=>(b.x-a.x)*fwd)[0];
+      return { x:t.x+fwd*30, y:t.y };
+    }
+    case 'longPass': {  // 长传前方队友
+      const tm = players.filter(q=>q.team===p.team && q!==p && d(p,q)>100 && d(p,q)<450);
+      if(!tm.length) return { x: clamp(p.x+fwd*200, 20, PW-20), y: p.y+rng(-50,50) };
+      const t = tm.sort((a,b)=>(b.x-a.x)*fwd)[0];
+      return { x:t.x, y:t.y };
+    }
+    case 'cross': {  // 传中找前锋
+      const st = players.find(q=>q.team===p.team && q.role==='ST');
+      return st ? { x:st.x, y:st.y } : { x: clamp(p.x+fwd*80, 20, PW-20), y: p.y };
+    }
+    case 'shoot':     // 射门
+      return { x: goalX, y: goalY + rng(-GH*0.4, GH*0.4) };
+    case 'tackle':
+    case 'slideTackle': {  // 抢/铲最近对手
+      const opp = nearestOpponent(p);
+      return opp ? { x:opp.x, y:opp.y } : null;
+    }
+    case 'mark': {  // 盯最近对手
+      const opp = nearestOpponent(p);
+      return opp ? { x:opp.x, y:opp.y } : null;
+    }
+    case 'intercept':  // 拦截预判球路
+      return { x: ball.x + (ball.vx||0)*8, y: ball.y + (ball.vy||0)*8 };
+    case 'gkSave':
+    case 'gkClaim':
+      return { x: ball.x, y: ball.y };
+    case 'gkClear':
+      return { x: clamp(p.x+fwd*200, 20, PW-20), y: rng(PH*0.2, PH*0.8) };
+    default:
+      return { x: p.x, y: p.y };
+  }
+}
+function onRGlob(k,el){rulesConfig[k]=parseFloat(el.value);saveRules();el.parentElement.querySelector('.r-val').textContent=el.value;if(k==='halfLen')applyRules();}
+function onRPS(k,el){const v=parseFloat(el.value);rulesConfig.passScore=rulesConfig.passScore||{};rulesConfig.passScore[k]=v;saveRules();el.parentElement.querySelector('.r-val').textContent=v;}
 function resetRulesJSON(){resetRules();if(panelMode==='rules')renderRulesPanelFull();log('⚙ 比赛规则已恢复默认');}
 
 // ═══════════════════════════════════════════════════════════════
@@ -678,7 +1901,14 @@ function resetRulesJSON(){resetRules();if(panelMode==='rules')renderRulesPanelFu
 document.getElementById('btnPause').onclick=function(){paused=!paused;this.textContent=paused?'▶ 继续':'⏸ 暂停';if(!paused)prevT=0;};
 document.querySelectorAll('.speed-group button').forEach(b=>b.onclick=function(){document.querySelectorAll('.speed-group button').forEach(x=>x.classList.remove('on'));this.classList.add('on');spd=parseInt(this.dataset.speed);});
 document.getElementById('btnRules').onclick=function(){panelMode='rules';selectedPlayer=null;renderRulesPanelFull();};
-document.getElementById('btnReset').onclick=function(){score={h:0,a:0};matchTime=0;half=1;phase='goal';phaseTimer=0.5;lastTouch=null;commentary=[];document.getElementById('scoreHome').textContent='0';document.getElementById('scoreAway').textContent='0';document.getElementById('matchTime').textContent='00:00';log('🔄 比赛重置！');createPlayers();createBall();setTimeout(()=>resetPos(null),500);document.getElementById('btnPause').textContent='⏸ 暂停';paused=false;closePanel();};
+document.getElementById('btnCoach').onclick=function(){panelMode='coach';selectedPlayer=null;renderCoachPanel();};
+document.getElementById('btnManual').onclick=function(){panelMode='manual';selectedPlayer=null;renderManualPanel();};
+let coachPanelTeam='home';  // 打法面板当前编辑的队伍
+let manualPanelTeam='home'; // 手动面板当前查看的队伍
+let manualSelectedPlayer=null;  // 手动面板选中的球员
+// 决策曲线图清空按钮：清空历史帧并重绘
+document.getElementById('btnClearChart').onclick=function(){decisionHistory.length=0;decisionFrameCounter=0;drawDecisionChart();log('📈 决策曲线已清空');};
+document.getElementById('btnReset').onclick=function(){score={h:0,a:0};matchTime=0;half=1;phase='goal';phaseTimer=0.5;lastTouch=null;commentary=[];document.getElementById('scoreHome').textContent='0';document.getElementById('scoreAway').textContent='0';document.getElementById('matchTime').textContent='00:00';log('🔄 比赛重置！');createPlayers();createBall();setTimeout(()=>resetPos(null),500);document.getElementById('btnPause').textContent='⏸ 暂停';paused=false;closePanel();decisionHistory.length=0;decisionFrameCounter=0;drawDecisionChart();};
 
 loadRules();applyRules();if(!loadProfiles())savedProfiles={};
 createPlayers();createBall();resetPos(null);
