@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(identify /Users/jooper/Documents/samples/todoapp/ai-fc/assets/page_game_home.png)",
+      "Bash(sips -g pixelWidth -g pixelHeight /Users/jooper/Documents/samples/todoapp/ai-fc/assets/page_game_home.png)",
+      "Bash(open *)"
     ]
   }
 }

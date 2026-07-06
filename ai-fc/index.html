@@ -598,6 +598,57 @@
   </div>
 </section>
 
+<!-- ============ MATCH SCREENSHOT · 游戏实况截图 ============ -->
+<section class="py-20 relative">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-8">
+      <div class="text-xs tracking-[0.3em] font-semibold mb-2" style="color:var(--pitch-deep);">LIVE MATCH · 比赛实况</div>
+      <h2 class="serif font-bold text-4xl" style="color:var(--ink);">等距视角下的<span style="color:var(--pitch);">绿茵战况</span>。</h2>
+    </div>
+    <div class="rounded-3xl overflow-hidden shadow-2xl border" style="border-color:var(--line); background:var(--ink);">
+      <img src="./assets/page_game_home.png" alt="AI FC 比赛实况 · 绿茵场主视角" class="w-full h-auto block" />
+    </div>
+    <div class="flex flex-wrap items-center justify-center gap-5 mt-5 text-sm" style="color:var(--ink-dim);">
+      <span class="flex items-center gap-1.5"><span class="mi text-base" style="color:var(--coral);">sports_soccer</span> 比赛实况 · 22 人同场</span>
+      <span class="flex items-center gap-1.5"><span class="mi text-base" style="color:var(--gold);">visibility</span> 等距视角 · ~60° 俯角</span>
+      <span class="flex items-center gap-1.5"><span class="mi text-base" style="color:var(--pitch-light);">speed</span> 10× 倍速中</span>
+      <span class="flex items-center gap-1.5"><span class="mi text-base" style="color:var(--coral-deep);">directions_run</span> 盘带 / 传球 / 抢断动作</span>
+    </div>
+
+    <!-- 四种动作状态标注 -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 max-w-3xl mx-auto">
+      <div class="leaf-card !p-4 text-center">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2" style="background:var(--mist);">
+          <span class="mi text-xl" style="color:var(--pitch-deep);">directions_run</span>
+        </div>
+        <div class="serif font-bold text-sm" style="color:var(--ink);">盘带</div>
+        <div class="text-[11px] mt-0.5" style="color:var(--ink-dim);">带球推进 · 变向过人</div>
+      </div>
+      <div class="leaf-card !p-4 text-center">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2" style="background:var(--mist);">
+          <span class="mi text-xl" style="color:var(--gold-deep);">sports_soccer</span>
+        </div>
+        <div class="serif font-bold text-sm" style="color:var(--ink);">传球</div>
+        <div class="text-[11px] mt-0.5" style="color:var(--ink-dim);">地面直塞 · 高空长传</div>
+      </div>
+      <div class="leaf-card !p-4 text-center">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2" style="background:var(--mist);">
+          <span class="mi text-xl" style="color:var(--coral);">shield</span>
+        </div>
+        <div class="serif font-bold text-sm" style="color:var(--ink);">抢断</div>
+        <div class="text-[11px] mt-0.5" style="color:var(--ink-dim);">滑铲 · 卡位 · 身体对抗</div>
+      </div>
+      <div class="leaf-card !p-4 text-center">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2" style="background:var(--mist);">
+          <span class="mi text-xl" style="color:var(--pitch);">gps_fixed</span>
+        </div>
+        <div class="serif font-bold text-sm" style="color:var(--ink);">定位</div>
+        <div class="text-[11px] mt-0.5" style="color:var(--ink-dim);">无球跑位 · 防守站位</div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ============ FLOW 04 · 实时教练干预 ============ -->
 <section id="coach" class="py-24 relative" style="background:linear-gradient(180deg, transparent, var(--mist), transparent);">
   <div class="max-w-6xl mx-auto px-6">
@@ -1040,7 +1091,7 @@
         <span class="mi text-white" style="font-size:14px;">lightbulb</span>
       </div>
       <span class="serif text-lg font-bold" style="color:var(--ink);">Ideas</span>
-      <span class="chip text-[10px] ml-1" style="background:rgba(232,101,78,0.15); color:var(--coral);">1 条</span>
+      <span class="chip text-[10px] ml-1" style="background:rgba(232,101,78,0.15); color:var(--coral);">2 条</span>
     </div>
     <p class="text-[11px] leading-relaxed" style="color:var(--ink-dim);">产品想法备忘 · 左右滑动查看</p>
     <div class="flex items-center gap-1 mt-2 text-[10px]" style="color:var(--ink-dim); opacity:0.6;">
@@ -1143,11 +1194,175 @@
       </div>
     </div><!-- /idea-slot #001 -->
 
+    <!-- ── Idea #002 · 球员信息交互方案 ── -->
+    <div class="idea-slot">
+      <div class="rounded-3xl border bg-white/85 p-5 h-full overflow-y-auto" style="border-color:var(--line); box-shadow:0 8px 24px -12px rgba(14,31,23,0.08); max-height:calc(100vh - 160px);">
+        <div class="flex items-start justify-between mb-3">
+          <div>
+            <div class="text-[10px] tracking-widest uppercase mb-1" style="color:var(--ink-dim);">Idea #002 · UI / 交互方案</div>
+            <div class="serif text-[17px] font-bold leading-snug" style="color:var(--ink);">
+              场上球员信息<br/>
+              什么时候该「藏」？
+            </div>
+          </div>
+          <span class="chip text-[10px] shrink-0 ml-2" style="background:rgba(27,94,63,0.15); color:var(--pitch-deep); border:1px solid rgba(27,94,63,0.4);">已采纳</span>
+        </div>
+        <p class="text-[12px] leading-relaxed mb-4" style="color:var(--ink-dim);">
+          等距视角下，22 个球员圆点很小，号码和名字挤在里面根本看不清。
+          解决方案是<b style="color:var(--ink);">三态信息交互方案</b>——根据上下文切换信息密度，不该显示的时候绝不显示。
+        </p>
+
+        <!-- three states -->
+        <div class="space-y-3 mb-4">
+          <!-- state A -->
+          <div class="rounded-2xl border p-3" style="background:rgba(27,94,63,0.06); border-color:rgba(27,94,63,0.18);">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background:var(--pitch); color:white;">
+                  <span class="mi" style="font-size:14px;">visibility</span>
+                </div>
+                <div>
+                  <div class="text-[11px] font-semibold" style="color:var(--ink);">态 A · 比赛默认 <span class="chip text-[9px] ml-1" style="background:var(--mist); color:var(--ink-dim);">最少信息</span></div>
+                  <div class="text-[9px]" style="color:var(--ink-dim);">仅显示号码 · 白字 + 黑色粗描边 · 高对比度</div>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 mt-2">
+              <div class="w-9 h-9 rounded-full flex items-center justify-center bg-red-500 shadow-sm" style="border:2px solid rgba(255,255,255,0.6);">
+                <span class="text-[13px] font-black text-white" style="text-shadow:0 1px 3px rgba(0,0,0,0.6);">9</span>
+              </div>
+              <div class="w-9 h-9 rounded-full flex items-center justify-center bg-blue-500 shadow-sm" style="border:2px solid rgba(255,255,255,0.6);">
+                <span class="text-[13px] font-black text-white" style="text-shadow:0 1px 3px rgba(0,0,0,0.6);">5</span>
+              </div>
+              <div class="w-9 h-9 rounded-full flex items-center justify-center bg-red-500 shadow-sm" style="border:2px solid rgba(255,255,255,0.6);">
+                <span class="text-[13px] font-black text-white" style="text-shadow:0 1px 3px rgba(0,0,0,0.6);">7</span>
+              </div>
+              <span class="text-[10px]" style="color:var(--ink-soft);">→ 纯色圆点 + 粗描边，一眼分清阵营</span>
+            </div>
+          </div>
+
+          <!-- state B -->
+          <div class="rounded-2xl border p-3" style="background:rgba(232,184,74,0.08); border-color:rgba(232,184,74,0.25);">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background:var(--gold); color:var(--ink);">
+                  <span class="mi" style="font-size:14px;">touch_app</span>
+                </div>
+                <div>
+                  <div class="text-[11px] font-semibold" style="color:var(--ink);">态 B · 悬停 / 选中 <span class="chip text-[9px] ml-1" style="background:#FFF6E0; color:var(--gold-deep);">交互展示</span></div>
+                  <div class="text-[9px]" style="color:var(--ink-dim);">头顶弹出悬浮信息条 · 正立面向屏幕</div>
+                </div>
+              </div>
+            </div>
+            <div class="rounded-xl bg-white p-3 border" style="border-color:var(--line);">
+              <div class="flex justify-center mb-1">
+                <span class="chip text-[9px] tracking-wider" style="background:rgba(232,184,74,0.2); color:var(--gold-deep); border:1px solid rgba(232,184,74,0.3);">
+                  <span class="mi" style="font-size:10px;">person</span> 9 · 安德森
+                </span>
+              </div>
+              <div class="flex items-center justify-center gap-1">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center bg-red-500 shadow" style="border:2px solid rgba(255,255,255,0.8);">
+                  <span class="text-[16px] font-black text-white" style="text-shadow:0 1px 3px rgba(0,0,0,0.6);">9</span>
+                </div>
+                <div class="flex flex-col items-start ml-1">
+                  <div class="w-20 h-2 rounded-full bg-gray-200 overflow-hidden">
+                    <div class="h-full bg-red-400" style="width:62%;"></div>
+                  </div>
+                  <div class="text-[9px] text-gray-400 mt-0.5">体力 62%</div>
+                </div>
+                <div class="flex flex-col items-start ml-1">
+                  <div class="w-16 h-2 rounded-full bg-gray-200 overflow-hidden">
+                    <div class="h-full bg-amber-400" style="width:81%;"></div>
+                  </div>
+                  <div class="text-[9px] text-gray-400 mt-0.5">技术 81</div>
+                </div>
+              </div>
+            </div>
+            <div class="text-[10px] mt-1.5" style="color:var(--ink-dim);">
+              → 标签始终正立（Billboard），不受等距透视影响；信息面板紧贴圆点悬浮
+            </div>
+          </div>
+
+          <!-- state C -->
+          <div class="rounded-2xl border p-3" style="background:rgba(232,101,78,0.06); border-color:rgba(232,101,78,0.2);">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background:var(--coral); color:white;">
+                  <span class="mi" style="font-size:14px;">pause_circle</span>
+                </div>
+                <div>
+                  <div class="text-[11px] font-semibold" style="color:var(--ink);">态 C · 暂停指挥 <span class="chip text-[9px] ml-1" style="background:#FBEEE8; color:var(--coral-deep);">完整面板</span></div>
+                  <div class="text-[9px]" style="color:var(--ink-dim);">侧边滑出球员详情 + 教练指令区域</div>
+                </div>
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5 text-center">
+              <div class="rounded-lg p-2 border" style="background:white; border-color:var(--line);">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center bg-red-500 mx-auto shadow-sm" style="border:1.5px solid rgba(255,255,255,0.6);">
+                  <span class="text-[12px] font-black text-white" style="text-shadow:0 1px 3px rgba(0,0,0,0.6);">9</span>
+                </div>
+                <div class="text-[9px] font-semibold mt-1">安德森</div>
+                <div class="text-[8px]" style="color:var(--ink-dim);">前锋 · 41%</div>
+                <span class="chip text-[8px] px-1 py-0 mt-0.5 inline-block" style="background:var(--coral); color:white;">指令</span>
+              </div>
+              <div class="rounded-lg p-2 border" style="background:white; border-color:var(--line);">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center bg-red-500 mx-auto shadow-sm" style="border:1.5px solid rgba(255,255,255,0.6);">
+                  <span class="text-[12px] font-black text-white" style="text-shadow:0 1px 3px rgba(0,0,0,0.6);">8</span>
+                </div>
+                <div class="text-[9px] font-semibold mt-1">李·豪</div>
+                <div class="text-[8px]" style="color:var(--ink-dim);">中场 · 78%</div>
+                <span class="chip text-[8px] px-1 py-0 mt-0.5 inline-block" style="background:rgba(232,184,74,0.7); color:var(--ink);">换人</span>
+              </div>
+              <div class="rounded-lg p-2 border" style="background:white; border-color:var(--line);">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center bg-blue-500 mx-auto shadow-sm" style="border:1.5px solid rgba(255,255,255,0.6);">
+                  <span class="text-[12px] font-black text-white" style="text-shadow:0 1px 3px rgba(0,0,0,0.6);">5</span>
+                </div>
+                <div class="text-[9px] font-semibold mt-1">陈·卫</div>
+                <div class="text-[8px]" style="color:var(--ink-dim);">后卫 · 90%</div>
+                <span class="chip text-[8px] px-1 py-0 mt-0.5 inline-block" style="background:rgba(232,101,78,0.15); color:var(--ink-dim);">—</span>
+              </div>
+            </div>
+            <div class="text-[10px] mt-1.5" style="color:var(--ink-dim);">
+              → 暂停时展开教练面板，可对单个球员下指令、换人、调整战术
+            </div>
+          </div>
+        </div>
+
+        <!-- pros / cons -->
+        <div class="grid grid-cols-2 gap-2">
+          <div class="rounded-xl border p-2.5" style="background:rgba(221,234,224,0.5); border-color:rgba(27,94,63,0.2);">
+            <div class="text-[9px] font-medium mb-1.5 flex items-center gap-1" style="color:var(--pitch-deep);"><span class="mi" style="font-size:11px;">thumb_up</span>亮点</div>
+            <ul class="text-[10px] space-y-1 leading-relaxed" style="color:var(--ink-dim);">
+              <li>· 三态递进，信息不过载</li>
+              <li>· 圆点+粗描边，一眼分清阵营</li>
+              <li>· 标签 Billboard 不受透视影响</li>
+              <li>· 暂停面板集成教练指令</li>
+            </ul>
+          </div>
+          <div class="rounded-xl border p-2.5" style="background:rgba(251,238,232,0.4); border-color:rgba(232,101,78,0.25);">
+            <div class="text-[9px] font-medium mb-1.5 flex items-center gap-1" style="color:var(--coral);"><span class="mi" style="font-size:11px;">warning_amber</span>待解决</div>
+            <ul class="text-[10px] space-y-1 leading-relaxed" style="color:var(--ink-dim);">
+              <li>· 22 个标签同帧渲染性能</li>
+              <li>· 标签与球场物体遮挡关系</li>
+              <li>· Zoom 极远时标签聚合/消失</li>
+              <li>· 移动端触摸适配</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- tech stack chip -->
+        <div class="mt-3 text-[10px] px-3 py-2 rounded-lg" style="background:rgba(14,31,23,0.04); color:var(--ink-dim);">
+          <span style="color:var(--ink); font-weight:600;">实现方案 ·</span> Unity World Space Canvas + TextMeshPro → Billboard 脚本 → LOD 远距过滤 → 三态事件驱动
+        </div>
+      </div>
+    </div><!-- /idea-slot #002 -->
+
   </div><!-- /ideas-strip -->
 
   <!-- dot indicator -->
   <div class="ideas-dots shrink-0" id="ideaDots">
     <span class="active"></span>
+    <span></span>
   </div>
 </div><!-- /ideas-col -->
 
