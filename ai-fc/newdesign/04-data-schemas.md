@@ -283,6 +283,16 @@ DecisionTrace = {
 
 调试面板据此画出"某球员因某事件被唤醒 → 各候选动作分数 → 选中项"，用于肉眼验证核心范式。
 
+### 每帧保留（决策时间线）
+
+每个 `PlayerAgent` 维护 `history: DecisionTrace[]`，**逐帧记录、完整保留**（`maxHistory=0` 表示不丢弃）：
+
+- **决策帧**（`triggeredBy: 'interrupt' | 'backgroundTick'`）：记录完整 `candidates` 与 `chosen`。
+- **重复帧**（`triggeredBy: 'repeat'`，未触发新决策、沿用上次意图）：`candidates` 为空，`chosen.action` 记为当前执行的意图标签（如 `Move→(52,34)`），保证时间线逐帧连续、无缺帧。
+- 每条记录附带 `timeMs / hasBall / phase`，便于回放定位。
+
+调试面板对选中球员**增量渲染**该时间线（DOM 仅显示最近 N 行以保证性能，数据在 `agent.history` 中完整保留），并支持一键导出该球员全部帧的决策数据为 JSON。
+
 ---
 
 ## 7. 契约稳定性原则

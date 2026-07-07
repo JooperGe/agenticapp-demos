@@ -12,6 +12,8 @@ const debug = new DebugPanel({
   statusEl: document.getElementById('status'),
   eventsEl: document.getElementById('events'),
   traceEl: document.getElementById('trace'),
+  timelineEl: document.getElementById('traceTimeline'),
+  timelineCountEl: document.getElementById('traceCount'),
   bus: boot.bus,
 });
 boot.loop.renderer = renderer;
@@ -24,6 +26,22 @@ renderer.draw(boot.world);
 document.getElementById('btnStart').addEventListener('click', () => boot.loop.start());
 document.getElementById('btnPause').addEventListener('click', () => boot.loop.stop());
 document.getElementById('btnStep').addEventListener('click', () => boot.loop.step());
+
+// 导出选中球员的每帧决策数据（完整保留于内存，此处落盘为 JSON）
+document.getElementById('btnExport').addEventListener('click', () => {
+  const id = boot.loop.selectedPlayerId;
+  if (!id) { alert('请先点击选中一名球员'); return; }
+  const agent = boot.loop.agentOf(id);
+  if (!agent) return;
+  const blob = new Blob([JSON.stringify({ playerId: id, frames: agent.history }, null, 2)],
+    { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `decisions_${id}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
 
 // 点击球员选中，查看其决策打分
 canvas.addEventListener('click', (ev) => {

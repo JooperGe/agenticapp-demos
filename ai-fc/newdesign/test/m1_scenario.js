@@ -85,6 +85,15 @@ checks.push(['界外球流程后恢复 InPlay', backInPlay]);
 checks.push(['出现过控球权变更(→home)', bus.find('PossessionChanged').some((e) => e.toTeamId === 'home')]);
 checks.push(['完整事件子序列按顺序成立', assertSubsequence(steps)]);
 
+// 每帧决策数据完整保留校验：任取一名球员，其 history 应逐帧连续、无缺帧
+const sample = boot.agents.find((a) => a.id === 'home-6');
+const h = sample ? sample.history : [];
+const contiguous = h.length > 0 && h.every((r, i) => i === 0 || r.frame === h[i - 1].frame + 1);
+checks.push([`每帧决策数据逐帧保留(home-6 共 ${h.length} 帧, =总帧数 ${clock.frame})`,
+  h.length === clock.frame && contiguous]);
+checks.push(['决策记录含触发来源与选中动作',
+  h.length > 0 && h[0].triggeredBy != null && h[0].chosen != null]);
+
 let ok = true;
 console.log('\n=== M1 垂直切片验收 ===');
 for (const [name, pass] of checks) {
