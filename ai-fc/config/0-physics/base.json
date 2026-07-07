@@ -1,0 +1,28 @@
+{
+  "version": "1.0.0",
+  "timestamp": "2026-07-07T00:00:00Z",
+  "field": {
+    "length": 105,
+    "width": 68,
+    "centerCircleRadius": 9.15,
+    "penaltyAreaLength": 16.5,
+    "penaltyAreaWidth": 40.32,
+    "goalAreaLength": 5.5,
+    "goalAreaWidth": 18.32,
+    "cornerArcRadius": 1
+  },
+  "ball": {
+    "mass": 0.43,
+    "radius": 0.22,
+    "friction": 0.02,
+    "elasticity": 0.8,
+    "maxVelocity": 30,
+    "acceleration": 5
+  },
+  "environment": {
+    "gravity": 9.8,
+    "windResistance": 0,
+    "collisionDetection": "AABB"
+  },
+  "description": "标准足球场和物理参数，符合国际足联规范"
+}

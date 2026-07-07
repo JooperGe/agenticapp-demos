@@ -1,0 +1,248 @@
+{
+  "version": "1.0.0",
+  "timestamp": "2026-07-07T00:00:00Z",
+  "decisionFramework": {
+    "description": "球员决策的整体框架",
+    "structure": [
+      {
+        "level": 1,
+        "name": "情境评估",
+        "description": "评估当前比赛形势"
+      },
+      {
+        "level": 2,
+        "name": "优先级确定",
+        "description": "根据阵型和策略确定行为优先级"
+      },
+      {
+        "level": 3,
+        "name": "规则匹配",
+        "description": "匹配决策规则库中的规则"
+      },
+      {
+        "level": 4,
+        "name": "行为执行",
+        "description": "根据球员属性权重执行行为"
+      }
+    ]
+  },
+  "decisionPriorities": [
+    {
+      "priority": 1,
+      "type": "defend",
+      "name": "防守优先",
+      "description": "当对手威胁球门时，优先考虑防守"
+    },
+    {
+      "priority": 2,
+      "type": "counterAttack",
+      "name": "快速反击",
+      "description": "获得球权后，优先考虑反击"
+    },
+    {
+      "priority": 3,
+      "type": "buildUp",
+      "name": "阵地进攻",
+      "description": "稳步推进和组织进攻"
+    },
+    {
+      "priority": 4,
+      "type": "maintain",
+      "name": "保持阵型",
+      "description": "维持队形和防线稳定性"
+    }
+  ],
+  "ruleLibrary": {
+    "description": "球员在决策中可以参考的规则库，这些规则定义了在特定情况下应该优先考虑什么",
+    "rules": [
+      {
+        "id": "has_ball_clear_pass",
+        "name": "有球且有明确传球目标",
+        "condition": "I_have_ball && open_teammate_visible",
+        "priority": 1,
+        "action": "attemptPass",
+        "trigger": "我有球 && 视野内有无人盯防的队友",
+        "weights": {
+          "passingTechnique": 0.4,
+          "visionAttribute": 0.3,
+          "targetOpenDegree": 0.2,
+          "decisionMaking": 0.1
+        },
+        "successRateFormula": "passing * weights.passing + vision * weights.vision + ...",
+        "description": "基础的传球决策：当有清晰的传球目标时"
+      },
+      {
+        "id": "has_ball_shooting_chance",
+        "name": "有球且有射门机会",
+        "condition": "I_have_ball && close_to_goal && clear_shot_path",
+        "priority": 2,
+        "action": "attemptShot",
+        "trigger": "我有球 && 禁区内 && 射门路线清晰",
+        "weights": {
+          "shootingSkill": 0.5,
+          "shotTiming": 0.3,
+          "pressureLevel": 0.2
+        },
+        "description": "当禁区内有射门机会时，评估是否射门"
+      },
+      {
+        "id": "has_ball_under_pressure",
+        "name": "有球但受压",
+        "condition": "I_have_ball && opponent_close && options_limited",
+        "priority": 1,
+        "action": "attemptSafePass",
+        "trigger": "我有球 && 对手逼近 && 传球选项受限",
+        "weights": {
+          "passingAccuracy": 0.7,
+          "decisionMaking": 0.2,
+          "urgency": 0.1
+        },
+        "description": "被逼迫时，倾向安全传球以保持球权"
+      },
+      {
+        "id": "has_ball_long_pass",
+        "name": "有球且有长传机会",
+        "condition": "I_have_ball && far_open_teammate && formation_allow",
+        "priority": 3,
+        "action": "attemptLongPass",
+        "trigger": "我有球 && 远距离无人盯防队友 && 战术允许",
+        "weights": {
+          "visionAttribute": 0.4,
+          "passingTechnique": 0.3,
+          "tacticalTendency": 0.3
+        },
+        "description": "长传快速推进，需要技术和战术支持"
+      },
+      {
+        "id": "no_ball_run_to_space",
+        "name": "无球但有跑位空间",
+        "condition": "teammate_has_ball && I_am_unmarked && forward_space",
+        "priority": 1,
+        "action": "runToPosition",
+        "trigger": "我没有球 && 无人盯防 && 前方有空档",
+        "weights": {
+          "positioningAwareness": 0.5,
+          "speed": 0.3,
+          "vision": 0.2
+        },
+        "description": "主动跑位为队友创造传球目标"
+      },
+      {
+        "id": "opponent_attacking_defend",
+        "name": "对手进攻我需要防守",
+        "condition": "opponent_close_to_goal && ball_with_opponent",
+        "priority": 1,
+        "action": "defend",
+        "trigger": "对手威胁禁区 && 对手有球",
+        "weights": {
+          "positioningAwareness": 0.5,
+          "strength": 0.3,
+          "mentalState": 0.2
+        },
+        "description": "防守对手进攻威胁"
+      },
+      {
+        "id": "tackle_opportunity",
+        "name": "抢断机会",
+        "condition": "opponent_has_ball && close_range && good_timing",
+        "priority": 2,
+        "action": "attemptTackle",
+        "trigger": "对手近距离有球 && 抢断时机好",
+        "weights": {
+          "timing": 0.4,
+          "strength": 0.3,
+          "skill": 0.3
+        },
+        "description": "靠近持球对手时尝试抢断"
+      },
+      {
+        "id": "intercept_opportunity",
+        "name": "拦截传球",
+        "condition": "opponent_passing && ball_path_predictable && positioned",
+        "priority": 2,
+        "action": "attemptIntercept",
+        "trigger": "对手传球 && 我能预测轨迹 && 位置有利",
+        "weights": {
+          "visionAttribute": 0.4,
+          "positioningAwareness": 0.4,
+          "timing": 0.2
+        },
+        "description": "在对手传球时提前位置拦截"
+      },
+      {
+        "id": "cover_defensive_gap",
+        "name": "补防漏洞",
+        "condition": "defensive_gap_detected && capable_to_cover",
+        "priority": 1,
+        "action": "moveToDefensiveGap",
+        "trigger": "防线出现漏洞 && 我能及时赶到",
+        "weights": {
+          "positioningAwareness": 0.6,
+          "speed": 0.2,
+          "teamwork": 0.2
+        },
+        "description": "主动补防队友漏掉的防守位置"
+      },
+      {
+        "id": "dribble_to_advance",
+        "name": "盘带推进",
+        "condition": "I_have_ball && open_space && no_immediate_threat",
+        "priority": 3,
+        "action": "dribble",
+        "trigger": "我有球 && 前方开阔 && 无直接威胁",
+        "weights": {
+          "dribbling": 0.5,
+          "speed": 0.3,
+          "positioningAwareness": 0.2
+        },
+        "description": "有空间时盘带推进而不是立即传球"
+      }
+    ]
+  },
+  "playerProfiles": {
+    "description": "不同球员类型的决策倾向",
+    "profiles": [
+      {
+        "profile": "attacker",
+        "name": "进攻型",
+        "rulePriorities": ["shooting-opportunity", "through-pass", "long-pass-opportunity", "safe-pass"],
+        "riskTaking": 0.8,
+        "description": "倾向于积极进攻和射门"
+      },
+      {
+        "profile": "defender",
+        "name": "防守型",
+        "rulePriorities": ["defensive-cover", "tackle-opportunity", "safe-pass", "long-pass-opportunity"],
+        "riskTaking": 0.2,
+        "description": "倾向于稳健防守和简单传球"
+      },
+      {
+        "profile": "midfielder",
+        "name": "中场型",
+        "rulePriorities": ["through-pass", "defensive-cover", "long-pass-opportunity", "safe-pass"],
+        "riskTaking": 0.5,
+        "description": "均衡的进攻和防守"
+      }
+    ]
+  },
+  "decisionModifiers": {
+    "description": "基于状态的决策修正因子",
+    "modifiers": [
+      {
+        "factor": "fatigue",
+        "effect": "decrease risk taking, prefer conservative passes",
+        "formula": "riskTaking *= (1 - fatigue * 0.01)"
+      },
+      {
+        "factor": "mentalState",
+        "effect": "confident players take more risks, pressured players become conservative",
+        "formula": "riskTaking *= (1 + mentalState * 0.005)"
+      },
+      {
+        "factor": "scoreStatus",
+        "effect": "trailing team becomes more aggressive, leading team more conservative",
+        "formula": "riskTaking *= (1 + (opponent_score - team_score) * 0.05)"
+      }
+    ]
+  }
+}

@@ -1,0 +1,294 @@
+{
+  "version": "1.0.0",
+  "timestamp": "2026-07-07T00:00:00Z",
+  "description": "执行引擎层定义 - 控制比赛循环和时序",
+  
+  "executionModel": {
+    "type": "distributed_agent_based",
+    "description": "分布式球员智能体模型，每个球员独立决策",
+    "core_principle": "规则系统作为裁判，不干预决策，仅进行验证和仲裁"
+  },
+
+  "matchLoop": {
+    "description": "每一帧的比赛循环",
+    "frameRate": 60,
+    "frameDuration": 16.67,
+    "pseudoCode": [
+      "1. 环境更新：更新所有球员位置、球状态",
+      "2. 决策阶段：22个球员并行做独立决策（各自查询局部信息）",
+      "3. 验证阶段：规则系统验证所有动作的合法性",
+      "4. 执行阶段：物理系统执行所有合法动作",
+      "5. 状态更新：更新所有球员的动态状态",
+      "6. 反馈记录：记录事件和统计数据"
+    ],
+    "phases": [
+      {
+        "phase": 1,
+        "name": "环境更新",
+        "duration_ms": 0,
+        "responsible": "执行引擎",
+        "actions": [
+          "同步球的位置和速度",
+          "同步所有球员的位置和速度",
+          "计算每个球员的视野范围（基于位置和视野属性）",
+          "生成局部可观测状态（每个球员看到什么）"
+        ]
+      },
+      {
+        "phase": 2,
+        "name": "球员决策阶段",
+        "duration_ms": 10,
+        "responsible": "22个球员智能体（并行）",
+        "actions": [
+          "球员评估自身位置、属性、状态",
+          "球员查询视野范围内的信息（球、队友、对手）",
+          "球员查询【策略系统】的战术指导",
+          "球员匹配【决策层】的决策规则库",
+          "球员基于属性+状态计算各选项的成功率",
+          "球员选择最优动作"
+        ],
+        "output": "22个独立的动作决定 { playerID, actionType, targetID, parameters }"
+      },
+      {
+        "phase": 3,
+        "name": "规则验证阶段",
+        "duration_ms": 3,
+        "responsible": "规则系统（裁判）",
+        "actions": [
+          "验证每个动作的合法性",
+          "检查越位、犯规、禁区规则",
+          "判定对抗结果（谁赢了这次对抗）",
+          "判定进球、出界等特殊事件",
+          "生成裁决结果（动作继续/取消，球权分配）"
+        ],
+        "output": "验证后的合法动作列表 + 特殊事件列表"
+      },
+      {
+        "phase": 4,
+        "name": "物理执行阶段",
+        "duration_ms": 2,
+        "responsible": "物理系统",
+        "actions": [
+          "执行所有合法的动作",
+          "计算球的轨迹和速度",
+          "更新所有对象位置",
+          "处理碰撞和弹射",
+          "计算新的速度和方向"
+        ],
+        "output": "新的全局物理状态"
+      },
+      {
+        "phase": 5,
+        "name": "状态更新阶段",
+        "duration_ms": 1,
+        "responsible": "状态系统",
+        "actions": [
+          "每个参与动作的球员更新疲劳度",
+          "根据动作结果更新心理值",
+          "更新伤病风险",
+          "更新失误统计",
+          "计算form变化"
+        ],
+        "output": "更新后的所有球员状态"
+      },
+      {
+        "phase": 6,
+        "name": "反馈记录阶段",
+        "duration_ms": 1,
+        "responsible": "反馈系统",
+        "actions": [
+          "记录发生的所有事件",
+          "更新比赛统计数据",
+          "计算player rating增量",
+          "记录球队级别的指标"
+        ],
+        "output": "事件日志和统计数据"
+      }
+    ]
+  },
+
+  "playerAgentModel": {
+    "description": "单个球员智能体的决策模型",
+    "structure": {
+      "input": {
+        "self": ["position", "velocity", "attributes", "state", "skills"],
+        "environment": [
+          "ball_position",
+          "ball_velocity",
+          "visible_teammates",
+          "visible_opponents",
+          "field_boundaries"
+        ],
+        "tactical": ["formation", "tactical_tendencies", "position_instructions"]
+      },
+      "process": [
+        "1. 情境理解：我是否有球？对手在哪？队友在哪？",
+        "2. 目标评估：我应该做什么？（基于位置和战术）",
+        "3. 选项生成：我能做的动作有哪些？",
+        "4. 能力评估：基于我的属性和状态，我能成功吗？",
+        "5. 风险评估：每个选项的失败概率是多少？",
+        "6. 决策制定：选择期望收益最高的动作"
+      ],
+      "output": {
+        "action": {
+          "type": "pass | shoot | dribble | positioning | defense | intercept",
+          "target": "playerID | position | direction",
+          "parameters": {
+            "power": 0.0,
+            "curve": 0.0,
+            "timing": 0,
+            "confidence": 0.0
+          },
+          "expectedSuccessRate": 0.0
+        }
+      }
+    },
+    "decisionRulesExample": {
+      "rule_1": {
+        "id": "has_ball_clear_pass",
+        "condition": "I_have_ball && open_teammate_visible",
+        "priority": 1,
+        "action": "attemptPass",
+        "weights": {
+          "distance_to_teammate": 0.3,
+          "teammate_open_degree": 0.4,
+          "my_passing_accuracy": 0.3
+        }
+      },
+      "rule_2": {
+        "id": "has_ball_shooting_chance",
+        "condition": "I_have_ball && close_to_goal && clear_shot_path",
+        "priority": 2,
+        "action": "attemptShot",
+        "weights": {
+          "shot_distance": 0.3,
+          "my_shooting_accuracy": 0.5,
+          "goalkeeper_position": 0.2
+        }
+      },
+      "rule_3": {
+        "id": "no_ball_run_to_space",
+        "condition": "teammate_has_ball && I_am_unmarked",
+        "priority": 3,
+        "action": "runToPosition",
+        "weights": {
+          "open_space_quality": 0.6,
+          "my_positioning_awareness": 0.4
+        }
+      },
+      "rule_4": {
+        "id": "opponent_attacking_defend",
+        "condition": "opponent_close_to_goal && ball_with_opponent",
+        "priority": 1,
+        "action": "defend",
+        "weights": {
+          "opponent_threat_level": 0.5,
+          "my_defensive_skill": 0.5
+        }
+      }
+    },
+    "visionModel": {
+      "description": "球员的视野范围和可见信息",
+      "baseViewRange": 50,
+      "visionAdjustment": "vision_attribute * 0.5",
+      "peripheralVision": 30,
+      "description": "视野范围受球员的视野属性影响，外围有模糊视野",
+      "informationAccuracy": "受distance和angle影响，距离远的信息精度低"
+    }
+  },
+
+  "rulesSystemRole": {
+    "description": "规则系统的职能 - 充当比赛的中立裁判",
+    "isNeutral": true,
+    "doesNotDecide": "规则系统不决定谁该做什么",
+    "responsibilities": [
+      "验证：这个动作合法吗？",
+      "检测：越位了吗？犯规了吗？",
+      "裁决：如果有冲突，谁赢了？",
+      "判罚：应该给出黄牌还是红牌？",
+      "特殊事件：进球了吗？出界了吗？"
+    ],
+    "doesNotDo": [
+      "不决定球员的动作",
+      "不指挥球队",
+      "不改变球员的决策",
+      "不进行任何主动干预"
+    ]
+  },
+
+  "stateTransition": {
+    "description": "比赛阶段的转移",
+    "phases": [
+      {
+        "phase": "kickoff",
+        "trigger": "matchStart or goalScored",
+        "exitCondition": "ball_in_motion && ballOwner_confirmed",
+        "nextPhase": "inPlay",
+        "specialRules": [
+          "球必须静止在中圈",
+          "对方球员距离≥9.15m",
+          "开球队员不能直接进球"
+        ]
+      },
+      {
+        "phase": "inPlay",
+        "trigger": "normal match flow",
+        "exitCondition": "ball_out_of_play or specialEvent",
+        "nextPhase": "inPlay / throwIn / cornerKick / goalKick / ...",
+        "specialRules": [
+          "正常足球规则生效",
+          "越位规则生效",
+          "所有技能可用"
+        ]
+      },
+      {
+        "phase": "setPlay",
+        "types": ["cornerKick", "freeKick", "throwIn", "goalKick", "penaltyKick"],
+        "trigger": "ball_goes_out_of_play or foul",
+        "exitCondition": "ball_in_play_again",
+        "nextPhase": "inPlay"
+      }
+    ]
+  },
+
+  "timingAndSynchronization": {
+    "description": "时序同步模型",
+    "matchDuration": 90,
+    "timeUnit": "minute",
+    "simulationTickRate": 60,
+    "tickDuration_ms": 16.67,
+    "ticksPerSecond": 60,
+    "ticksPerMinute": 3600,
+    "stoppingTime": {
+      "enabled": true,
+      "accumulatedPerHalf": 3,
+      "triggeredBy": "injuries injuries, substitutions, goal celebrations"
+    },
+    "matchEvents": [
+      {
+        "time": "45:00",
+        "event": "halfTime",
+        "action": "pause, update player state, apply half-time tactics"
+      },
+      {
+        "time": "90:00",
+        "event": "fullTime",
+        "action": "end match, calculate final statistics"
+      }
+    ]
+  },
+
+  "parallelProcessing": {
+    "description": "并行计算模型",
+    "playerDecisions": {
+      "concurrent": true,
+      "count": 22,
+      "computeTime_ms": 10,
+      "description": "所有22个球员同时进行决策，不相互阻塞"
+    },
+    "actionConflicts": {
+      "description": "如果两个球员的动作冲突（如都去抢同一个球）",
+      "resolution": "由规则系统在验证阶段判定谁赢"
+    }
+  }
+}

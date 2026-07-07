@@ -1,0 +1,9 @@
+{
+  "name": "ai-fc-newdesign",
+  "version": "0.1.0",
+  "description": "AI FC 重构：以球员智能体为中心、事件驱动、裁判状态机治理的足球仿真引擎 (M1 垂直切片)",
+  "type": "module",
+  "scripts": {
+    "test": "node test/m1_scenario.js"
+  }
+}

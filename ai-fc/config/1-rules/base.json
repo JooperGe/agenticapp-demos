@@ -1,0 +1,38 @@
+{
+  "version": "1.0.0",
+  "timestamp": "2026-07-07T00:00:00Z",
+  "match": {
+    "duration": 90,
+    "halfTime": 45,
+    "extraTime": 0,
+    "stoppageTimeEnabled": true,
+    "stoppageTimePerHalf": 3
+  },
+  "scoring": {
+    "goal": 1,
+    "ownGoal": 1,
+    "penaltyBallCrossLineThreshold": 0.2
+  },
+  "offside": {
+    "enabled": true,
+    "toleranceDistance": 0.1,
+    "description": "越位线至少要超过最后一名防守球员0.1米"
+  },
+  "penaltyArea": {
+    "length": 16.5,
+    "width": 40.32,
+    "description": "禁区尺寸（米）"
+  },
+  "fouls": {
+    "types": ["tackle", "handball", "contact"],
+    "yellowCard": 2,
+    "redCard": 1,
+    "penaltyDistance": 11,
+    "description": "犯规判定和卡牌规则"
+  },
+  "boundaryConditions": {
+    "outOfPlayThreshold": 0.5,
+    "description": "球超出边界0.5米时判为出界"
+  },
+  "description": "国际足联标准比赛规则"
+}

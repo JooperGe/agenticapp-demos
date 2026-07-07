@@ -1,0 +1,189 @@
+{
+  "version": "1.0.0",
+  "timestamp": "2026-07-07T00:00:00Z",
+  "dimensions": {
+    "stamina": {
+      "name": "体能",
+      "range": [0, 100],
+      "description": "球员的体能水平",
+      "subcategories": {
+        "endurance": {
+          "name": "耐力",
+          "description": "长时间保持活跃的能力"
+        },
+        "explosion": {
+          "name": "爆发力",
+          "description": "短时间内的最大速度和力量"
+        },
+        "recovery": {
+          "name": "恢复速度",
+          "description": "疲劳后恢复的快慢"
+        }
+      }
+    },
+    "technique": {
+      "name": "技术",
+      "range": [0, 100],
+      "description": "球员的基础脚法",
+      "subcategories": {
+        "passing": {
+          "name": "传球精度",
+          "description": "传球的准确性和到位度"
+        },
+        "shooting": {
+          "name": "射门精度",
+          "description": "射门的准确性和力量"
+        },
+        "dribbling": {
+          "name": "盘带",
+          "description": "过人和盘带能力"
+        },
+        "heading": {
+          "name": "头球",
+          "description": "头球的准确性和力量"
+        },
+        "control": {
+          "name": "停球",
+          "description": "接球停球的控制力"
+        }
+      }
+    },
+    "awareness": {
+      "name": "意识",
+      "range": [0, 100],
+      "description": "球员的足球理解和意识",
+      "subcategories": {
+        "vision": {
+          "name": "视野",
+          "description": "观察能力和传中视野"
+        },
+        "positioning": {
+          "name": "位置感",
+          "description": "跑位和防守站位意识"
+        },
+        "spaceSense": {
+          "name": "空间感",
+          "description": "对球场空间的理解"
+        }
+      }
+    },
+    "decision": {
+      "name": "决策",
+      "range": [0, 100],
+      "description": "球员的比赛判断能力",
+      "subcategories": {
+        "passChoice": {
+          "name": "传球选择",
+          "description": "何时传球和传向哪里"
+        },
+        "shotTiming": {
+          "name": "射门时机",
+          "description": "何时选择射门"
+        },
+        "tempoControl": {
+          "name": "节奏控制",
+          "description": "比赛节奏的掌控"
+        }
+      }
+    },
+    "mentality": {
+      "name": "心理",
+      "range": [0, 100],
+      "description": "球员的心理素质",
+      "subcategories": {
+        "mentality": {
+          "name": "抗压能力",
+          "description": "压力下的表现稳定性"
+        },
+        "determination": {
+          "name": "求胜欲",
+          "description": "赢球欲望的强度"
+        },
+        "teamwork": {
+          "name": "团队协作",
+          "description": "与队友配合的意愿"
+        },
+        "emotionalStability": {
+          "name": "情绪稳定性",
+          "description": "情绪波动的控制"
+        }
+      }
+    },
+    "error": {
+      "name": "失误",
+      "range": [0, 100],
+      "description": "球员的失误倾向（越低越好）",
+      "subcategories": {
+        "passingError": {
+          "name": "传球失误率",
+          "description": "传球失误的概率"
+        },
+        "controlError": {
+          "name": "停球失误率",
+          "description": "停球失误的概率"
+        },
+        "judgmentError": {
+          "name": "判断失误率",
+          "description": "判断失误的概率"
+        }
+      }
+    },
+    "physique": {
+      "name": "身体",
+      "range": [0, 100],
+      "description": "球员的身体条件",
+      "subcategories": {
+        "height": {
+          "name": "身高",
+          "description": "身高（固定不可训练）",
+          "trainable": false
+        },
+        "weight": {
+          "name": "体重",
+          "description": "体重（固定不可训练）",
+          "trainable": false
+        },
+        "speed": {
+          "name": "速度",
+          "description": "最高速度",
+          "trainable": true
+        },
+        "strength": {
+          "name": "力量",
+          "description": "身体对抗能力",
+          "trainable": true
+        },
+        "jumping": {
+          "name": "弹跳",
+          "description": "弹跳高度",
+          "trainable": true
+        }
+      }
+    }
+  },
+  "talentSystem": {
+    "talentRange": [0, 100],
+    "description": "天赋值影响属性的上限",
+    "attributeMaxFormula": "attributeMax = 60 + talent * 0.4",
+    "explanation": "天赋值100的球员，任意属性最多可以训练到100；天赋值50的球员，任意属性最多只能训练到80"
+  },
+  "growthModel": {
+    "type": "sigmoid",
+    "description": "S形成长曲线，越接近上限增长越缓慢",
+    "formula": "growthCost = exp((currentValue - attributeMax) * 0.1)",
+    "explanation": "成长所需训练点随着接近上限而指数上升"
+  },
+  "combinationEffects": {
+    "description": "属性之间的相互影响关系",
+    "examples": [
+      {
+        "condition": "技术和意识都很高",
+        "effect": "传球成功率会有额外加成"
+      },
+      {
+        "condition": "心理和决策都很高",
+        "effect": "关键时刻的决策准确率提升"
+      }
+    ]
+  }
+}

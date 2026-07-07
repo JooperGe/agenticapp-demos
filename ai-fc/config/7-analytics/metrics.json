@@ -1,0 +1,266 @@
+{
+  "version": "1.0.0",
+  "timestamp": "2026-07-07T00:00:00Z",
+  "matchMetrics": {
+    "description": "比赛层面的关键指标",
+    "metrics": {
+      "possession": {
+        "name": "控球率",
+        "unit": "%",
+        "formula": "teamABallTouchTime / matchDuration * 100",
+        "target": 50
+      },
+      "shotAccuracy": {
+        "name": "射门准度",
+        "unit": "%",
+        "formula": "goalsScored / totalShots * 100",
+        "target": 30
+      },
+      "passingAccuracy": {
+        "name": "传球成功率",
+        "unit": "%",
+        "formula": "successfulPasses / totalPasses * 100",
+        "target": 80
+      },
+      "duelWinRate": {
+        "name": "对抗成功率",
+        "unit": "%",
+        "formula": "duelWins / totalDuels * 100",
+        "target": 50
+      },
+      "tackleSuccessRate": {
+        "name": "抢断成功率",
+        "unit": "%",
+        "formula": "successfulTackles / totalTackles * 100",
+        "target": 45
+      },
+      "interceptRate": {
+        "name": "截断率",
+        "unit": "%",
+        "formula": "successfulIntercepts / totalIntercepts * 100",
+        "target": 50
+      },
+      "clearanceCount": {
+        "name": "门前清球次数",
+        "unit": "次",
+        "description": "防守方清除禁区威胁的次数"
+      },
+      "cornerKicksCount": {
+        "name": "角球数",
+        "unit": "次"
+      },
+      "foulCount": {
+        "name": "犯规数",
+        "unit": "次"
+      },
+      "yellowCardCount": {
+        "name": "黄牌数",
+        "unit": "张"
+      }
+    }
+  },
+  "playerPerformanceMetrics": {
+    "description": "单个球员的性能评估指标",
+    "ratingFormula": {
+      "formula": "baseRating * 0.2 + technique * 0.2 + decision * 0.2 + mentalState * 0.15 + successfulActionsRatio * 0.25",
+      "range": [0, 10],
+      "description": "综合评分，基于多个维度加权计算"
+    },
+    "metrics": {
+      "passesCompleted": {
+        "name": "成功传球",
+        "unit": "次",
+        "importance": "high"
+      },
+      "passesAttempted": {
+        "name": "尝试传球",
+        "unit": "次"
+      },
+      "shotsOnTarget": {
+        "name": "有威胁射门",
+        "unit": "次",
+        "importance": "high"
+      },
+      "taclesWon": {
+        "name": "成功抢断",
+        "unit": "次",
+        "importance": "medium"
+      },
+      "interceptsCount": {
+        "name": "截断次数",
+        "unit": "次",
+        "importance": "medium"
+      },
+      "dribbleCount": {
+        "name": "盘带次数",
+        "unit": "次"
+      },
+      "dribbleSuccessRate": {
+        "name": "盘带成功率",
+        "unit": "%"
+      },
+      "aerialDuelsWon": {
+        "name": "争顶成功",
+        "unit": "次"
+      },
+      "foulsCommitted": {
+        "name": "犯规数",
+        "unit": "次",
+        "importance": "negative"
+      },
+      "errors": {
+        "name": "直接失误",
+        "unit": "次",
+        "importance": "negative"
+      },
+      "distance_covered": {
+        "name": "跑动距离",
+        "unit": "km"
+      },
+      "top_speed": {
+        "name": "最高速度",
+        "unit": "km/h"
+      }
+    }
+  },
+  "teamPerformanceAnalysis": {
+    "description": "球队整体表现分析",
+    "analysis": {
+      "attackingStrength": {
+        "factors": ["totalShots", "shotsOnTarget", "goalsScored"],
+        "formula": "totalShots * 0.2 + shotsOnTarget * 0.3 + goalsScored * 0.5",
+        "range": [0, 100]
+      },
+      "defensiveStrength": {
+        "factors": ["tackles", "intercepts", "clearances", "cleanSheet"],
+        "formula": "tackles * 0.2 + intercepts * 0.2 + clearances * 0.2 + (cleanSheet ? 40 : 0)",
+        "range": [0, 100]
+      },
+      "midFieldControl": {
+        "factors": ["possession", "passingAccuracy", "ballRecoveries"],
+        "formula": "possession * 0.3 + passingAccuracy * 0.4 + ballRecoveries * 0.3",
+        "range": [0, 100]
+      },
+      "transitionEfficiency": {
+        "factors": ["counterAttackSuccess", "fastBreakOpportunities"],
+        "description": "快速反击和转换球的效率"
+      }
+    }
+  },
+  "performanceEvaluation": {
+    "description": "基于数据的性能评估系统",
+    "evaluationRules": [
+      {
+        "rule": "if_shooting_accuracy > 35%",
+        "rating": "excellent_finishing",
+        "recommendation": "高效的禁区嗅觉，保持进攻节奏"
+      },
+      {
+        "rule": "if_passing_accuracy < 70%",
+        "rating": "needs_improvement",
+        "recommendation": "传球精度需要提高，建议增加技术训练"
+      },
+      {
+        "rule": "if_defense_win_rate < 40%",
+        "rating": "defensive_weakness",
+        "recommendation": "防线不稳定，需要调整阵型或更换防线球员"
+      },
+      {
+        "rule": "if_fatigue > 85 && performance_drop > 10%",
+        "rating": "over_fatigue",
+        "recommendation": "球员过度疲劳，建议替换或进行休息"
+      }
+    ]
+  },
+  "optimizationSuggestions": {
+    "description": "基于性能数据的优化建议",
+    "suggestionEngine": [
+      {
+        "scenario": "high_possession_low_shots",
+        "suggestion": "控球好但威胁不足，建议：增加边路进攻、前锋跑动意识、或改变传中方式"
+      },
+      {
+        "scenario": "low_passing_accuracy_high_errors",
+        "suggestion": "传球失误多，建议：减少复杂传球、增加防守深度避免失误被反击、或更换中场球员"
+      },
+      {
+        "scenario": "defense_concedes_many_goals",
+        "suggestion": "防线漏洞多，建议：调整防线阵容、增加防守压力、或改为更稳健的阵型"
+      },
+      {
+        "scenario": "player_performance_declining",
+        "suggestion": "球员表现下滑，原因分析：疲劳、伤病、心理状态、或对手针对性防守"
+      }
+    ]
+  },
+  "dataCollectionPoints": {
+    "description": "比赛中应该收集的数据点",
+    "events": [
+      {
+        "event": "pass",
+        "fields": ["passer", "receiver", "success", "distance", "accuracy", "type"]
+      },
+      {
+        "event": "shot",
+        "fields": ["shooter", "onTarget", "goal", "xG", "shotPower", "shotHeight"]
+      },
+      {
+        "event": "tackle",
+        "fields": ["tackler", "opponent", "success", "position", "foul"]
+      },
+      {
+        "event": "dribble",
+        "fields": ["dribbler", "success", "distance", "opponent_avoided"]
+      },
+      {
+        "event": "intercept",
+        "fields": ["interceptor", "interceptedPass", "position"]
+      },
+      {
+        "event": "clearance",
+        "fields": ["player", "position", "type"]
+      }
+    ]
+  },
+  "reportGeneration": {
+    "description": "比赛后的报告生成",
+    "reportTypes": [
+      {
+        "type": "match_summary",
+        "sections": ["final_score", "key_moments", "team_statistics", "player_ratings"]
+      },
+      {
+        "type": "player_report",
+        "sections": ["player_stats", "performance_rating", "improvement_areas", "recommendation"]
+      },
+      {
+        "type": "tactical_analysis",
+        "sections": ["formation_effectiveness", "strategy_success", "adjustment_suggestions"]
+      },
+      {
+        "type": "opponent_analysis",
+        "sections": ["opponent_strengths", "opponent_weaknesses", "preparation_for_next_match"]
+      }
+    ]
+  },
+  "historicalComparison": {
+    "description": "与历史数据的对比分析",
+    "comparisons": [
+      {
+        "type": "season_trend",
+        "metrics": ["average_goals", "average_possession", "win_rate"],
+        "description": "对比本赛季整体趋势"
+      },
+      {
+        "type": "player_progression",
+        "metrics": ["player_rating", "goal_contribution", "form"],
+        "description": "球员的进步或下滑"
+      },
+      {
+        "type": "opponent_history",
+        "metrics": ["head_to_head_record", "average_goals_scored", "average_goals_conceded"],
+        "description": "对手历史对阵记录"
+      }
+    ]
+  }
+}

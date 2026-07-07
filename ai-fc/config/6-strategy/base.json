@@ -1,0 +1,279 @@
+{
+  "version": "1.0.0",
+  "timestamp": "2026-07-07T00:00:00Z",
+  "formations": [
+    {
+      "formationId": "4-3-3",
+      "name": "4-3-3阵型",
+      "description": "标准的4后卫、3中场、3前锋阵容",
+      "positions": {
+        "goalkeeper": {
+          "name": "门将",
+          "count": 1,
+          "basePosition": { "x": 0, "y": 34 },
+          "activationRadius": 5
+        },
+        "defender_left": {
+          "name": "左后卫",
+          "count": 1,
+          "basePosition": { "x": 20, "y": 10 },
+          "activationRadius": 15
+        },
+        "defender_center_left": {
+          "name": "中后卫（左）",
+          "count": 1,
+          "basePosition": { "x": 20, "y": 25 },
+          "activationRadius": 12
+        },
+        "defender_center_right": {
+          "name": "中后卫（右）",
+          "count": 1,
+          "basePosition": { "x": 20, "y": 43 },
+          "activationRadius": 12
+        },
+        "defender_right": {
+          "name": "右后卫",
+          "count": 1,
+          "basePosition": { "x": 20, "y": 58 },
+          "activationRadius": 15
+        },
+        "midfielder_left": {
+          "name": "左中场",
+          "count": 1,
+          "basePosition": { "x": 40, "y": 15 },
+          "activationRadius": 18
+        },
+        "midfielder_center": {
+          "name": "中后卫（防守）",
+          "count": 1,
+          "basePosition": { "x": 40, "y": 34 },
+          "activationRadius": 20
+        },
+        "midfielder_right": {
+          "name": "右中场",
+          "count": 1,
+          "basePosition": { "x": 40, "y": 53 },
+          "activationRadius": 18
+        },
+        "forward_left": {
+          "name": "左前锋",
+          "count": 1,
+          "basePosition": { "x": 65, "y": 15 },
+          "activationRadius": 20
+        },
+        "forward_center": {
+          "name": "中锋",
+          "count": 1,
+          "basePosition": { "x": 70, "y": 34 },
+          "activationRadius": 20
+        },
+        "forward_right": {
+          "name": "右前锋",
+          "count": 1,
+          "basePosition": { "x": 65, "y": 53 },
+          "activationRadius": 20
+        }
+      },
+      "tacticalSettings": {
+        "aggression": 0.7,
+        "defensiveDepth": 0.6,
+        "offensiveWidth": 0.8,
+        "pressureIntensity": 0.6,
+        "defenseStyle": "zonal"
+      },
+      "editable": true
+    },
+    {
+      "formationId": "4-4-2",
+      "name": "4-4-2阵型",
+      "description": "平衡的4后卫、4中场、2前锋阵容",
+      "positions": {
+        "goalkeeper": {
+          "name": "门将",
+          "count": 1,
+          "basePosition": { "x": 0, "y": 34 }
+        },
+        "defender": {
+          "name": "后卫",
+          "count": 4,
+          "basePositions": [
+            { "x": 20, "y": 10 },
+            { "x": 20, "y": 25 },
+            { "x": 20, "y": 43 },
+            { "x": 20, "y": 58 }
+          ]
+        },
+        "midfielder": {
+          "name": "中场",
+          "count": 4,
+          "basePositions": [
+            { "x": 40, "y": 15 },
+            { "x": 40, "y": 27 },
+            { "x": 40, "y": 41 },
+            { "x": 40, "y": 53 }
+          ]
+        },
+        "forward": {
+          "name": "前锋",
+          "count": 2,
+          "basePositions": [
+            { "x": 70, "y": 22 },
+            { "x": 70, "y": 46 }
+          ]
+        }
+      },
+      "tacticalSettings": {
+        "aggression": 0.6,
+        "defensiveDepth": 0.7,
+        "offensiveWidth": 0.6,
+        "pressureIntensity": 0.5,
+        "defenseStyle": "zonal"
+      },
+      "editable": true
+    },
+    {
+      "formationId": "5-3-2",
+      "name": "5-3-2阵型",
+      "description": "防守型阵容，5后卫、3中场、2前锋",
+      "positions": {
+        "goalkeeper": {
+          "name": "门将",
+          "count": 1,
+          "basePosition": { "x": 0, "y": 34 }
+        },
+        "defender": {
+          "name": "后卫",
+          "count": 5,
+          "basePositions": [
+            { "x": 20, "y": 5 },
+            { "x": 20, "y": 18 },
+            { "x": 20, "y": 34 },
+            { "x": 20, "y": 50 },
+            { "x": 20, "y": 63 }
+          ]
+        },
+        "midfielder": {
+          "name": "中场",
+          "count": 3,
+          "basePositions": [
+            { "x": 40, "y": 17 },
+            { "x": 40, "y": 34 },
+            { "x": 40, "y": 51 }
+          ]
+        },
+        "forward": {
+          "name": "前锋",
+          "count": 2,
+          "basePositions": [
+            { "x": 70, "y": 22 },
+            { "x": 70, "y": 46 }
+          ]
+        }
+      },
+      "tacticalSettings": {
+        "aggression": 0.4,
+        "defensiveDepth": 0.9,
+        "offensiveWidth": 0.4,
+        "pressureIntensity": 0.3,
+        "defenseStyle": "defensive"
+      },
+      "editable": true
+    }
+  ],
+  "strategicParameters": {
+    "description": "整体战术参数的定义",
+    "parameters": {
+      "aggression": {
+        "name": "进攻性",
+        "range": [0, 1],
+        "effect": "影响球队的进攻倾向和风险承受度"
+      },
+      "defensiveDepth": {
+        "name": "防线深度",
+        "range": [0, 1],
+        "effect": "防线位置离禁区的距离，0=积极逼抢，1=深防线"
+      },
+      "offensiveWidth": {
+        "name": "进攻宽度",
+        "range": [0, 1],
+        "effect": "是否利用边锋进攻，0=中路进攻，1=边锋进攻"
+      },
+      "pressureIntensity": {
+        "name": "逼抢强度",
+        "range": [0, 1],
+        "effect": "对手持球时的逼抢力度"
+      }
+    }
+  },
+  "coachInstructions": {
+    "description": "教练可以在比赛中下达的实时指令",
+    "types": [
+      {
+        "instruction": "all-out-attack",
+        "name": "全力进攻",
+        "effect": "aggression 增加到1.0，防守风险增加"
+      },
+      {
+        "instruction": "defensive-formation",
+        "name": "防守阵型",
+        "effect": "defensiveDepth 增加到0.9，进攻性下降"
+      },
+      {
+        "instruction": "park-the-bus",
+        "name": "死守",
+        "effect": "所有参数都向防守倾斜"
+      },
+      {
+        "instruction": "counter-attack",
+        "name": "快速反击",
+        "effect": "快速从防守切换到进攻，风险高回报高"
+      },
+      {
+        "instruction": "control-tempo",
+        "name": "控制比赛",
+        "effect": "降低逼抢强度，缓慢推进"
+      }
+    ]
+  },
+  "playerTactics": {
+    "description": "针对个别球员的战术指令",
+    "instructions": [
+      {
+        "instruction": "mark-opponent",
+        "name": "盯防对手",
+        "target": "specific_opponent",
+        "effect": "球员跟随目标对手，优先防守"
+      },
+      {
+        "instruction": "advance",
+        "name": "前插",
+        "effect": "球员在保持位置基础上，积极向前推进参与进攻"
+      },
+      {
+        "instruction": "drop-back",
+        "name": "回防",
+        "effect": "球员更深地回防，优先保护防线"
+      },
+      {
+        "instruction": "switch-wing",
+        "name": "转换边锋",
+        "effect": "球员转移到另一侧，改变进攻方向"
+      }
+    ]
+  },
+  "editableRules": {
+    "description": "用户可以编辑的战术规则",
+    "exampleRule": {
+      "ruleId": "high-press-trigger",
+      "name": "高位逼抢触发规则",
+      "condition": "opponent has ball && in_front_half",
+      "action": "apply pressure immediately",
+      "parameters": {
+        "triggerZone": "field_front_half",
+        "intensity": 0.9,
+        "applicablePositions": ["midfielder", "forward"]
+      },
+      "editable": true
+    }
+  }
+}

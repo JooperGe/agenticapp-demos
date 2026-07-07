@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI FC · 分层架构模拟器 v2</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0a0f0a 0%, #1a2e1a 100%);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: #fff;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+      color: #4ade80;
+      text-shadow: 0 2px 10px rgba(74, 222, 128, 0.3);
+    }
+
+    .subtitle {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .panel {
+      background: rgba(30, 41, 59, 0.8);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 24px;
+      backdrop-filter: blur(10px);
+    }
+
+    .panel h2 {
+      font-size: 16px;
+      margin-bottom: 16px;
+      color: #4ade80;
+      border-bottom: 1px solid rgba(74, 222, 128, 0.3);
+      padding-bottom: 8px;
+    }
+
+    .layer-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .layer-item {
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      border-left: 3px solid transparent;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .layer-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-left-color: #4ade80;
+    }
+
+    .layer-item.active {
+      background: rgba(74, 222, 128, 0.1);
+      border-left-color: #4ade80;
+    }
+
+    .layer-item .layer-name {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .layer-item .layer-status {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 8px;
+      background: #ef5350;
+    }
+
+    .status-dot.loaded {
+      background: #4ade80;
+    }
+
+    .config-viewer {
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: 8px;
+      padding: 16px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 500px;
+      overflow-y: auto;
+      color: #4ade80;
+    }
+
+    .config-viewer pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px 16px;
+      background: rgba(74, 222, 128, 0.1);
+      border: 1px solid #4ade80;
+      color: #4ade80;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      font-size: 13px;
+    }
+
+    button:hover {
+      background: rgba(74, 222, 128, 0.2);
+      box-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .status-bar {
+      background: rgba(30, 41, 59, 0.8);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      margin-bottom: 24px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .status-item {
+      text-align: center;
+    }
+
+    .status-item .label {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.6);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-item .value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #4ade80;
+    }
+
+    .architecture-diagram {
+      background: rgba(30, 41, 59, 0.8);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .architecture-diagram h3 {
+      margin-bottom: 16px;
+      color: #4ade80;
+    }
+
+    .layer-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .layer-block {
+      padding: 12px 16px;
+      background: linear-gradient(90deg, rgba(74, 222, 128, 0.1) 0%, rgba(74, 222, 128, 0.05) 100%);
+      border: 1px solid rgba(74, 222, 128, 0.3);
+      border-radius: 6px;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .layer-block .layer-num {
+      font-weight: 700;
+      color: #4ade80;
+      margin-right: 12px;
+      min-width: 30px;
+    }
+
+    .layer-block .layer-desc {
+      flex: 1;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .loading {
+      text-align: center;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(74, 222, 128, 0.3);
+      border-top-color: #4ade80;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      .config-viewer {
+        max-height: 300px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <h1>⚽ AI FC · 分层架构模拟器 v2</h1>
+      <p class="subtitle">7层配置化足球模拟引擎 | Configuration-Driven Football Simulator</p>
+    </header>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div class="status-item">
+        <div class="label">Configuration Layers</div>
+        <div class="value" id="layerCount">0/8</div>
+      </div>
+      <div class="status-item">
+        <div class="label">System Status</div>
+        <div class="value" id="systemStatus" style="color: #ef5350;">未加载</div>
+      </div>
+      <div class="status-item">
+        <div class="label">Last Updated</div>
+        <div class="value" id="lastUpdate" style="font-size: 14px; color: rgba(255,255,255,0.6);">--</div>
+      </div>
+    </div>
+
+    <!-- Architecture Diagram -->
+    <div class="architecture-diagram">
+      <h3>7层架构概览</h3>
+      <div class="layer-stack">
+        <div class="layer-block">
+          <span class="layer-num">7</span>
+          <span class="layer-desc">反馈分析层 (Analytics) - 数据统计、性能评估、优化建议</span>
+        </div>
+        <div class="layer-block">
+          <span class="layer-num">6</span>
+          <span class="layer-desc">策略系统层 (Strategy) - 阵型、战术指令、用户可编辑规则</span>
+        </div>
+        <div class="layer-block">
+          <span class="layer-num">5</span>
+          <span class="layer-desc">状态管理层 (State) - 疲劳、心理、受伤等动态状态</span>
+        </div>
+        <div class="layer-block">
+          <span class="layer-num">4</span>
+          <span class="layer-desc">决策引擎层 (Decision) - 球员决策逻辑、优先级、规则库</span>
+        </div>
+        <div class="layer-block">
+          <span class="layer-num">3</span>
+          <span class="layer-desc">技能系统层 (Skill) - 传球、盘带、跑位等基础技能</span>
+        </div>
+        <div class="layer-block">
+          <span class="layer-num">2</span>
+          <span class="layer-desc">属性系统层 (Attribute) - 属性定义、天赋值、成长模型</span>
+        </div>
+        <div class="layer-block">
+          <span class="layer-num">1</span>
+          <span class="layer-desc">规则引擎层 (Rules) - 足球规则、越位、禁区、进球判定</span>
+        </div>
+        <div class="layer-block">
+          <span class="layer-num">0</span>
+          <span class="layer-desc">物理基础层 (Physics) - 球场、球的物理参数、碰撞检测</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="content">
+      <!-- Left Panel: Layer List -->
+      <div class="panel">
+        <h2>配置层列表</h2>
+        <div class="controls">
+          <button onclick="loadAllConfigs()">加载所有配置</button>
+          <button onclick="reloadConfigs()">重新加载</button>
+        </div>
+        <div class="layer-list" id="layerList">
+          <div class="loading">
+            <span class="spinner"></span> 正在初始化...
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel: Config Viewer -->
+      <div class="panel">
+        <h2>配置内容预览</h2>
+        <div class="config-viewer" id="configViewer">
+          <div class="loading">
+            <span class="spinner"></span> 选择一个配置层查看详情
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="./js/config-manager.js"></script>
+  <script>
+    /**
+     * UI 交互脚本
+     */
+
+    // 配置层映射
+    const layerMap = {
+      '0-physics': '物理基础层',
+      '1-rules': '规则引擎层',
+      '2-attributes': '属性系统层',
+      '3-skills': '技能系统层',
+      '4-decision': '决策引擎层',
+      '5-state': '状态管理层',
+      '6-strategy': '策略系统层',
+      '7-analytics': '反馈分析层'
+    };
+
+    /**
+     * 加载所有配置
+     */
+    async function loadAllConfigs() {
+      const configViewer = document.getElementById('configViewer');
+      configViewer.innerHTML = '<div class="loading"><span class="spinner"></span> 正在加载配置...</div>';
+
+      await configManager.loadAllConfigs();
+      updateUI();
+    }
+
+    /**
+     * 重新加载配置
+     */
+    async function reloadConfigs() {
+      await configManager.reload();
+      updateUI();
+    }
+
+    /**
+     * 更新 UI
+     */
+    function updateUI() {
+      updateLayerList();
+      updateStatusBar();
+      document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('zh-CN');
+    }
+
+    /**
+     * 更新层列表
+     */
+    function updateLayerList() {
+      const layerList = document.getElementById('layerList');
+      const configs = configManager.configs;
+      const layers = configManager.layers;
+
+      let html = '';
+      for (const layer of layers) {
+        const isLoaded = configs[layer] ? true : false;
+        const statusClass = isLoaded ? 'loaded' : '';
+        html += `
+          <div class="layer-item ${isLoaded ? 'active' : ''}" onclick="showConfig('${layer}')">
+            <span class="layer-name">
+              <span class="status-dot ${statusClass}"></span>
+              ${layerMap[layer]}
+            </span>
+            <span class="layer-status">${isLoaded ? '✓' : '—'}</span>
+          </div>
+        `;
+      }
+      layerList.innerHTML = html;
+    }
+
+    /**
+     * 显示配置内容
+     */
+    function showConfig(layer) {
+      const config = configManager.getConfig(layer);
+      const configViewer = document.getElementById('configViewer');
+
+      if (!config) {
+        configViewer.innerHTML = `<pre>该层配置未加载</pre>`;
+      } else {
+        const prettyJson = JSON.stringify(config, null, 2);
+        configViewer.innerHTML = `<pre>${escapeHtml(prettyJson)}</pre>`;
+      }
+
+      // 更新选中状态
+      document.querySelectorAll('.layer-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      event.currentTarget.classList.add('active');
+    }
+
+    /**
+     * 转义 HTML
+     */
+    function escapeHtml(text) {
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    /**
+     * 更新状态栏
+     */
+    function updateStatusBar() {
+      const configs = configManager.configs;
+      const loadedCount = Object.keys(configs).length;
+      const totalCount = configManager.layers.length;
+
+      document.getElementById('layerCount').textContent = `${loadedCount}/${totalCount}`;
+
+      if (loadedCount === totalCount) {
+        document.getElementById('systemStatus').textContent = '就绪';
+        document.getElementById('systemStatus').style.color = '#4ade80';
+      } else if (loadedCount > 0) {
+        document.getElementById('systemStatus').textContent = '部分加载';
+        document.getElementById('systemStatus').style.color = '#facc15';
+      } else {
+        document.getElementById('systemStatus').textContent = '未加载';
+        document.getElementById('systemStatus').style.color = '#ef5350';
+      }
+    }
+
+    /**
+     * 页面加载时初始化
+     */
+    window.addEventListener('load', async () => {
+      await loadAllConfigs();
+    });
+  </script>
+</body>
+</html>

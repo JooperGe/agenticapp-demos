@@ -1,0 +1,133 @@
+{
+  "version": "1.0.0",
+  "timestamp": "2026-07-07T00:00:00Z",
+  "skillCategories": ["offensive", "defensive", "movement", "goalkeeper"],
+  "baseSkillTemplate": {
+    "skillId": "string",
+    "name": "string",
+    "category": "string",
+    "description": "string",
+    "requirements": {
+      "attributes": ["array of attribute names"],
+      "minLevel": 0
+    },
+    "effect": {
+      "formula": "string",
+      "impact": "description of impact on gameplay"
+    },
+    "energyCost": 0,
+    "cooldown": 0,
+    "successConditions": ["array of conditions"]
+  },
+  "examples": {
+    "pass": {
+      "skillId": "pass",
+      "name": "传球",
+      "category": "offensive",
+      "description": "向队友传球",
+      "requirements": {
+        "attributes": ["passing", "vision"],
+        "minLevel": 20
+      },
+      "effect": {
+        "successRate": "technique.passing * 0.7 + awareness.vision * 0.2 + decision.passChoice * 0.1",
+        "range": "5-40",
+        "accuracy": "determined by passer technique and receiver position"
+      },
+      "energyCost": 3,
+      "cooldown": 0.5,
+      "successConditions": [
+        "receiver is open",
+        "ball is in control",
+        "passer has stamina"
+      ]
+    },
+    "shoot": {
+      "skillId": "shoot",
+      "name": "射门",
+      "category": "offensive",
+      "description": "向球门射门",
+      "requirements": {
+        "attributes": ["shooting", "decision"],
+        "minLevel": 30
+      },
+      "effect": {
+        "successRate": "technique.shooting * 0.6 + decision.shotTiming * 0.3 + physique.strength * 0.1",
+        "goal_probability": "1 / (1 + exp(-(shooting * 0.05 - 2.5)))",
+        "accuracy": "based on shooter skill and defensive pressure"
+      },
+      "energyCost": 8,
+      "cooldown": 1,
+      "successConditions": [
+        "clear shot path",
+        "in shooting range",
+        "decision >= 50"
+      ]
+    },
+    "dribble": {
+      "skillId": "dribble",
+      "name": "盘带",
+      "category": "offensive",
+      "description": "球员盘球推进",
+      "requirements": {
+        "attributes": ["dribbling", "physique.speed"],
+        "minLevel": 25
+      },
+      "effect": {
+        "successRate": "technique.dribbling * 0.7 + awareness.spaceSense * 0.2 + physique.speed * 0.1",
+        "speed_multiplier": "1 + (dribbling - 50) * 0.01",
+        "defenseAvoidance": "higher dribbling increases chance to avoid tackles"
+      },
+      "energyCost": 5,
+      "cooldown": 0.3,
+      "successConditions": [
+        "ball in control",
+        "open space ahead",
+        "sufficient stamina"
+      ]
+    },
+    "positioning": {
+      "skillId": "positioning",
+      "name": "跑位",
+      "category": "movement",
+      "description": "球员主动跑到有利位置",
+      "requirements": {
+        "attributes": ["awareness.positioning", "awareness.vision"],
+        "minLevel": 20
+      },
+      "effect": {
+        "accuracy": "awareness.positioning * 0.8 + decision.passChoice * 0.2",
+        "detection": "can find open space within 20m radius based on vision",
+        "readiness": "improves passing/shooting readiness when in position"
+      },
+      "energyCost": 4,
+      "cooldown": 2,
+      "successConditions": [
+        "not marked by opponent",
+        "team has ball possession"
+      ]
+    },
+    "defend": {
+      "skillId": "defend",
+      "name": "防守",
+      "category": "defensive",
+      "description": "防守对手球员",
+      "requirements": {
+        "attributes": ["awareness.positioning", "physique.strength"],
+        "minLevel": 20
+      },
+      "effect": {
+        "effectiveness": "awareness.positioning * 0.6 + physique.strength * 0.3 + mentality.teamwork * 0.1",
+        "block_rate": "blocks opponent from shooting or passing",
+        "interception": "chance to intercept ball based on defense skill"
+      },
+      "energyCost": 6,
+      "cooldown": 0.2,
+      "successConditions": [
+        "opponent has ball",
+        "within defending range",
+        "not suspended"
+      ]
+    }
+  }
+}

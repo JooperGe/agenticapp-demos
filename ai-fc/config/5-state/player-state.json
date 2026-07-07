@@ -1,0 +1,282 @@
+{
+  "version": "1.0.0",
+  "timestamp": "2026-07-07T00:00:00Z",
+  "stateFactors": {
+    "fatigue": {
+      "name": "疲劳度",
+      "range": [0, 100],
+      "unit": "%",
+      "decayPerMinute": 1.2,
+      "recoveryPerMinute": 0.8,
+      "recoveryAtRest": 2.0,
+      "recoveryBetweenMatches": 100,
+      "description": "比赛中随时间累积，休息时恢复",
+      "affectedAttributes": {
+        "speed": {
+          "formula": "1 - fatigue * 0.008",
+          "description": "疲劳每增加10%，速度下降8%"
+        },
+        "passing": {
+          "formula": "1 - fatigue * 0.005",
+          "description": "疲劳每增加10%，传球精度下降5%"
+        },
+        "shooting": {
+          "formula": "1 - fatigue * 0.006",
+          "description": "疲劳每增加10%，射门精度下降6%"
+        },
+        "strength": {
+          "formula": "1 - fatigue * 0.007",
+          "description": "疲劳每增加10%，力量下降7%"
+        }
+      }
+    },
+    "mentalState": {
+      "name": "心理值",
+      "range": [0, 100],
+      "unit": "%",
+      "baseValue": 50,
+      "factors": [
+        "scoreStatus",
+        "teamMorale",
+        "pressureLevel",
+        "playerMentality"
+      ],
+      "description": "受比赛形势和球员心理素质影响",
+      "calculation": {
+        "scoreStatus": "leading = +10, trailing = -15, drawing = 0",
+        "teamMorale": "increase by 5 per goal scored, decrease by 10 per goal conceded",
+        "pressureLevel": "depends on match importance and time remaining",
+        "playerMentality": "mentally strong players resist pressure better"
+      },
+      "affectedAttributes": {
+        "decision": {
+          "formula": "1 + mentalState * 0.005",
+          "description": "心理值越高，决策越理性准确"
+        },
+        "errorRate": {
+          "formula": "1 - mentalState * 0.008",
+          "description": "心理值越高，失误率越低"
+        },
+        "passing": {
+          "formula": "1 + mentalState * 0.003",
+          "description": "心理稳定有助于传球精度"
+        }
+      }
+    },
+    "injury": {
+      "name": "受伤",
+      "range": [0, 5],
+      "unit": "level",
+      "recoveryDaysPerLevel": 7,
+      "description": "受伤等级，0=健康，1-5=不同程度受伤，恢复需要时间",
+      "levels": {
+        "0": {
+          "name": "健康",
+          "affectedAttributes": {}
+        },
+        "1": {
+          "name": "轻伤",
+          "description": "可以参赛但性能略微下降",
+          "affectedAttributes": {
+            "speed": 0.95,
+            "strength": 0.95
+          }
+        },
+        "2": {
+          "name": "中伤",
+          "description": "可以参赛但性能明显下降",
+          "affectedAttributes": {
+            "speed": 0.85,
+            "strength": 0.85,
+            "stamina": 0.90
+          }
+        },
+        "3": {
+          "name": "重伤",
+          "description": "建议不参赛或作为替补",
+          "affectedAttributes": {
+            "speed": 0.70,
+            "strength": 0.70,
+            "stamina": 0.75
+          }
+        },
+        "4": {
+          "name": "严重伤病",
+          "description": "基本无法参赛",
+          "affectedAttributes": {
+            "speed": 0.50,
+            "strength": 0.50,
+            "stamina": 0.50
+          }
+        },
+        "5": {
+          "name": "致命伤病",
+          "description": "本赛季报销",
+          "affectedAttributes": {
+            "all": 0
+          }
+        }
+      }
+    },
+    "form": {
+      "name": "状态",
+      "range": [-10, 10],
+      "baseValue": 0,
+      "unit": "级别",
+      "description": "球员的最近状态，受最近几场表现影响",
+      "factors": [
+        "recentGoalsScored",
+        "recentAssists",
+        "recentErrors",
+        "playingTime",
+        "restDays"
+      ],
+      "affectedAttributes": {
+        "shooting": {
+          "formula": "1 + form * 0.03",
+          "description": "状态好的球员射门更准"
+        },
+        "decision": {
+          "formula": "1 + form * 0.02",
+          "description": "状态好的球员决策更佳"
+        },
+        "errorRate": {
+          "formula": "1 - form * 0.02",
+          "description": "状态好的球员失误更少"
+        }
+      }
+    },
+    "motivation": {
+      "name": "动力值",
+      "range": [0, 100],
+      "baseValue": 50,
+      "unit": "%",
+      "description": "球员对比赛的投入度，受多种因素影响",
+      "factors": [
+        "matchImportance",
+        "teamObjective",
+        "personalGoals",
+        "recentRecognition"
+      ],
+      "affectedAttributes": {
+        "allAttributes": {
+          "formula": "1 + motivation * 0.003",
+          "description": "动力值越高，全方位表现越好"
+        }
+      }
+    }
+  },
+  "stateEvolutionRules": {
+    "description": "状态随时间和事件的演变规则",
+    "rules": [
+      {
+        "eventType": "matchStart",
+        "stateChanges": {
+          "fatigue": 10,
+          "mentalState": "recoveryBased",
+          "motivation": "matchImportanceBased"
+        }
+      },
+      {
+        "eventType": "goalScored",
+        "actor": "own_team",
+        "stateChanges": {
+          "mentalState": "+5",
+          "motivation": "+3",
+          "fatigue": "-5"
+        }
+      },
+      {
+        "eventType": "goalAgainst",
+        "stateChanges": {
+          "mentalState": "-8",
+          "motivation": "-2"
+        }
+      },
+      {
+        "eventType": "yellowCard",
+        "stateChanges": {
+          "mentalState": "-10",
+          "motivation": "-5",
+          "fatigue": "+10"
+        }
+      },
+      {
+        "eventType": "tackle",
+        "highForce": true,
+        "injuryRisk": "strength dependent",
+        "stateChanges": {
+          "fatigue": "+15"
+        }
+      },
+      {
+        "eventType": "successfulAction",
+        "description": "传球、盘带等成功行为",
+        "stateChanges": {
+          "mentalState": "+2",
+          "motivation": "+1"
+        }
+      },
+      {
+        "eventType": "failedAction",
+        "description": "传球失误、停球失误等",
+        "stateChanges": {
+          "mentalState": "-3",
+          "errorRate": "+5"
+        }
+      }
+    ]
+  },
+  "stateInteractionEffects": {
+    "description": "多个状态之间的相互影响",
+    "interactions": [
+      {
+        "states": ["fatigue", "mentalState"],
+        "effect": "high fatigue + low mental = exponentially worse performance",
+        "formula": "penaltyFactor = (fatigue * 0.01) * (1 - mentalState * 0.01)"
+      },
+      {
+        "states": ["injury", "motivation"],
+        "effect": "serious injury + low motivation = risk of re-injury",
+        "formula": "reinjuryRisk = injuryLevel * (1 - motivation * 0.01)"
+      },
+      {
+        "states": ["form", "mentalState"],
+        "effect": "good form and high mental state reinforce each other",
+        "formula": "mentalBoost = form * mentalState * 0.0001"
+      }
+    ]
+  },
+  "recoveryMechanics": {
+    "description": "不同类型状态的恢复机制",
+    "mechanisms": [
+      {
+        "state": "fatigue",
+        "inGameRecovery": 0.8,
+        "restDayRecovery": 15,
+        "fullRecoveryDays": 3,
+        "description": "通过休息恢复疲劳"
+      },
+      {
+        "state": "mentalState",
+        "inGameRecovery": 0.5,
+        "teamMoraleEffect": true,
+        "coachMotivationEffect": true,
+        "description": "通过胜利、教练激励等恢复心理"
+      },
+      {
+        "state": "injury",
+        "inGameRecovery": 0,
+        "restDayRecovery": "recoveryDaysPerLevel",
+        "medicalTreatment": true,
+        "description": "只能通过休息和医疗恢复"
+      },
+      {
+        "state": "form",
+        "inGameRecovery": 1,
+        "matchPerformanceEffect": true,
+        "description": "通过比赛表现实时更新"
+      }
+    ]
+  }
+}
