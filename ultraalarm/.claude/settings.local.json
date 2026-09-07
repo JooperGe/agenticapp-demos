@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//private/tmp/agpcheck/**)",
+      "Bash(cat META-INF/gradle-plugins/com.android.internal.application.properties)",
+      "Bash(xargs -I{} sh -c 'strings \"$1\" 2>/dev/null' {})",
+      "Bash(./gradlew :app:assembleDebug)"
+    ]
+  }
+}

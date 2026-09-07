@@ -1,14 +1,20 @@
 package com.example.ultraalarm
 
 import android.app.AlarmManager
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.Manifest
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -52,6 +59,31 @@ class MainActivity : ComponentActivity() {
     fun AlarmSetupScreen() {
         val context = LocalContext.current
 
+        // Android 13+ 需要运行时申请通知权限，否则闹钟触发时无法弹出全屏通知
+        val notificationPermissionLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            if (!granted) {
+                Toast.makeText(
+                    context,
+                    "未授予通知权限，闹钟触发时可能无法弹出全屏页面",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+
+        LaunchedEffect(Unit) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val granted = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+                if (!granted) {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -77,9 +109,48 @@ class MainActivity : ComponentActivity() {
 
             Button(
                 onClick = {
-                    requestAlarmPermissions(context)
-                    scheduleAlarm(context)
-                    startAlarmService(context)
+                    val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                    when {
+                        // 1) 通知权限（Android 13+）：未授予时通知会被静默丢弃
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                            ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.POST_NOTIFICATIONS
+                            ) != PackageManager.PERMISSION_GRANTED -> {
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+
+                        // 2) 全屏显示权限（Android 14+ 特殊访问）：未授予时无法拉起全屏闹钟页
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+                            !nm.canUseFullScreenIntent() -> {
+                            Toast.makeText(
+                                context,
+                                "请授予「显示在其他应用上层/全屏显示」权限后再点击",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            startActivity(
+                                Intent(android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                }
+                            )
+                        }
+
+                        // 3) 精确闹钟权限（Android 12+）
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                            !(context.getSystemService(Context.ALARM_SERVICE) as AlarmManager)
+                                .canScheduleExactAlarms() -> {
+                            startActivity(
+                                Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                }
+                            )
+                        }
+
+                        else -> {
+                            scheduleAlarm(context)
+                            startAlarmService(context)
+                        }
+                    }
                 },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
@@ -94,19 +165,25 @@ class MainActivity : ComponentActivity() {
                     fontWeight = FontWeight.Medium
                 )
             }
-        }
-    }
 
-    private fun requestAlarmPermissions(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            if (!alarmManager.canScheduleExactAlarms()) {
-                val intent = Intent(
-                    android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM
-                ).apply {
-                    data = android.net.Uri.parse("package:${context.packageName}")
-                }
-                startActivity(intent)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = {
+                    // 前台直接启动，绕过闹钟/通知/全屏 Intent 链路，用于隔离测试
+                    startActivity(Intent(context, AlarmFullScreenActivity::class.java))
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiary
+                ),
+                modifier = Modifier
+                    .padding(horizontal = 40.dp)
+                    .height(48.dp)
+            ) {
+                Text(
+                    text = "立即测试全屏页",
+                    fontSize = 16.sp
+                )
             }
         }
     }
