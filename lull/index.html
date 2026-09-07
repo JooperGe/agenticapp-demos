@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>晚风 Lull · 深夜倾听型 AI 陪伴</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            night:  { 50:'#F6F6FB', 100:'#EDEDF5', 200:'#D5D5E4', 300:'#ACAACD', 400:'#837FB1', 500:'#5D588C', 600:'#413C6B', 700:'#2E2953', 800:'#201B3D', 900:'#151028', 950:'#0C0918' },
+            glow:   { 50:'#FDF7EF', 100:'#FAECD9', 200:'#F4D4AB', 300:'#ECB875', 400:'#E39A44', 500:'#D97F22', 600:'#BF6516', 700:'#9C4D14', 800:'#7B3D16', 900:'#643414' },
+            mist:   { 50:'#F2FAF8', 100:'#E1F3EE', 200:'#C2E5DC', 300:'#93D0C2', 400:'#5FB5A4' },
+          },
+          fontFamily: {
+            sans:  ['Inter','PingFang SC','system-ui','sans-serif'],
+            serif: ['"Noto Serif SC"','serif'],
+          },
+          boxShadow: {
+            soft:   '0 10px 30px -12px rgba(46,41,83,.12), 0 4px 12px -4px rgba(21,16,40,.05)',
+            phone:  '0 40px 80px -20px rgba(21,16,40,.32), 0 18px 40px -18px rgba(217,127,34,.16)',
+            chip:   '0 4px 12px -4px rgba(217,127,34,.35)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html,body { background:#F4F1F6; color:#201B3D; }
+    body {
+      background-image:
+        radial-gradient(1100px 500px at 5% -5%, #EDEDF5 0%, transparent 60%),
+        radial-gradient(800px 450px at 108% 8%, #FAECD9 0%, transparent 55%),
+        radial-gradient(700px 400px at 50% 110%, #E1F3EE 0%, transparent 60%);
+    }
+    .phone {
+      width: 340px; height: 700px; border-radius: 44px;
+      background: linear-gradient(180deg, #151028 0%, #201B3D 100%);
+      border: 1px solid rgba(227,154,68,.14);
+      position: relative; overflow: hidden; flex-shrink: 0;
+    }
+    .phone::before {
+      content:""; position:absolute; top:14px; left:50%; transform:translateX(-50%);
+      width:110px; height:26px; border-radius:999px; background:#080612; z-index:40;
+    }
+    .screen { position:absolute; inset:0; padding:54px 18px 20px; display:flex; flex-direction:column; }
+    .statusbar { position:absolute; top:20px; left:28px; right:28px; display:flex; justify-content:space-between; font-size:12px; font-weight:600; z-index:30; color:rgba(255,255,255,.7); }
+    .mi { font-family:'Material Icons Round'; font-weight:normal; font-style:normal; font-size:20px; line-height:1; display:inline-block; -webkit-font-smoothing:antialiased; }
+    .chip { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px; font-size:12px; font-weight:500; }
+    .dot { width:6px; height:6px; border-radius:999px; display:inline-block; }
+    .label { font-size:11px; color:#5D588C; letter-spacing:.08em; text-transform:uppercase; }
+    .flow-label { display:inline-block; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:600; letter-spacing:.06em; }
+    .float { animation: float 5s ease-in-out infinite; }
+    @keyframes float { 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-7px) } }
+    /* ── 声波同心圆 ── */
+    .pulse-ring { position:absolute; inset:0; border-radius:999px; border:1px solid rgba(95,181,164,.35); animation:ring 3.2s ease-out infinite; }
+    .pulse-ring.r2 { animation-delay:1.05s; }
+    .pulse-ring.r3 { animation-delay:2.1s; }
+    @keyframes ring { 0%{ transform:scale(.55); opacity:.9 } 100%{ transform:scale(1.25); opacity:0 } }
+    /* ── 迷你声波条 ── */
+    .wbar { width:3px; border-radius:99px; background:linear-gradient(180deg,#93D0C2,#E39A44); animation:wbar 1.1s ease-in-out infinite; }
+    @keyframes wbar { 0%,100%{ height:6px } 50%{ height:18px } }
+    /* ── 滑杆（纯静态示意） ── */
+    .slider { position:relative; height:4px; border-radius:99px; background:rgba(255,255,255,.12); }
+    .slider .fill { position:absolute; left:0; top:0; bottom:0; border-radius:99px; background:linear-gradient(90deg,#5FB5A4,#E39A44); }
+    .slider .knob { position:absolute; top:50%; width:14px; height:14px; border-radius:999px; background:#FAECD9; transform:translate(-50%,-50%); box-shadow:0 2px 8px rgba(0,0,0,.4); }
+    /* ── 时间轴 ── */
+    .tl-node { position:relative; }
+    .tl-dot { width:14px; height:14px; border-radius:999px; border:3px solid #fff; box-shadow:0 2px 6px rgba(21,16,40,.18); }
+    .tl-line { height:3px; border-radius:99px; background:linear-gradient(90deg,#ACAACD 0%,#E39A44 50%,#837FB1 100%); }
+    /* ── 旁注卡片 ── */
+    .note-card { background:#fff; border-radius:20px; box-shadow:soft; padding:18px 20px; border:1px solid rgba(46,41,83,.06); }
+    .step-num { width:26px; height:26px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0; }
+    /* ── 卡片聆听：底部交互卡 ── */
+    .reply-card { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); backdrop-filter:blur(6px); border-radius:24px 24px 0 0; }
+    .opt-btn { display:flex; align-items:center; justify-content:space-between; padding:11px 14px; border-radius:14px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.09); font-size:13px; color:rgba(255,255,255,.88); }
+  </style>
+</head>
+<body class="font-sans antialiased">
+
+<div id="page-wrapper">
+
+<!-- ════════ Header ════════ -->
+<header class="px-10 pt-14 pb-8">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-2xl flex items-center justify-center shadow-chip"
+           style="background:linear-gradient(135deg,#E39A44,#BF6516)">
+        <span class="mi text-white" style="font-size:22px">air</span>
+      </div>
+      <div>
+        <div class="font-serif text-2xl font-bold leading-tight">晚风 Lull</div>
+        <div class="text-xs tracking-wide opacity-60">深夜倾听型 AI 陪伴</div>
+      </div>
+    </div>
+    <div class="hidden md:flex items-center gap-2">
+      <span class="chip bg-night-100 text-night-500">
+        <span class="dot bg-green-500"></span>Design Preview
+      </span>
+      <span class="chip bg-night-100 text-night-500">v0.1 · KMP-CMP</span>
+    </div>
+  </div>
+
+  <div class="mt-12 max-w-3xl">
+    <h1 class="font-serif text-4xl md:text-5xl font-bold leading-tight">
+      你说，它听，<br><span class="text-glow-600">不冷场，也不打扰</span>
+    </h1>
+    <p class="mt-5 opacity-60 leading-relaxed max-w-xl">
+      一个只在声音里陪你的深夜 AI。纯语音双向对话，24h 在线；静默时轻推、换话题，到点温柔告别；声音可深度定制、可克隆，形象由你的描述生成。
+    </p>
+    <div class="mt-6 flex flex-wrap gap-3">
+      <span class="chip bg-glow-100 text-glow-700" style="font-size:13px;padding:7px 14px">
+        <span class="mi" style="font-size:16px;margin-right:4px">graphic_eq</span>不冷场静默引擎
+      </span>
+      <span class="chip bg-night-100 text-night-600" style="font-size:13px;padding:7px 14px">
+        <span class="mi" style="font-size:16px;margin-right:4px">swap_horiz</span>轮次制 · 不打断
+      </span>
+      <span class="chip bg-night-100 text-night-600" style="font-size:13px;padding:7px 14px">
+        <span class="mi" style="font-size:16px;margin-right:4px">graphic_eq</span>声音工坊 · 可克隆
+      </span>
+      <span class="chip bg-mist-100 text-night-600" style="font-size:13px;padding:7px 14px">
+        <span class="mi" style="font-size:16px;margin-right:4px">auto_awesome</span>形象生成 · 可选
+      </span>
+    </div>
+  </div>
+</header>
+
+<main class="px-10 pb-24">
+
+  <!-- ══════════════════ Flow 01 · 纯语音对话 ══════════════════ -->
+  <section class="mt-10">
+    <div class="flex items-baseline gap-3 mb-3">
+      <span class="flow-label" style="background:#FAECD9;color:#9C4D14">Flow 01 · 23:40</span>
+      <h2 class="font-serif text-2xl font-bold">纯语音对话 · 主模式</h2>
+    </div>
+    <p class="text-sm opacity-55 max-w-2xl mb-8">躺下、戴耳机、开口说话。AI 只用声音回应，声波可视化 + 可关闭字幕；AI 说完后开启等待窗口，静默分级策略接管。</p>
+
+    <div class="flex gap-12 flex-wrap items-start">
+
+      <!-- 手机框：纯语音对话界面 -->
+      <div class="animate__animated animate__fadeInUp" style="animation-delay:.05s">
+        <p class="label mb-3">① 对话中 · 声波可视化</p>
+        <div class="phone shadow-phone">
+          <div class="statusbar">
+            <span>23:40</span>
+            <span class="flex items-center gap-1">
+              <span class="mi" style="font-size:14px">signal_cellular_alt</span>
+              <span class="mi" style="font-size:14px">wifi</span>
+              <span class="mi" style="font-size:14px">battery_std</span>
+            </span>
+          </div>
+          <div class="screen">
+            <!-- 顶部状态 -->
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] text-white/40 tracking-wide">晚风 · 在听</span>
+              <span class="chip" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.55);font-size:10px">
+                <span class="mi" style="font-size:12px">closed_caption</span>字幕 开
+              </span>
+            </div>
+
+            <!-- 声波可视化 -->
+            <div class="flex-1 flex items-center justify-center relative">
+              <div class="float" style="width:230px;height:230px;position:relative">
+                <!-- 同心涟漪 -->
+                <div class="pulse-ring"></div>
+                <div class="pulse-ring r2"></div>
+                <div class="pulse-ring r3"></div>
+                <!-- 外圈虚线 -->
+                <div class="absolute inset-0 rounded-full" style="border:1px dashed rgba(255,255,255,.10)"></div>
+                <!-- 渐变光盘 -->
+                <div class="absolute inset-4 rounded-full" style="background:radial-gradient(circle at 38% 32%, rgba(227,154,68,.28) 0%, rgba(95,181,164,.10) 55%, transparent 75%)"></div>
+                <div class="absolute inset-9 rounded-full flex items-center justify-center" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+                  <span class="mi text-glow-300" style="font-size:40px">air</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 字幕条 -->
+            <div class="rounded-2xl px-4 py-3 mb-3" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)">
+              <p class="text-white/85 text-[13px] leading-relaxed">"刚才你说到加班那件事……还想多说说吗？我今晚哪儿都不去。"</p>
+            </div>
+
+            <!-- 静默状态 -->
+            <div class="flex items-center justify-center gap-2 pb-1">
+              <span class="mi text-white/30" style="font-size:14px">timer</span>
+              <span class="text-white/35 text-[11px] tracking-wide">静默 4s · 再等等你</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 旁注：静默策略时间轴 + 规则 -->
+      <div class="animate__animated animate__fadeInUp flex-1" style="animation-delay:.15s;min-width:520px;max-width:760px">
+        <p class="label mb-3">② 静默分级策略 · 核心引擎</p>
+        <div class="note-card">
+          <div class="flex items-baseline justify-between mb-6">
+            <h3 class="font-serif text-lg font-bold">等待 → 轻推 → 换话题 → 告别</h3>
+            <span class="text-[11px] text-night-400">每次 AI 发言完毕后计时重置</span>
+          </div>
+
+          <!-- 时间轴 -->
+          <div class="relative" style="padding:6px 4px 0">
+            <div class="tl-line absolute" style="left:10px;right:10px;top:11px"></div>
+            <div class="grid grid-cols-4 gap-3">
+              <div class="tl-node">
+                <div class="tl-dot" style="background:#837FB1"></div>
+                <p class="mt-3 text-[13px] font-semibold">等待</p>
+                <p class="text-[11px] text-night-400 mt-0.5">0 ~ T1 · 安静陪伴</p>
+                <p class="text-[11px] opacity-60 mt-1.5 leading-relaxed">界面轻显静默计时，不催促</p>
+              </div>
+              <div class="tl-node">
+                <div class="tl-dot" style="background:#E39A44"></div>
+                <p class="mt-3 text-[13px] font-semibold">T1 轻推</p>
+                <p class="text-[11px] text-glow-600 mt-0.5">默认 6s · 可配 3–30s</p>
+                <p class="text-[11px] opacity-60 mt-1.5 leading-relaxed">顺当前话题轻轻一问，不换轨</p>
+              </div>
+              <div class="tl-node">
+                <div class="tl-dot" style="background:#5FB5A4"></div>
+                <p class="mt-3 text-[13px] font-semibold">T2 换话题</p>
+                <p class="text-[11px] text-mist-400 mt-0.5">轻推后再静默 20s · 可配 10–60s</p>
+                <p class="text-[11px] opacity-60 mt-1.5 leading-relaxed">换<b>情绪主题相邻</b>的新话题</p>
+              </div>
+              <div class="tl-node">
+                <div class="tl-dot" style="background:#D97F22"></div>
+                <p class="mt-3 text-[13px] font-semibold">T3 告别</p>
+                <p class="text-[11px] text-glow-600 mt-0.5">会话默认 30min · 可配 10–90min</p>
+                <p class="text-[11px] opacity-60 mt-1.5 leading-relaxed">"夜深了，我陪你到这里，晚安。"</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6 pt-5 grid grid-cols-3 gap-3" style="border-top:1px dashed rgba(46,41,83,.12)">
+            <div>
+              <div class="flex items-center gap-1.5 text-night-600">
+                <span class="mi" style="font-size:15px">alt_route</span>
+                <span class="text-[12px] font-semibold">话题连续性</span>
+              </div>
+              <p class="text-[11px] opacity-55 mt-1.5 leading-relaxed">从工作压力可过渡到"最近一次放松是什么时候"，绝不突兀跳转</p>
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5 text-night-600">
+                <span class="mi" style="font-size:15px">front_hand</span>
+                <span class="text-[12px] font-semibold">轻推上限</span>
+              </div>
+              <p class="text-[11px] opacity-55 mt-1.5 leading-relaxed">同一话题最多轻推 2 次，避免逼问感</p>
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5 text-night-600">
+                <span class="mi" style="font-size:15px">swap_horiz</span>
+                <span class="text-[12px] font-semibold">轮次制</span>
+              </div>
+              <p class="text-[11px] opacity-55 mt-1.5 leading-relaxed">AI 播报期间不打断；说完才开启等待窗口</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 会话循环小图 -->
+        <div class="note-card mt-5 flex items-center gap-5">
+          <div class="flex items-center gap-2 flex-1 justify-center">
+            <span class="chip bg-mist-100 text-night-600" style="font-size:11px;padding:6px 10px">你说话</span>
+            <span class="mi text-night-300" style="font-size:14px">arrow_forward</span>
+            <span class="chip bg-glow-100 text-glow-700" style="font-size:11px;padding:6px 10px">AI 回应</span>
+            <span class="mi text-night-300" style="font-size:14px">arrow_forward</span>
+            <span class="chip bg-night-100 text-night-500" style="font-size:11px;padding:6px 10px">等待窗口</span>
+            <span class="mi text-night-300" style="font-size:14px">arrow_forward</span>
+            <span class="chip bg-white text-night-400" style="font-size:11px;padding:6px 10px;border:1px dashed rgba(46,41,83,.25)">静默策略</span>
+          </div>
+          <p class="text-[11px] opacity-50 leading-relaxed" style="max-width:150px">检测到语音即正常接话，回到循环起点</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ Flow 02 · 卡片聆听 ══════════════════ -->
+  <section class="mt-24">
+    <div class="flex items-baseline gap-3 mb-3">
+      <span class="flow-label" style="background:#E1F3EE;color:#2E2953">Flow 02 · 00:15</span>
+      <h2 class="font-serif text-2xl font-bold">卡片聆听 · 辅模式</h2>
+    </div>
+    <p class="text-sm opacity-55 max-w-2xl mb-8">累到不想说话、只想被陪着。AI 每句话后从屏幕底部弹出交互卡片：共情选项 + 自由输入，点选即收回。</p>
+
+    <div class="flex gap-12 flex-wrap items-start">
+
+      <!-- 手机框：卡片聆听界面 -->
+      <div class="animate__animated animate__fadeInUp" style="animation-delay:.05s">
+        <p class="label mb-3">① 聆听中 · 底部交互卡</p>
+        <div class="phone shadow-phone">
+          <div class="statusbar">
+            <span>00:15</span>
+            <span class="flex items-center gap-1">
+              <span class="mi" style="font-size:14px">signal_cellular_alt</span>
+              <span class="mi" style="font-size:14px">wifi</span>
+              <span class="mi" style="font-size:14px">battery_std</span>
+            </span>
+          </div>
+          <div class="screen" style="padding-bottom:0">
+            <!-- 顶部状态 -->
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] text-white/40 tracking-wide">晚风 · 正在说</span>
+              <span class="chip" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.55);font-size:10px">
+                <span class="mi" style="font-size:12px">bedtime</span>聆听模式
+              </span>
+            </div>
+
+            <!-- 声波 + 大留白 -->
+            <div class="flex-1 flex flex-col items-center justify-center gap-5">
+              <div class="flex items-center gap-1.5">
+                <span class="wbar" style="animation-delay:0s"></span>
+                <span class="wbar" style="animation-delay:.15s"></span>
+                <span class="wbar" style="animation-delay:.3s"></span>
+                <span class="wbar" style="animation-delay:.45s"></span>
+                <span class="wbar" style="animation-delay:.6s"></span>
+              </div>
+              <p class="text-white/70 text-[13px] leading-relaxed text-center px-4">
+                "......听起来今天真的挺累的。<br>我想多听听你说的那个梦。"
+              </p>
+            </div>
+
+            <!-- 底部交互卡片 -->
+            <div class="reply-card -mx-[18px] px-5 pt-3 pb-5">
+              <div class="w-9 h-1 rounded-full mx-auto mb-3" style="background:rgba(255,255,255,.14)"></div>
+              <p class="text-white/50 text-[11px] mb-2.5 text-center">轻轻回应，或者只是听</p>
+              <div class="space-y-2">
+                <div class="opt-btn">
+                  <span>嗯，我在听</span>
+                  <span class="mi text-glow-300" style="font-size:15px">play_arrow</span>
+                </div>
+                <div class="opt-btn" style="border-color:rgba(227,154,68,.45);background:rgba(227,154,68,.08)">
+                  <span class="text-glow-200">然后呢</span>
+                  <span class="mi text-glow-300" style="font-size:15px">pause</span>
+                </div>
+                <div class="opt-btn">
+                  <span>这确实挺难的</span>
+                  <span class="mi text-glow-300" style="font-size:15px">play_arrow</span>
+                </div>
+                <!-- 自由输入框 -->
+                <div class="flex items-center gap-2 mt-3 px-3.5 py-2.5 rounded-full" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10)">
+                  <span class="mi text-white/35" style="font-size:15px">edit</span>
+                  <span class="text-white/35 text-[12px] flex-1">或者写点什么...</span>
+                  <span class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,#E39A44,#BF6516)">
+                    <span class="mi text-white" style="font-size:14px">arrow_upward</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 旁注：行为规则 -->
+      <div class="animate__animated animate__fadeInUp flex-1" style="animation-delay:.15s;min-width:520px;max-width:760px">
+        <p class="label mb-3">② 卡片行为 · 语境生成</p>
+        <div class="grid grid-cols-1 gap-4">
+
+          <div class="note-card flex gap-4">
+            <div class="step-num text-white" style="background:#837FB1">1</div>
+            <div>
+              <h4 class="text-[14px] font-semibold">AI 每句话播报完 → 弹卡</h4>
+              <p class="text-[12px] opacity-55 mt-1 leading-relaxed">3–4 个共情式选项由 LLM 根据当前语境实时生成——"嗯，我在听" / "然后呢" / "这确实挺难的" / "换我说给你听"，不是固定模板。</p>
+            </div>
+          </div>
+
+          <div class="note-card flex gap-4">
+            <div class="step-num text-white" style="background:#E39A44">2</div>
+            <div>
+              <h4 class="text-[14px] font-semibold">点选或输入 → 卡片收回，AI 继续</h4>
+              <p class="text-[12px] opacity-55 mt-1 leading-relaxed">选项之外的意思，用输入框自由表达；发送后与语音输入同等对待。</p>
+            </div>
+          </div>
+
+          <div class="note-card flex gap-4">
+            <div class="step-num text-white" style="background:#5FB5A4">3</div>
+            <div>
+              <h4 class="text-[14px] font-semibold">连续忽略 3 张卡片 → 自动转回纯语音等待</h4>
+              <p class="text-[12px] opacity-55 mt-1 leading-relaxed">不重复打扰——用户可能已经睡着了，或者只是想安静地听。</p>
+            </div>
+          </div>
+
+          <div class="note-card" style="background:linear-gradient(135deg,#201B3D,#2E2953);border:none">
+            <div class="flex items-center gap-2 mb-2.5">
+              <span class="mi text-glow-300" style="font-size:16px">record_voice_over</span>
+              <span class="text-white/90 text-[13px] font-semibold">模式切换 · 说出来就行</span>
+            </div>
+            <div class="flex flex-wrap gap-2.5">
+              <span class="chip" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.75);font-size:12px;padding:7px 13px">"我想只是听" → 进入卡片模式</span>
+              <span class="chip" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.75);font-size:12px;padding:7px 13px">"我想说话了" → 退出</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ Flow 03 · 声音工坊 ══════════════════ -->
+  <section class="mt-24">
+    <div class="flex items-baseline gap-3 mb-3">
+      <span class="flow-label" style="background:#EDEDF5;color:#413C6B">Flow 03 · 任意时刻</span>
+      <h2 class="font-serif text-2xl font-bold">声音工坊 · 定制与克隆</h2>
+    </div>
+    <p class="text-sm opacity-55 max-w-2xl mb-8">声音是这个"人"唯一的外表。预置音色起步，细粒度参数调出独一无二的声音配方，或克隆自己的声音。</p>
+
+    <div class="flex gap-12 flex-wrap items-start">
+
+      <!-- 手机框：声音配置界面 -->
+      <div class="animate__animated animate__fadeInUp" style="animation-delay:.05s">
+        <p class="label mb-3">① 声音配方</p>
+        <div class="phone shadow-phone">
+          <div class="statusbar">
+            <span>21:12</span>
+            <span class="flex items-center gap-1">
+              <span class="mi" style="font-size:14px">signal_cellular_alt</span>
+              <span class="mi" style="font-size:14px">wifi</span>
+              <span class="mi" style="font-size:14px">battery_std</span>
+            </span>
+          </div>
+          <div class="screen">
+            <div class="flex items-center justify-between mb-4">
+              <span class="text-white/90 font-semibold text-[15px]">声音工坊</span>
+              <span class="chip" style="background:rgba(227,154,68,.12);color:#ECB875;font-size:10px">
+                <span class="mi" style="font-size:12px">bookmark</span>已保存配方
+              </span>
+            </div>
+
+            <!-- 音色网格 -->
+            <p class="text-[11px] text-white/40 mb-2 tracking-wide">预置音色</p>
+            <div class="grid grid-cols-2 gap-2">
+              <div class="rounded-xl px-3 py-2.5 flex items-center justify-between" style="background:rgba(227,154,68,.10);border:1px solid rgba(227,154,68,.45)">
+                <span class="text-[12px] text-glow-200">温柔知性</span>
+                <span class="mi text-glow-300" style="font-size:15px">pause_circle</span>
+              </div>
+              <div class="rounded-xl px-3 py-2.5 flex items-center justify-between" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+                <span class="text-[12px] text-white/75">慵懒低沉</span>
+                <span class="mi text-white/35" style="font-size:15px">play_arrow</span>
+              </div>
+              <div class="rounded-xl px-3 py-2.5 flex items-center justify-between" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+                <span class="text-[12px] text-white/75">清澈少年</span>
+                <span class="mi text-white/35" style="font-size:15px">play_arrow</span>
+              </div>
+              <div class="rounded-xl px-3 py-2.5 flex items-center justify-between" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+                <span class="text-[12px] text-white/75">温暖大叔</span>
+                <span class="mi text-white/35" style="font-size:15px">play_arrow</span>
+              </div>
+              <div class="rounded-xl px-3 py-2.5 flex items-center justify-between" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+                <span class="text-[12px] text-white/75">元气电台</span>
+                <span class="mi text-white/35" style="font-size:15px">play_arrow</span>
+              </div>
+              <div class="rounded-xl px-3 py-2.5 flex items-center justify-between" style="background:transparent;border:1px dashed rgba(227,154,68,.4)">
+                <span class="text-[12px] text-glow-300">克隆我的声音</span>
+                <span class="mi text-glow-300" style="font-size:15px">mic</span>
+              </div>
+            </div>
+
+            <!-- 滑杆组 -->
+            <p class="text-[11px] text-white/40 mt-5 mb-3 tracking-wide">细粒度调节</p>
+            <div class="space-y-4">
+              <div>
+                <div class="flex justify-between text-[11px] mb-1.5"><span class="text-white/70">语速</span><span class="text-glow-300">0.9×</span></div>
+                <div class="slider"><div class="fill" style="width:42%"></div><div class="knob" style="left:42%"></div></div>
+              </div>
+              <div>
+                <div class="flex justify-between text-[11px] mb-1.5"><span class="text-white/70">气声感</span><span class="text-glow-300">40%</span></div>
+                <div class="slider"><div class="fill" style="width:40%"></div><div class="knob" style="left:40%"></div></div>
+              </div>
+              <div>
+                <div class="flex justify-between text-[11px] mb-1.5"><span class="text-white/70">句间停顿</span><span class="text-glow-300">1.2s</span></div>
+                <div class="slider"><div class="fill" style="width:55%"></div><div class="knob" style="left:55%"></div></div>
+              </div>
+              <div>
+                <div class="flex justify-between text-[11px] mb-1.5"><span class="text-white/70">轻笑频率</span><span class="text-glow-300">低</span></div>
+                <div class="slider"><div class="fill" style="width:28%"></div><div class="knob" style="left:28%"></div></div>
+              </div>
+            </div>
+
+            <!-- 呼吸声开关 -->
+            <div class="flex items-center justify-between mt-5 px-3.5 py-2.5 rounded-xl" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+              <span class="text-[12px] text-white/70">呼吸声</span>
+              <div class="w-9 h-5 rounded-full relative" style="background:linear-gradient(90deg,#5FB5A4,#E39A44)">
+                <div class="absolute w-3.5 h-3.5 rounded-full bg-white" style="top:3px;right:3px"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 旁注：克隆流程 + 伦理 -->
+      <div class="animate__animated animate__fadeInUp flex-1" style="animation-delay:.15s;min-width:520px;max-width:760px">
+        <p class="label mb-3">② 声音克隆 · 四步</p>
+        <div class="note-card">
+          <div class="grid grid-cols-4 gap-2 text-center">
+            <div>
+              <div class="w-11 h-11 rounded-2xl mx-auto flex items-center justify-center text-white" style="background:#837FB1">
+                <span class="mi" style="font-size:20px">mic</span>
+              </div>
+              <p class="text-[12px] font-semibold mt-2">录制</p>
+              <p class="text-[11px] opacity-50 mt-1 leading-relaxed">3–5 句指定文本<br>提示安静环境</p>
+            </div>
+            <div>
+              <div class="w-11 h-11 rounded-2xl mx-auto flex items-center justify-center text-white" style="background:#E39A44">
+                <span class="mi" style="font-size:20px">auto_awesome</span>
+              </div>
+              <p class="text-[12px] font-semibold mt-2">生成</p>
+              <p class="text-[11px] opacity-50 mt-1 leading-relaxed">约 30s<br>声纹一致性校验</p>
+            </div>
+            <div>
+              <div class="w-11 h-11 rounded-2xl mx-auto flex items-center justify-center text-white" style="background:#5FB5A4">
+                <span class="mi" style="font-size:20px">compare_arrows</span>
+              </div>
+              <p class="text-[12px] font-semibold mt-2">试听对比</p>
+              <p class="text-[11px] opacity-50 mt-1 leading-relaxed">原声 vs 克隆声<br>逐句对照</p>
+            </div>
+            <div>
+              <div class="w-11 h-11 rounded-2xl mx-auto flex items-center justify-center text-white" style="background:#D97F22">
+                <span class="mi" style="font-size:20px">tune</span>
+              </div>
+              <p class="text-[12px] font-semibold mt-2">微调</p>
+              <p class="text-[11px] opacity-50 mt-1 leading-relaxed">相似度 / 自然度<br>保存进配方</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="note-card mt-4 flex gap-4" style="border-left:3px solid #E39A44">
+          <span class="mi text-glow-600" style="font-size:20px">verified_user</span>
+          <div>
+            <h4 class="text-[14px] font-semibold">伦理约束 · 仅可克隆本人声音</h4>
+            <p class="text-[12px] opacity-55 mt-1 leading-relaxed">录制环节做声纹一致性校验 + 多段录音与最终确认环节防止代人录制，规则写入用户协议。</p>
+          </div>
+        </div>
+
+        <div class="note-card mt-4">
+          <h4 class="text-[14px] font-semibold mb-2">配置项总览</h4>
+          <div class="flex flex-wrap gap-2">
+            <span class="chip bg-night-100 text-night-500" style="font-size:11px">语速</span>
+            <span class="chip bg-night-100 text-night-500" style="font-size:11px">音调基频</span>
+            <span class="chip bg-night-100 text-night-500" style="font-size:11px">气声感</span>
+            <span class="chip bg-night-100 text-night-500" style="font-size:11px">句间停顿时长</span>
+            <span class="chip bg-night-100 text-night-500" style="font-size:11px">轻笑频率</span>
+            <span class="chip bg-night-100 text-night-500" style="font-size:11px">呼吸声</span>
+            <span class="chip bg-glow-100 text-glow-700" style="font-size:11px">+ 克隆相似度 / 自然度</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ Flow 04 · 形象生成 ══════════════════ -->
+  <section class="mt-24">
+    <div class="flex items-baseline gap-3 mb-3">
+      <span class="flow-label" style="background:#E1F3EE;color:#2E2953">Flow 04 · 首次使用</span>
+      <h2 class="font-serif text-2xl font-bold">形象生成 · 可选流程</h2>
+    </div>
+    <p class="text-sm opacity-55 max-w-2xl mb-8">几句描述，生成一张与声音气质联动的 AI 画像。插画风格而非真实人像——她是声音长出来的样子。</p>
+
+    <div class="flex gap-12 flex-wrap items-start">
+
+      <!-- 手机框：画像展示 -->
+      <div class="animate__animated animate__fadeInUp" style="animation-delay:.05s">
+        <p class="label mb-3">① 她的样子</p>
+        <div class="phone shadow-phone">
+          <div class="statusbar">
+            <span>21:12</span>
+            <span class="flex items-center gap-1">
+              <span class="mi" style="font-size:14px">signal_cellular_alt</span>
+              <span class="mi" style="font-size:14px">wifi</span>
+              <span class="mi" style="font-size:14px">battery_std</span>
+            </span>
+          </div>
+          <div class="screen">
+            <div class="flex items-center justify-between mb-4">
+              <span class="text-white/90 font-semibold text-[15px]">她的样子</span>
+              <span class="chip" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.55);font-size:10px">来自你的描述</span>
+            </div>
+
+            <!-- 画像：SVG 氛围插画 -->
+            <div class="rounded-3xl overflow-hidden relative" style="border:1px solid rgba(255,255,255,.08)">
+              <svg viewBox="0 0 300 330" width="100%" style="display:block">
+                <defs>
+                  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#2E2953"/>
+                    <stop offset="60%" stop-color="#201B3D"/>
+                    <stop offset="100%" stop-color="#151028"/>
+                  </linearGradient>
+                  <radialGradient id="moonGlow" cx="0.5" cy="0.5" r="0.5">
+                    <stop offset="0%" stop-color="#ECB875" stop-opacity=".55"/>
+                    <stop offset="55%" stop-color="#E39A44" stop-opacity=".18"/>
+                    <stop offset="100%" stop-color="#E39A44" stop-opacity="0"/>
+                  </radialGradient>
+                  <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#F4D4AB"/>
+                    <stop offset="100%" stop-color="#E39A44"/>
+                  </linearGradient>
+                </defs>
+                <rect width="300" height="330" fill="url(#sky)"/>
+                <!-- 星星 -->
+                <circle cx="46" cy="52" r="1.4" fill="#FAECD9" opacity=".8"/>
+                <circle cx="88" cy="30" r="1" fill="#FAECD9" opacity=".5"/>
+                <circle cx="132" cy="58" r="1.2" fill="#FAECD9" opacity=".65"/>
+                <circle cx="196" cy="36" r="1" fill="#FAECD9" opacity=".45"/>
+                <circle cx="252" cy="66" r="1.3" fill="#FAECD9" opacity=".7"/>
+                <circle cx="272" cy="140" r="1" fill="#FAECD9" opacity=".4"/>
+                <circle cx="36" cy="140" r="1.1" fill="#FAECD9" opacity=".5"/>
+                <circle cx="60" cy="220" r="1.2" fill="#FAECD9" opacity=".35"/>
+                <circle cx="250" cy="250" r="1.2" fill="#FAECD9" opacity=".4"/>
+                <!-- 月亮与光晕 -->
+                <circle cx="218" cy="88" r="64" fill="url(#moonGlow)"/>
+                <circle cx="218" cy="88" r="26" fill="#F4D4AB"/>
+                <circle cx="210" cy="82" r="4" fill="#ECB875" opacity=".35"/>
+                <circle cx="226" cy="98" r="3" fill="#ECB875" opacity=".28"/>
+                <!-- 人物剪影 -->
+                <path fill="#0C0918" d="
+                  M 128 74
+                  C 148 70, 166 82, 170 102
+                  C 172 112, 176 122, 181 134
+                  C 185 143, 188 150, 188 158
+                  C 188 164, 184 167, 181 169
+                  L 185 174
+                  C 184 180, 181 184, 180 188
+                  C 182 194, 181 200, 177 205
+                  C 174 214, 166 221, 158 225
+                  C 146 231, 132 236, 124 248
+                  C 112 266, 104 292, 108 330
+                  L 8 330
+                  C 2 260, 8 190, 30 140
+                  C 46 105, 84 80, 128 74 Z"/>
+                <!-- 面部轮廓 rim light -->
+                <path fill="none" stroke="url(#rim)" stroke-width="2.2" stroke-linecap="round" d="
+                  M 170 102
+                  C 172 112, 176 122, 181 134
+                  C 185 143, 188 150, 188 158
+                  C 188 164, 184 167, 181 169
+                  L 185 174
+                  C 184 180, 181 184, 180 188
+                  C 182 194, 181 200, 177 205
+                  C 174 214, 166 221, 158 225"/>
+                <!-- 飘起的发丝 -->
+                <path fill="none" stroke="#ECB875" stroke-width="1.4" stroke-linecap="round" opacity=".55" d="
+                  M 138 90 C 112 96, 92 112, 82 134"/>
+                <path fill="none" stroke="#ECB875" stroke-width="1.1" stroke-linecap="round" opacity=".35" d="
+                  M 148 84 C 118 86, 96 100, 84 120"/>
+                <!-- 前景薄雾 -->
+                <rect y="300" width="300" height="30" fill="#201B3D" opacity=".55"/>
+              </svg>
+              <div class="absolute inset-0" style="background:radial-gradient(140px 90px at 70% 26%, rgba(244,212,171,.10), transparent 70%)"></div>
+            </div>
+
+            <!-- 描述引用 -->
+            <div class="mt-4 px-4 py-3 rounded-2xl" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+              <p class="text-[11px] text-white/40 mb-1">你的描述</p>
+              <p class="text-white/80 text-[12.5px] leading-relaxed">"像深夜电台主播，温柔但有点丧。"</p>
+            </div>
+
+            <!-- 微调按钮 -->
+            <div class="flex items-center gap-2 mt-3">
+              <span class="chip" style="background:rgba(227,154,68,.10);border:1px solid rgba(227,154,68,.35);color:#ECB875;font-size:11px;padding:7px 12px">
+                <span class="mi" style="font-size:13px">wb_sunny</span>更暖一点
+              </span>
+              <span class="chip" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.7);font-size:11px;padding:7px 12px">
+                <span class="mi" style="font-size:13px">ac_unit</span>更清冷一点
+              </span>
+              <span class="chip ml-auto" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.6);font-size:11px;padding:7px 12px">
+                <span class="mi" style="font-size:13px">refresh</span>重新生成
+              </span>
+            </div>
+
+            <!-- 声线联动 -->
+            <div class="flex items-center gap-2 mt-3 pb-1">
+              <span class="mi text-glow-300" style="font-size:14px">graphic_eq</span>
+              <span class="text-[11px] text-white/45">搭配声线建议：慵懒低沉 · 气声感 40% · 句间停顿 1.2s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 旁注：向导 + 约束 -->
+      <div class="animate__animated animate__fadeInUp flex-1" style="animation-delay:.15s;min-width:520px;max-width:760px">
+        <p class="label mb-3">② 生成流程 · 三步</p>
+        <div class="grid grid-cols-1 gap-4">
+          <div class="note-card flex gap-4">
+            <div class="step-num text-white" style="background:#837FB1">1</div>
+            <div>
+              <h4 class="text-[14px] font-semibold">入口可选</h4>
+              <p class="text-[12px] opacity-55 mt-1 leading-relaxed">首次使用时可选进入，跳过不影响任何功能；之后随时从设置发起。</p>
+            </div>
+          </div>
+          <div class="note-card flex gap-4">
+            <div class="step-num text-white" style="background:#E39A44">2</div>
+            <div>
+              <h4 class="text-[14px] font-semibold">几句自然语言 → 画像</h4>
+              <p class="text-[12px] opacity-55 mt-1 leading-relaxed">不填表单、不选标签——用"她像深夜电台主播，温柔但有点丧"这样的人话描述。</p>
+            </div>
+          </div>
+          <div class="note-card flex gap-4">
+            <div class="step-num text-white" style="background:#5FB5A4">3</div>
+            <div>
+              <h4 class="text-[14px] font-semibold">微调直至合意</h4>
+              <p class="text-[12px] opacity-55 mt-1 leading-relaxed">更暖 / 更清冷 / 重新生成；画像作为对话时的屏幕主体（呼吸微动的动态插画）。</p>
+            </div>
+          </div>
+
+          <div class="note-card" style="background:linear-gradient(135deg,#201B3D,#2E2953);border:none">
+            <div class="flex items-center gap-2 mb-2.5">
+              <span class="mi text-glow-300" style="font-size:16px">palette</span>
+              <span class="text-white/90 text-[13px] font-semibold">生成约束</span>
+            </div>
+            <ul class="text-white/60 text-[12px] leading-relaxed space-y-1.5">
+              <li>· 插画风格而非真实人像——规避恐怖谷与肖像伦理风险</li>
+              <li>· 构图与配色服从"深夜、温柔"的整体气质，美感优先</li>
+              <li>· 与声线联动：画像卡片标注匹配的声音气质建议</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ════════ Footer ════════ -->
+<footer class="px-10 pb-14">
+  <div class="pt-8 flex items-center justify-between" style="border-top:1px solid rgba(46,41,83,.10)">
+    <div class="flex items-center gap-2.5">
+      <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#E39A44,#BF6516)">
+        <span class="mi text-white" style="font-size:14px">air</span>
+      </div>
+      <span class="font-serif font-bold">晚风 Lull</span>
+      <span class="text-xs opacity-40">· 你说，它听，不冷场，也不打扰</span>
+    </div>
+    <span class="text-xs opacity-40">Design Preview v0.1 · 详见 PRD.md</span>
+  </div>
+</footer>
+
+</div>
+</body>
+</html>
