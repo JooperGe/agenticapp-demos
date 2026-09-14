@@ -1964,6 +1964,12 @@ test('单局榜条目点一下直接进游戏容器（不经过作品页）', ()
     assert(work, '需要一件预置作品作样本');
     showScreen('square');                        // 离开作品页：DOM 还在，board-row 仍可点到
     assert(page.hidden, '前置：此时作品页应已隐藏');
+    // 自带前置，不借外来的泄漏值：跑到这里时，前面的探针早已把容器留成 on、把 gameId 留成 guitar-l1。
+    // 若沿用那些残留，断言 1（容器 on）恒真，断言 2 的红也只是"残留值恰好不等于目标值"——删掉监听也照样绿。
+    container.classList.remove('on');
+    state.gameId = null; state.pageId = null;    // 哨兵：与 playTarget(work) 明确不同，点击后变成目标值才真是点击造成的
+    assert(!container.classList.contains('on'), '前置：容器应先归零，不依赖前面探针的残留');
+    assert(state.gameId === null, '前置：state.gameId 应先归零');
     const row = document.querySelector('.gp-board .board-row');
     assert(row, '单局榜应有一行可点');
     row.click();
@@ -1975,7 +1981,9 @@ test('单局榜条目点一下直接进游戏容器（不经过作品页）', ()
     assert(state.screen !== 'gamePage', '不应把屏幕切回作品页，实际 ' + state.screen);
   } finally {
     document.querySelector('#container .result')?.remove();
-    container.className = savedCls;              // 这条探针会让容器 on，必须复原，否则污染后续探针
+    // 防御性复原，不承重：容器在本条之前就被前面的探针留成了 on（本条先摘掉 on，点击后又加回来），
+    // 这里清不清仍是全绿。「探针跑完容器必须归零」这条不变式目前仓内没有断言，将来破了也不会有探针报警——静默回归。
+    container.className = savedCls;
     state.screen = saved.screen; state.gameId = saved.gameId; state.pageId = saved.pageId;
     showScreen(saved.screen || 'goal');
   }
