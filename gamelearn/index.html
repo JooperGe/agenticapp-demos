@@ -210,6 +210,45 @@
   @keyframes rh-hit{ from{ box-shadow:inset 0 0 0 3px var(--ok) } to{ box-shadow:inset 0 0 0 3px var(--line) } }
   @keyframes rh-miss{ from{ box-shadow:inset 0 0 0 3px var(--danger) } to{ box-shadow:inset 0 0 0 3px var(--line) } }
 
+  /* ── 机制：对撞 · 分数僵尸战 ── */
+  .collide{ position:absolute; inset:0; display:flex; flex-direction:column; padding:56px 12px 16px; }
+  .collide .hud{ display:flex; align-items:baseline; justify-content:space-between; padding:0 4px 10px; }
+  .collide .wall{ font-size:15px; font-weight:600; color:var(--ink); }
+  .collide .wall::before{ content:'城墙 '; font-size:12px; font-weight:400; color:var(--ink-dim); }
+  .collide .wave{ font-size:12px; color:var(--ink-dim); }
+  .collide .field{
+    position:relative; flex:1; overflow:hidden; margin-bottom:12px;
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--r-md);
+  }
+  /* 僵尸从右侧走到 right:72%（左起 28%）处即为破墙 —— 城墙占左起 28%，边界线正好接住 */
+  .collide .wall-face{
+    position:absolute; left:0; top:0; bottom:0; width:28%; pointer-events:none;
+    background:linear-gradient(90deg,var(--surface-2),var(--surface));
+    border-right:1px solid var(--line);
+  }
+  .collide .zombie{
+    position:absolute; top:50%; transform:translateY(-50%);
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+  }
+  .collide .zm-body{ font-size:26px; line-height:1; }
+  .collide .zm-expr{
+    font-size:12px; font-weight:600; color:var(--ink); white-space:nowrap;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    background:var(--surface-2); border:1px solid var(--line);
+    border-radius:var(--r-sm); padding:3px 7px;
+  }
+  .collide .turrets{ display:flex; gap:8px; }
+  .collide .turret{
+    flex:1; padding:16px 0; cursor:pointer; font-family:inherit; touch-action:manipulation;
+    font-size:16px; font-weight:600; color:var(--ink); background:var(--brand);
+    border:1px solid var(--line); border-radius:var(--r-md);
+  }
+  .collide .turret:active{ transform:scale(.96); }
+  .collide .field.fx-boom{ animation:cg-boom .3s ease-out; }
+  .collide .field.fx-crack{ animation:cg-crack .3s ease-out; }
+  @keyframes cg-boom{ from{ box-shadow:inset 0 0 0 3px var(--ok) } to{ box-shadow:inset 0 0 0 3px var(--line) } }
+  @keyframes cg-crack{ from{ box-shadow:inset 0 0 0 3px var(--danger) } to{ box-shadow:inset 0 0 0 3px var(--line) } }
+
   /* ── 结算 · 反哺 ── */
   .result{
     position:absolute; inset:0; z-index:1; overflow-y:auto;
@@ -325,6 +364,25 @@ const GUITAR_BLOCKS = Array.from({ length:24 }, (_,i)=>({
 const MECHANIC_CONTENT = {
   'guitar-l1': { tracks:CHORDS, blocks:GUITAR_BLOCKS, hp:5, speed:1.0, fall:0.00022, gap:1.1 },
 };
+
+// 对撞 · 分数僵尸战：8 波，共 11 只僵尸，每只一个算式 + 两个陷阱
+// 陷阱是典型错法：分子分母各自相加、或只换了分母没换分子 —— 不能有第二个正确答案
+const FRACTION_WAVES = [
+  { zombies:[{ id:'z1', expr:'3/4 + 1/6', answer:'11/12', decoys:['4/10','10/12'] }] },
+  { zombies:[{ id:'z2', expr:'1/2 + 1/3', answer:'5/6',  decoys:['2/5','3/6'] },
+             { id:'z3', expr:'2/3 + 1/4', answer:'11/12', decoys:['3/7','9/12'] }] },
+  { zombies:[{ id:'z4', expr:'5/6 - 1/3', answer:'1/2',  decoys:['4/3','6/9'] },
+             { id:'z5', expr:'3/5 + 1/2', answer:'11/10', decoys:['4/7','8/10'] }] },
+  { zombies:[{ id:'z6', expr:'7/8 - 1/4', answer:'5/8',  decoys:['6/4','8/8'] }] },
+  { zombies:[{ id:'z7', expr:'2/5 + 1/2', answer:'9/10', decoys:['3/7','6/10'] },
+             { id:'z8', expr:'1/3 + 1/6', answer:'1/2',  decoys:['2/9','2/6'] }] },
+  { zombies:[{ id:'z9', expr:'4/9 + 1/3', answer:'7/9',  decoys:['5/12','6/9'] }] },
+  { zombies:[{ id:'z10', expr:'5/8 - 1/2', answer:'1/8', decoys:['4/6','6/8'] }] },
+  { zombies:[{ id:'z11', expr:'3/7 + 2/5', answer:'29/35', decoys:['5/12','25/35'] }] },
+];
+// enter 是射程门槛：僵尸走到 enter 之前炮台没架好，点击不生效。
+// 它同时是「一局 60–120 秒」的结构下限（完美通关也要走完 8 波的走进时间）。
+MECHANIC_CONTENT['fraction-l3'] = { waves:FRACTION_WAVES, wallHp:3, speed:1, enter:0.45 };
 
 // ══ 3. ROUTER
 function showScreen(id){
@@ -525,7 +583,8 @@ function closeGame(){
 }
 
 function runMechanic(mechanicId, content, mount){
-  if(mechanicId === 'rhythm') return runRhythm(content, mount);
+  if(mechanicId === 'rhythm')  return runRhythm(content, mount);
+  if(mechanicId === 'collide') return runCollide(content, mount);
   mount.innerHTML = '<div class="cg-todo">这个机制在 demo 里还没做</div>';
   return { destroy(){} };
 }
@@ -636,6 +695,121 @@ function runRhythm(content, mount){
     destroy(){ over = true; cancelAnimationFrame(raf); },
     _step(dt){ step(dt); },
   };
+}
+
+// 对撞：僵尸从右往左走，头顶一道分数算式，下方三门炮里挑正确答案。
+// 答对的炮把最近僵尸打碎；答错僵尸前进一步（不揭示答案，也不掉墙壁血）。
+// 僵尸走进射程（content.enter）之前炮台没架好，点击是空操作。
+function runCollide(content, mount){
+  let wave = 0, wallHp = content.wallHp, over = false, last = 0, raf = null;
+  let zombies = [];
+
+  mount.innerHTML = `
+    <div class="collide">
+      <div class="hud"><span class="wall">${wallHp}</span><span class="wave">第 1/8 波</span></div>
+      <div class="field"><div class="wall-face"></div></div>
+      <div class="turrets"></div>
+    </div>`;
+
+  const field = mount.querySelector('.field');
+  const elWall = mount.querySelector('.wall');
+  const elWave = mount.querySelector('.wave');
+  const elTurrets = mount.querySelector('.turrets');
+
+  function optionsFor(z){
+    const opts = [z.answer, ...z.decoys];        // opts[0] 恒为正确答案
+    const k = z.expr.replace(/\D/g, '').length % opts.length;
+    const rot = opts.slice(k).concat(opts.slice(0, k));   // 确定性轮转打乱，便于自检
+    return rot.map(label => ({ label, ok: label === z.answer }));
+  }
+
+  function spawnWave(){
+    zombies = content.waves[wave].zombies.map(z=>({ ...z, pos:0, live:true, opts: optionsFor(z) }));
+    elWave.textContent = `第 ${wave+1}/8 波`;
+    paint();
+  }
+
+  function front(){ return zombies.filter(z=> z.live).sort((a,b)=> b.pos - a.pos)[0]; }
+
+  function paint(){
+    field.querySelectorAll('.zombie').forEach(e=> e.remove());
+    zombies.filter(z=> z.live).forEach(z=>{
+      field.insertAdjacentHTML('beforeend',
+        `<div class="zombie" data-id="${z.id}" data-pos="${z.pos.toFixed(3)}"
+              style="right:${(z.pos*72).toFixed(1)}%">
+           <span class="zm-body">🧟</span><span class="zm-expr">${z.expr}</span>
+         </div>`);
+    });
+    const f = front();
+    elTurrets.innerHTML = f ? f.opts.map((o,i)=>
+      `<button class="turret" data-ok="${o.ok ? 1 : 0}" data-i="${i}">${o.label}</button>`).join('') : '';
+    elTurrets.querySelectorAll('.turret').forEach(t=>{
+      t.addEventListener('click', ()=> tap(Number(t.dataset.i)));
+    });
+  }
+
+  function step(dt){
+    if(over || !zombies.length) return;
+    const speed = content.speed * (1 + wave * 0.08);
+    zombies.forEach(z=>{
+      if(!z.live) return;
+      z.pos += dt * 0.00004 * speed;
+      if(z.pos >= 1 && !z.breached){
+        z.breached = true; z.live = false;
+        wallHp--; elWall.textContent = wallHp;
+        reportAttempt({ point:'通分', ok:false, ms: dt });
+        field.classList.add('fx-crack');
+        if(wallHp <= 0) return end('lose');
+      }
+    });
+    // 整波都被打穿（不是被点掉）时也要推进：否则场上无僵尸、wave 不增、墙没倒，
+    // 局面永久冻结 —— 没得点也没得输。最后一波这样清掉就直接判负。
+    if(!over && zombies.length && !zombies.some(z=> z.live)){
+      wave++;
+      if(wave >= content.waves.length) return end('lose');
+      spawnWave();
+    }
+    paint();
+  }
+
+  function tap(i){
+    if(over) return;
+    const f = front();
+    if(!f || f.pos < content.enter) return;   // 未进入射程：炮台还没架好，点击不生效
+    const opt = f.opts[i];
+    reportAttempt({ point:'通分', ok: opt.ok, ms: 0 });
+    if(opt.ok){
+      f.live = false;
+      field.classList.add('fx-boom');
+      if(!zombies.some(z=> z.live)){
+        wave++;
+        if(wave >= content.waves.length) return end('win');
+        spawnWave();
+      } else paint();
+    } else {
+      f.pos = Math.min(0.99, f.pos + 0.22);
+      paint();
+    }
+    setTimeout(()=> field.classList.remove('fx-boom','fx-crack'), 220);
+  }
+
+  function end(outcome){
+    over = true;
+    cancelAnimationFrame(raf);
+    finishRun({ outcome, ms: 0, wave, wallHp });
+    showResult(outcome, { maxCombo: 0, hits: wave, total: content.waves.length });
+  }
+
+  function loop(now){
+    const dt = last ? now - last : 16; last = now;
+    step(dt);
+    if(!over) raf = requestAnimationFrame(loop);
+  }
+
+  spawnWave();
+  if(!SELFTEST_MODE) raf = requestAnimationFrame(loop);
+
+  return { destroy(){ over = true; cancelAnimationFrame(raf); }, _step(dt){ step(dt); }, _tap(i){ tap(i); } };
 }
 
 document.querySelector('.cg-exit').addEventListener('click', closeGame);
@@ -946,6 +1120,81 @@ test('结算只统计本局的尝试，不混入上一局', ()=>{
   assert(s.weak.includes('通分'), '本局最低的应是通分（0.33），实际 ' + s.weak);
   assert(!s.weak.includes('上一局的知识点'),
     '结算应只统计本局（run === gameGen）的尝试，实际 weak=' + s.weak);
+});
+
+test('僵尸战：僵尸显示算式、三门炮含一个正确答案', ()=>{
+  openGame('fraction-l3'); mountNow('fraction-l3');
+  assertCount('.collide .zombie', 1);
+  assertText('.collide .zombie', '3/4 + 1/6');
+  assertCount('.collide .turret', 3);
+  const labels = [...document.querySelectorAll('.collide .turret')].map(t=>t.textContent.trim());
+  assert(labels.includes('11/12'), '应含正确答案 11/12，实际 ' + labels.join('/'));
+});
+test('僵尸战：答对击碎并推进到下一波', ()=>{
+  openGame('fraction-l3'); mountNow('fraction-l3');
+  const m = activeMechanic;
+  assertText('.collide .wave', '第 1/8 波');
+  m._step(12000);                                 // 僵尸走进射程，炮台才架好（12000×0.00004 = 0.48 ≥ 0.45）
+  const right = [...document.querySelectorAll('.collide .turret')].findIndex(t=> t.dataset.ok === '1');
+  assert(right >= 0, '应有一个写着正确答案的炮');
+  m._tap(right);
+  assertText('.collide .wave', '第 2/8 波');
+  assert(BUS.attempts.at(-1).ok === true, '应上报一次正确 attempt');
+});
+test('僵尸战：答错僵尸前进、城墙不掉血、不弹答案', ()=>{
+  openGame('fraction-l3'); mountNow('fraction-l3');
+  const m = activeMechanic;
+  m._step(12000);                                 // 同样先走进射程，否则点击不生效
+  const before = Number(document.querySelector('.collide .zombie').dataset.pos);
+  const wrong = [...document.querySelectorAll('.collide .turret')].findIndex(t=> t.dataset.ok !== '1');
+  m._tap(wrong);
+  const after = Number(document.querySelector('.collide .zombie').dataset.pos);
+  assert(after > before, '答错后僵尸应前进，' + before + ' → ' + after);
+  assertText('.collide .wall', '3');
+  assert(!document.getElementById('container').textContent.includes('正确答案'), '不允许出现「正确答案」');
+  assert(BUS.attempts.at(-1).ok === false, '应上报一次错误 attempt');
+});
+test('僵尸战：僵尸走到底则城墙掉血（失败改变游戏世界）', ()=>{
+  openGame('fraction-l3'); mountNow('fraction-l3');
+  const m = activeMechanic;
+  m._step(30000);                                  // 一直推进到僵尸走到城墙
+  assertText('.collide .wall', '2');
+});
+test('僵尸战：未入射程时点击不生效（无 attempt、不推进、波次不变）', ()=>{
+  openGame('fraction-l3'); mountNow('fraction-l3');
+  const m = activeMechanic;
+  const attemptsBefore = BUS.attempts.length;
+  const posBefore = document.querySelector('.collide .zombie').dataset.pos;
+  const right = [...document.querySelectorAll('.collide .turret')].findIndex(t=> t.dataset.ok === '1');
+  assert(right >= 0, '应有一个写着正确答案的炮');
+  m._tap(right);                                   // pos=0，尚未入射程
+  assert(BUS.attempts.length === attemptsBefore, '未入射程的点击不应上报 attempt');
+  assertText('.collide .wave', '第 1/8 波');
+  assert(document.querySelector('.collide .zombie').dataset.pos === posBefore,
+    '未入射程的点击不应改变僵尸位置');
+});
+test('僵尸战：整波僵尸破墙后推进下一波，局面不冻结', ()=>{
+  openGame('fraction-l3'); mountNow('fraction-l3');
+  const m = activeMechanic;
+  m._step(30000);                                  // 第 1 波唯一僵尸走到城墙（破墙而非被点掉）
+  assertText('.collide .wave', '第 2/8 波');
+  assertCount('.collide .zombie', 2);              // 下一波僵尸应出现，而不是空场
+  assertCount('.collide .turret', 3);              // 炮台仍可用，不会无路可走
+});
+test('对撞一局最短时长落在 60–120 秒', ()=>{
+  openGame('fraction-l3'); mountNow('fraction-l3');
+  const m = activeMechanic, runsBefore = BUS.runs.length;
+  let ms = 0;
+  while(BUS.runs.length === runsBefore && ms < 400000){
+    m._step(200); ms += 200;
+    const turrets = [...document.querySelectorAll('#container .turret')];
+    const ok = turrets.findIndex(t=> t.dataset.ok === '1');
+    if(ok >= 0) m._tap(ok);
+  }
+  const sec = ms / 1000;
+  assert(BUS.runs.length > runsBefore, '一局应能打完，实际 ' + sec.toFixed(0) + ' 秒仍未结束');
+  assert(sec >= 60 && sec <= 120,
+    '一局应落在 60–120 秒（生成律），完美通关也要 ' + sec.toFixed(0) + ' 秒');
 });
 
 // ── 启动
