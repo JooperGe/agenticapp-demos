@@ -244,6 +244,7 @@
     border:1px solid var(--line); border-radius:var(--r-md);
   }
   .collide .turret:active{ transform:scale(.96); }
+  .collide .turrets.disarmed{ opacity:.45; pointer-events:none; }   /* 未入射程：纯视觉，_tap 不受影响 */
   .collide .field.fx-boom{ animation:cg-boom .3s ease-out; }
   .collide .field.fx-crack{ animation:cg-crack .3s ease-out; }
   @keyframes cg-boom{ from{ box-shadow:inset 0 0 0 3px var(--ok) } to{ box-shadow:inset 0 0 0 3px var(--line) } }
@@ -743,6 +744,8 @@ function runCollide(content, mount){
     const f = front();
     elTurrets.innerHTML = f ? f.opts.map((o,i)=>
       `<button class="turret" data-ok="${o.ok ? 1 : 0}" data-i="${i}">${o.label}</button>`).join('') : '';
+    // 纯视觉：僵尸还没进射程（或场上无僵尸）时炮台呈未架好态。_tap 的语义不受它影响。
+    elTurrets.classList.toggle('disarmed', !f || f.pos < content.enter);
     elTurrets.querySelectorAll('.turret').forEach(t=>{
       t.addEventListener('click', ()=> tap(Number(t.dataset.i)));
     });
@@ -794,6 +797,7 @@ function runCollide(content, mount){
   }
 
   function end(outcome){
+    if(over) return;          // 同一帧里可能有多只僵尸一起破墙，一局只结算一次
     over = true;
     cancelAnimationFrame(raf);
     finishRun({ outcome, ms: 0, wave, wallHp });
@@ -1167,11 +1171,16 @@ test('僵尸战：未入射程时点击不生效（无 attempt、不推进、波
   const posBefore = document.querySelector('.collide .zombie').dataset.pos;
   const right = [...document.querySelectorAll('.collide .turret')].findIndex(t=> t.dataset.ok === '1');
   assert(right >= 0, '应有一个写着正确答案的炮');
+  assert(document.querySelector('.collide .turrets').classList.contains('disarmed'),
+    '射程前炮台应带未架好标记');
   m._tap(right);                                   // pos=0，尚未入射程
   assert(BUS.attempts.length === attemptsBefore, '未入射程的点击不应上报 attempt');
   assertText('.collide .wave', '第 1/8 波');
   assert(document.querySelector('.collide .zombie').dataset.pos === posBefore,
     '未入射程的点击不应改变僵尸位置');
+  m._step(12000);                                  // 走进射程
+  assert(!document.querySelector('.collide .turrets').classList.contains('disarmed'),
+    '入射程后炮台应解除未架好标记');
 });
 test('僵尸战：整波僵尸破墙后推进下一波，局面不冻结', ()=>{
   openGame('fraction-l3'); mountNow('fraction-l3');
@@ -1195,6 +1204,22 @@ test('对撞一局最短时长落在 60–120 秒', ()=>{
   assert(BUS.runs.length > runsBefore, '一局应能打完，实际 ' + sec.toFixed(0) + ' 秒仍未结束');
   assert(sec >= 60 && sec <= 120,
     '一局应落在 60–120 秒（生成律），完美通关也要 ' + sec.toFixed(0) + ' 秒');
+});
+test('同一帧两只僵尸破墙也只结算一次', ()=>{
+  const saved = MECHANIC_CONTENT['fraction-l3'].wallHp;   // runCollide 在 mount 时读 content.wallHp
+  MECHANIC_CONTENT['fraction-l3'].wallHp = 1;    // 一只破墙就够输，用来逼出同帧双破
+  const runsBefore = BUS.runs.length;
+  openGame('fraction-l3'); mountNow('fraction-l3');
+  const m = activeMechanic;
+  // 第 1 波只有一只：进射程后打掉，才进得了第 2 波的双僵尸
+  m._step(12000);
+  m._tap([...document.querySelectorAll('#container .turret')].findIndex(t=> t.dataset.ok === '1'));
+  assert(BUS.runs.length === runsBefore, '打掉第 1 波不应结算');
+  // 第 2 波两只同起点同速度，必然落在同一帧破墙
+  for(let i = 0; i < 400 && BUS.runs.length === runsBefore; i++) m._step(200);
+  assert(BUS.runs.length === runsBefore + 1,
+    '同一帧两只破墙应只结算一次，实际 ' + (BUS.runs.length - runsBefore) + ' 次');
+  MECHANIC_CONTENT['fraction-l3'].wallHp = saved;
 });
 
 // ── 启动
