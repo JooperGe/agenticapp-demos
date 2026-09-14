@@ -86,6 +86,7 @@ document.querySelectorAll('.tab').forEach(t=>{
 
 // ══ 6. SELFTESTS
 const SELFTESTS = [];
+let awaitedProbeMarks = 0;   // 异步用例在末尾自增，供"顺序屏障"用例观察
 function test(name, fn){ SELFTESTS.push({ name, fn }); }
 function assert(cond, msg){ if(!cond) throw new Error(msg || 'assert failed'); }
 function assertText(sel, expected){
@@ -136,6 +137,10 @@ test('异步用例抛错会被捕获，不会误报 OK', async ()=>{
   ]);
   assert(failed.length === 1, '三个用例里应恰好 1 条失败，实际 ' + failed.length + ' 条：' + JSON.stringify(failed));
   assert(/^异步失败: boom$/.test(failed[0]), '失败条目应带用例名与原因，实际 ' + failed[0]);
+  awaitedProbeMarks++;
+});
+test('自检器确实等待了异步用例（顺序屏障）', ()=>{
+  assert(awaitedProbeMarks >= 1, '排在异步用例之后的同步用例应当已看到它跑完；为 0 说明 runSelftests 没有 await，异步用例的失败会被静默吞掉');
 });
 
 window.addEventListener('load', ()=>{ fitScale(); if(SELFTEST_MODE) setTimeout(runSelftests, 50); });
