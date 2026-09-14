@@ -295,6 +295,36 @@
     border:1px solid var(--line); border-radius:var(--r-sm); padding:1px 6px;
   }
 
+  /* ── 我 · 进步只给自己看 ── */
+  .me-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:0 14px 16px; }
+  .ms-cell{
+    display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center;
+    padding:14px 4px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-md);
+  }
+  .ms-cell b{ font-size:20px; font-weight:600; color:var(--ink); }
+  .ms-cell span{ font-size:10px; color:var(--ink-dim); }
+  .me-skills{
+    margin:0 14px 16px; padding:14px 16px;
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg);
+  }
+  .me-skills h2{ font-size:12px; font-weight:600; color:var(--ink-dim); margin:0 0 8px; }
+  /* 技能条：容器 .me-skills 后代限定 —— 裸 .sk-bar 会把骨架屏（.cg-skeleton .sk-bar）缺省的属性泄漏进容器遮罩 */
+  .me-skills .skill{ display:flex; align-items:center; gap:10px; padding:6px 0; font-size:12px; }
+  .me-skills .sk-n{ flex:none; width:56px; color:var(--ink); }
+  .me-skills .sk-bar{
+    flex:1; height:6px; background:var(--surface-2);
+    border-radius:var(--r-sm); overflow:hidden;
+  }
+  .me-skills .sk-bar > i{
+    display:block; height:100%;
+    background:linear-gradient(90deg,var(--brand),var(--brand-2));
+  }
+  .me-skills .sk-v{ flex:none; width:34px; text-align:right; color:var(--ink-dim); }
+  /* .work-card 自身只有 width:100%，卡间距 / 左右内边距来自父级（对照 .work-list），这里自己给出 */
+  .me-works{ padding:0 14px 18px; display:flex; flex-direction:column; gap:10px; }
+  .me-works h2{ font-size:12px; font-weight:600; color:var(--ink-dim); margin:0; }
+  .me-empty{ padding:10px 0; font-size:12px; color:var(--ink-soft); }
+
   /* ── 作品页 ── */
   .gp-play{
     display:block; width:calc(100% - 28px); margin:2px 14px 16px; padding:14px;
@@ -579,6 +609,7 @@ function showScreen(id){
   document.querySelectorAll('.tab').forEach(t=>{ t.classList.toggle('on', t.dataset.goto === id); });
   if(id === 'square') renderSquare();
   if(id === 'rank') renderRankings();
+  if(id === 'me') renderMe();
 }
 document.querySelectorAll('.tab').forEach(t=>{
   t.addEventListener('click', ()=> showScreen(t.dataset.goto));
@@ -955,6 +986,57 @@ function renderRankings(){
   h.querySelectorAll('.rank-row').forEach(r=> r.addEventListener('click', ()=>{
     if(PUBLISHED.some(w=> w.id === r.dataset.game)) openGamePage(r.dataset.game);
   }));
+}
+
+// ── 我：把 GOALS / PUBLISHED / BUS 汇总成「进步只给自己看」的一页，不做人名排名
+function myStats(){
+  const by = {};
+  BUS.attempts.forEach(a=>{ by[a.point] = by[a.point] || { ok:0, n:0 }; by[a.point].n++; if(a.ok) by[a.point].ok++; });
+  const skills = Object.entries(by)
+    .map(([point,v])=>({ point, rate: +(v.ok / v.n).toFixed(2) }))
+    .sort((a,b)=> b.rate - a.rate);
+  return {
+    played: GOALS.reduce((s,g)=> s + g.done, 0) + BUS.runs.length,
+    made: PUBLISHED.filter(w=> w.mine && !w.parentId).length,
+    remixed: PUBLISHED.filter(w=> w.mine && w.parentId).length,
+    best: Math.max(0, ...PUBLISHED.filter(w=> w.mine).map(w=> w.score)),
+    skills,
+  };
+}
+
+function renderMe(){
+  const s = myStats();
+  const h = document.querySelector('[data-screen="me"]');
+  h.innerHTML = `
+    <header class="scr-head"><h1>我</h1><p>进步只给你自己看</p></header>
+    <div class="me-stats">
+      <div class="ms-cell"><b>${s.played}</b><span>玩过</span></div>
+      <div class="ms-cell"><b>${s.made}</b><span>造过</span></div>
+      <div class="ms-cell"><b>${s.remixed}</b><span>改过</span></div>
+      <div class="ms-cell"><b>${s.best}</b><span>最高分</span></div>
+    </div>
+    <section class="me-skills">
+      <h2>成长轨迹</h2>
+      ${s.skills.length ? s.skills.map(k=>`
+        <div class="skill" data-point="${k.point}" data-rate="${k.rate}">
+          <span class="sk-n">${k.point}</span>
+          <span class="sk-bar"><i style="width:${Math.round(k.rate*100)}%"></i></span>
+          <span class="sk-v">${Math.round(k.rate*100)}%</span>
+        </div>`).join('') : '<p class="me-empty">玩一局就有轨迹了</p>'}
+    </section>
+    <section class="me-works">
+      <h2>我造的</h2>
+      ${PUBLISHED.filter(w=> w.mine).map(w=>`
+        <button class="work-card" data-game="${w.id}">
+          <span class="wc-cover" style="background:linear-gradient(140deg,${w.cover[0]},${w.cover[1]})">${w.emoji}</span>
+          <span class="wc-body">
+            <span class="wc-title">${w.title}</span>
+            <span class="wc-meta">${w.subject} · ${w.plays} 人玩过</span>
+            <span class="wc-mine">我的</span>
+          </span>
+        </button>`).join('') || '<p class="me-empty">还没有作品，去造一个</p>'}
+    </section>`;
+  h.querySelectorAll('.work-card').forEach(c=> c.addEventListener('click', ()=> openGamePage(c.dataset.game)));
 }
 
 // ══ 5. GAMES （Task 4 起填充）
@@ -1922,6 +2004,51 @@ test('分享卡与 toast 盖在游戏容器之上，真实路径下可见可命�
     document.querySelector('.share-card')?.remove();
     document.querySelector('#container .result')?.remove();
     closeGame();
+  }
+});
+
+test('我的页面有四格统计与作品列表', ()=>{
+  const host = document.querySelector('[data-screen="me"]');
+  const saved = host.innerHTML;             // renderMe 会写 .work-card，而它有全局计数断言（不理会 hidden）
+  try{
+    renderMe();
+    assertCount('.me-stats .ms-cell', 4);
+    assert(document.querySelector('.me-works'), '应有我的作品区');
+  } finally {
+    host.innerHTML = saved;                 // 清掉，别把作品卡漏给后续用例
+  }
+});
+test('成长轨迹按正确率画条，且不排名', ()=>{
+  const host = document.querySelector('[data-screen="me"]');
+  const saved = host.innerHTML;
+  const savedAttempts = BUS.attempts.slice();
+  const savedScreen = state.screen;
+  try{
+    BUS.attempts.length = 0;
+    // 通分 3/3 = 100%，约分 1/2 = 50%：两种正确率才验得出「条按比例画」
+    ['通分','通分','通分','约分','约分'].forEach((p,i)=>
+      reportAttempt({ point:p, ok: i < 3 || i === 3, ms:100 }));
+    showScreen('me');                       // 必须可见：hidden 屏的 getBoundingClientRect 恒为 0
+    // 先证明屏上真的渲染出了内容 —— 否则下面「不含排名」会在空屏上空过
+    assertCount('.me-stats .ms-cell', 4);
+    assertText('.me-skills h2', '成长轨迹');
+    const s = document.querySelector('.skill[data-point="通分"]');
+    assert(s, '应有「通分」技能条');
+    assert(Number(s.dataset.rate) > 0.9, '通分正确率应 >0.9，实际 ' + s.dataset.rate);
+    // 断言「渲染出来的填充」：没有 .me-skills 的 CSS 时行内 <i> 宽度恒为 0，
+    // 「样式坏了」会伪装成「数据没绑上」，两者都静默
+    const bar = p => document.querySelector('.skill[data-point="' + p + '"] .sk-bar > i');
+    const w100 = bar('通分').getBoundingClientRect().width;
+    const w50  = bar('约分').getBoundingClientRect().width;
+    assert(w100 > 0, '通分填充应有非零宽度（无 CSS 时行内 <i> 为 0），实际 ' + w100);
+    assert(w50 > 0, '约分填充应有非零宽度，实际 ' + w50);
+    assert(Math.abs(w100 / w50 - 2) < 0.35,
+      '100% 的条应约为 50% 的两倍，实际 ' + w100 + ' / ' + w50 + ' = ' + (w100 / w50));
+    assert(!host.textContent.includes('排名'), '「我」页面不做人名排名');
+  } finally {
+    host.innerHTML = saved;
+    BUS.attempts.length = 0; BUS.attempts.push(...savedAttempts);
+    showScreen(savedScreen || 'goal');      // 还原屏状态与 tab 高亮
   }
 });
 
