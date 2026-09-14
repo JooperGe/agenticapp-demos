@@ -1510,6 +1510,14 @@ async function runSelftests(){
   document.title = failed.length ? ('SELFTEST FAIL: ' + failed[0]) : 'SELFTEST OK';
 }
 
+// ── 探针会改 PUBLISHED（publishCurrent 往数组头插作品、doRemix 给原作 remixes++）。
+// 不还原是**静默**的：后面的探针期望值会随注册顺序漂移 —— 实测把 creatorScore('豆豆')
+// 从种子态的 2148 顶到 2564，并把 PUBLISHED 从 16 件涨到 21 件。
+// 所以每条会改 PUBLISHED 的探针都必须在 finally 里还原：
+//   const snapP = snapPublished();  try { ... } finally { restorePublished(snapP); renderSquare(); }
+const snapPublished = () => PUBLISHED.map(w=>({ ...w }));
+function restorePublished(snap){ PUBLISHED.length = 0; snap.forEach(w=> PUBLISHED.push(w)); }
+
 // 探针用例
 test('默认停在目标屏', ()=>{ assert(state.screen === 'goal', '默认屏幕应为 goal'); });
 test('四个 tab', ()=>{ assertCount('nav.tabbar .tab', 4); });
@@ -1844,12 +1852,17 @@ test('作品页有二创树、单局榜和评论', ()=>{
   assert(document.querySelector('.gp-comments'), '应有评论区');
 });
 test('发布后广场多一件自己的作品', ()=>{
-  const before = document.querySelectorAll('.work-card').length;
-  state.gameId = 'guitar-l1';
-  publishCurrent();
-  renderSquare();
-  assertCount('.work-card', before + 1);
-  assertText('.work-card[data-game="guitar-l1"]', '我的');
+  const snapP = snapPublished();
+  try {
+    const before = document.querySelectorAll('.work-card').length;
+    state.gameId = 'guitar-l1';
+    publishCurrent();
+    renderSquare();
+    assertCount('.work-card', before + 1);
+    assertText('.work-card[data-game="guitar-l1"]', '我的');
+  } finally {
+    restorePublished(snapP); renderSquare();
+  }
 });
 test('广场屏经路由进入时会渲染', ()=>{
   const host = document.querySelector('[data-screen="square"]');
@@ -1859,46 +1872,66 @@ test('广场屏经路由进入时会渲染', ()=>{
 });
 
 test('二创档位面板有三档，换皮一档即可完成', ()=>{
-  startRemix('w-fraction-zombie');
-  assert(document.querySelector('.remix-sheet').classList.contains('on'), '面板应打开');
-  assertCount('.tier', 3);
-  const before = PUBLISHED.length;
-  document.querySelector('.tier[data-tier="skin"]').click();   // 换皮先展开主题网格
-  document.querySelector('.skin-opt[data-skin="太空"]').click();
-  assert(document.querySelector('.remix-sheet') === null, '选完主题后面板应关闭');
-  renderSquare();
-  assertCount('.work-card', before + 1);
+  const snapP = snapPublished();
+  try {
+    startRemix('w-fraction-zombie');
+    assert(document.querySelector('.remix-sheet').classList.contains('on'), '面板应打开');
+    assertCount('.tier', 3);
+    const before = PUBLISHED.length;
+    document.querySelector('.tier[data-tier="skin"]').click();   // 换皮先展开主题网格
+    document.querySelector('.skin-opt[data-skin="太空"]').click();
+    assert(document.querySelector('.remix-sheet') === null, '选完主题后面板应关闭');
+    renderSquare();
+    assertCount('.work-card', before + 1);
+  } finally {
+    restorePublished(snapP); renderSquare();
+  }
 });
 test('二创产物血缘指向原作', ()=>{
-  const before = PUBLISHED.length;
-  doRemix('w-fraction-zombie','skin','太空');   // 自播种：不依赖上一条用例留下的产物
-  assert(PUBLISHED.length === before + 1, '应新增一件作品');
-  const child = PUBLISHED.find(w=> w.parentId === 'w-fraction-zombie' && w.id !== 'w-unit-swap');
-  assert(child, '应存在新的衍生作品');
-  const parent = PUBLISHED.find(w=> w.id === 'w-fraction-zombie');
-  assert(parent.remixes >= 13, '原作衍生计数应增加，实际 ' + parent.remixes);
+  const snapP = snapPublished();
+  try {
+    const before = PUBLISHED.length;
+    doRemix('w-fraction-zombie','skin','太空');   // 自播种：不依赖上一条用例留下的产物
+    assert(PUBLISHED.length === before + 1, '应新增一件作品');
+    const child = PUBLISHED.find(w=> w.parentId === 'w-fraction-zombie' && w.id !== 'w-unit-swap');
+    assert(child, '应存在新的衍生作品');
+    const parent = PUBLISHED.find(w=> w.id === 'w-fraction-zombie');
+    assert(parent.remixes >= 13, '原作衍生计数应增加，实际 ' + parent.remixes);
+  } finally {
+    restorePublished(snapP); renderSquare();
+  }
 });
 test('换料档位产出换学科内容的新作品', ()=>{
-  const before = PUBLISHED.length;
-  startRemix('w-fraction-zombie');
-  document.querySelector('.tier[data-tier="material"]').click();
-  document.querySelector('.material-opt[data-subject="乐理"]').click();
-  assert(PUBLISHED.length === before + 1, '应新增一件作品');
-  assert(PUBLISHED[0].subject === '乐理', '新作品学科应为乐理，实际 ' + PUBLISHED[0].subject);
+  const snapP = snapPublished();
+  try {
+    const before = PUBLISHED.length;
+    startRemix('w-fraction-zombie');
+    document.querySelector('.tier[data-tier="material"]').click();
+    document.querySelector('.material-opt[data-subject="乐理"]').click();
+    assert(PUBLISHED.length === before + 1, '应新增一件作品');
+    assert(PUBLISHED[0].subject === '乐理', '新作品学科应为乐理，实际 ' + PUBLISHED[0].subject);
+  } finally {
+    restorePublished(snapP); renderSquare();
+  }
 });
 test('改造档位产出换机制的新作品，学科继承原作', ()=>{
-  const before = PUBLISHED.length;
-  const parent = PUBLISHED.find(w=> w.id === 'w-fraction-zombie');
-  const mech = MECHANICS.find(m=> m.id === 'rhythm');
-  startRemix('w-fraction-zombie');
-  document.querySelector('.tier[data-tier="mechanic"]').click();
-  document.querySelector('.mech-opt[data-mech="rhythm"]').click();
-  assert(PUBLISHED.length === before + 1, '应新增一件作品');
-  assert(PUBLISHED[0].mechanic === 'rhythm', '新作品机制应为 rhythm，实际 ' + PUBLISHED[0].mechanic);
-  assert(PUBLISHED[0].title.includes(mech.name),
-    '标题应含机制名「' + mech.name + '」，实际 ' + PUBLISHED[0].title);
-  assert(PUBLISHED[0].subject === parent.subject, '学科应继承原作，实际 ' + PUBLISHED[0].subject);
-  assert(PUBLISHED[0].parentId === 'w-fraction-zombie', '血缘应指向原作');
+  const snapP = snapPublished();
+  try {
+    const before = PUBLISHED.length;
+    const parent = PUBLISHED.find(w=> w.id === 'w-fraction-zombie');
+    const mech = MECHANICS.find(m=> m.id === 'rhythm');
+    startRemix('w-fraction-zombie');
+    document.querySelector('.tier[data-tier="mechanic"]').click();
+    document.querySelector('.mech-opt[data-mech="rhythm"]').click();
+    assert(PUBLISHED.length === before + 1, '应新增一件作品');
+    assert(PUBLISHED[0].mechanic === 'rhythm', '新作品机制应为 rhythm，实际 ' + PUBLISHED[0].mechanic);
+    assert(PUBLISHED[0].title.includes(mech.name),
+      '标题应含机制名「' + mech.name + '」，实际 ' + PUBLISHED[0].title);
+    assert(PUBLISHED[0].subject === parent.subject, '学科应继承原作，实际 ' + PUBLISHED[0].subject);
+    assert(PUBLISHED[0].parentId === 'w-fraction-zombie', '血缘应指向原作');
+  } finally {
+    restorePublished(snapP); renderSquare();
+  }
 });
 
 test('排行榜默认显示作品榜且周期是本周', ()=>{
@@ -2466,11 +2499,18 @@ test('结算层真的在最上面（elementFromPoint 命中结算区）', ()=>{
 // ── 收尾不变量：整套探针跑完，产品状态必须回到探针进来时的样子。
 // 这条不变式此前没有任何断言，回归是静默的（GOALS[].done 与 #container 的类各发生过一次）。
 // 它依赖注册顺序 —— 必须留在本文件最后一条。
-const RESIDUE_SNAPSHOT = { goalsDone: GOALS.map(g=> g.done).join() };
-test('整套探针跑完不留残留（目标进度 / 容器 / 结算 / 浮层）', ()=>{
+const RESIDUE_SNAPSHOT = { goalsDone: GOALS.map(g=> g.done).join(),
+                           pubLen: PUBLISHED.length,
+                           pubRemixes: PUBLISHED.map(w=> w.remixes).join() };
+test('整套探针跑完不留残留（目标进度 / 作品表 / 容器 / 结算 / 浮层）', ()=>{
   const done = GOALS.map(g=> g.done).join();
   assert(done === RESIDUE_SNAPSHOT.goalsDone,
     '探针改过目标进度没复原：期望 ' + RESIDUE_SNAPSHOT.goalsDone + '，实际 ' + done);
+  assert(PUBLISHED.length === RESIDUE_SNAPSHOT.pubLen,
+    'PUBLISHED 被探针改过没复原：期望 ' + RESIDUE_SNAPSHOT.pubLen + ' 件，实际 ' + PUBLISHED.length + ' 件');
+  assert(PUBLISHED.map(w=> w.remixes).join() === RESIDUE_SNAPSHOT.pubRemixes,
+    '原作的二创计数被探针改过没复原：期望 ' + RESIDUE_SNAPSHOT.pubRemixes +
+    '，实际 ' + PUBLISHED.map(w=> w.remixes).join());
   assert(!document.getElementById('container').classList.contains('on'), '容器应关着（openGame 之后没 closeGame）');
   assert(!state.gameId, 'state.gameId 应已清空，实际 ' + state.gameId);
   assert(state.screen === 'goal', '屏幕应回到启动时的 goal，实际 ' + state.screen);
