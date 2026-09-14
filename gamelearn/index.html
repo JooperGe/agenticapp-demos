@@ -393,6 +393,7 @@ const GAMES_INDEX = {
 };
 
 let activeMechanic = null;
+let gameGen = 0;                             // 每次开/关局自增，让在飞的倒计时自我作废
 
 function openGame(gameId){
   const g = GAMES_INDEX[gameId];
@@ -405,17 +406,20 @@ function openGame(gameId){
   c.querySelector('.result')?.remove();      // 清掉上一局的结算，避免叠在游戏上
   c.classList.add('on');
   if(SELFTEST_MODE) return;                 // 自检不跑倒计时，改用 mountNow
-  countdownThenMount(gameId);
+  gameGen++;
+  countdownThenMount(gameId, gameGen);
 }
 
 // 藏等待：预告条已出、骨架屏在呼吸，3 秒倒计时数完再注入内容 —— 全程不出现进度条
-async function countdownThenMount(gameId){
+async function countdownThenMount(gameId, gen){
   const cd = document.querySelector('#container .cd-count');
   cd.hidden = false;
   for(const n of [3, 2, 1]){
+    if(gen !== gameGen) return;              // 期间关过容器，这轮倒计时作废
     cd.textContent = n;
     await wait(700);
   }
+  if(gen !== gameGen) return;
   cd.hidden = true;
   mountNow(gameId);
 }
@@ -433,6 +437,7 @@ function mountNow(gameId){
 }
 
 function closeGame(){
+  gameGen++;                                 // 让在飞的倒计时作废
   activeMechanic?.destroy?.();
   activeMechanic = null;
   document.getElementById('container').classList.remove('on');
@@ -585,6 +590,15 @@ test('预告卡上的开始按钮进入容器', ()=>{
   assert(state.gameId === 'guitar-l1', '应打开 guitar-l1，实际 ' + state.gameId);
   assert(document.getElementById('container').classList.contains('on'), '容器应打开');
   closeGame();
+});
+test('倒计时期间退出，不会事后挂上孤儿局面', async ()=>{
+  openGame('guitar-l1');                      // SELFTEST_MODE 下 openGame 不起倒计时
+  const gen = gameGen;                        // 真实路径里 openGame 自增后把当前代次传进来
+  const p = countdownThenMount('guitar-l1', gen);
+  closeGame();                                // 用户在倒计时里退出
+  await p;
+  assert(activeMechanic === null,
+    '退出后不应还挂上机制（会成为无法 destroy 的孤儿，并污染 BUS.attempts），实际 ' + activeMechanic);
 });
 
 // ── 启动
