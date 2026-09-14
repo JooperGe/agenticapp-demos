@@ -267,8 +267,10 @@
 const state = { screen:'goal', goalId:null, gameId:null, pageId:null, rankBoard:null, rankSubject:null };
 
 // 上报总线：机制往里塞 attempt / run，结算据此算"过了什么、卡在哪"
+// attempt 打上产生它的局（run === gameGen）：每局结算是per-run的，
+// 累积轨迹（Task 12 的 myStats）才读未过滤的 BUS.attempts
 const BUS = { attempts: [], runs: [] };
-const reportAttempt = a => BUS.attempts.push(a);
+const reportAttempt = a => BUS.attempts.push({ ...a, run: gameGen });
 const finishRun = r => BUS.runs.push(r);
 
 // ══ 1b. 画布缩放
@@ -655,11 +657,13 @@ document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && state.gameId)
 })();
 
 // ── 结算 · 反哺：按知识点正确率算出「过了什么 / 卡在哪 / 下一关」 ──
+// 每局结算是 per-run 的：只统计本局（run === gameGen）的尝试，喂给下一局的生成。
+// 跨局累积是成长轨迹页的事，读未过滤的 BUS.attempts。
 // 反哺的对象是知识点，不是分数：stats 只是 spec §7 约定的 finished 载荷形状，
 // 这里刻意不渲染（连击/命中数一旦上行，就退回成积分式评判，违反生成律 3）。
 function summarize(){
   const by = {};
-  BUS.attempts.forEach(a=>{
+  BUS.attempts.filter(a=> a.run === gameGen).forEach(a=>{
     by[a.point] = by[a.point] || { ok:0, n:0 };
     by[a.point].n++; if(a.ok) by[a.point].ok++;
   });
@@ -692,7 +696,7 @@ function showResult(outcome, stats){
         <button class="rs-share">发给朋友</button>
       </div>
     </div>`);
-  const r = document.querySelector('.result');
+  const r = document.querySelector('#container .result');
   r.querySelector('.rs-replay').addEventListener('click', ()=>{
     r.remove(); openGame(state.gameId || 'guitar-l1');
   });
@@ -899,11 +903,14 @@ test('重新挂载前会销毁上一局的机制', ()=>{
 
 test('结算按正确率算出过了什么与卡在哪', ()=>{
   BUS.attempts.length = 0;
-  ['a','a','a','a','b','b','b'].forEach((p,i)=>
-    reportAttempt({ point:p, ok: p === 'a' ? i < 4 : i < 5, ms: 500 }));
+  ['a','a','a','a','b','b','b','c','c'].forEach((p,i)=>{
+    const ok = p === 'a' ? true : (p === 'b' ? i === 4 : false);
+    reportAttempt({ point:p, ok, ms:500 });
+  });
   const s = summarize();
   assert(s.strong.includes('a'), '正确率高的应进 strong，实际 ' + s.strong);
-  assert(s.weak.includes('b'), '正确率低的应进 weak，实际 ' + s.weak);
+  assert(s.weak.includes('c'), '正确率最低的应进 weak（a 1.0 / b 0.33 / c 0 → c），实际 ' + s.weak);
+  assert(!s.weak.includes('b'), 'weak 应取最低者，不应停在 b');
 });
 test('结算画面三个区块齐全', ()=>{
   BUS.attempts.length = 0;
@@ -925,6 +932,20 @@ test('结算画面不出现分数排名式评判', ()=>{
   const txt = document.querySelector('.result').textContent;
   assert(!/第\s*\d+\s*名/.test(txt), '结算不应出现名次');
   assert(!/答错|正确答案是/.test(txt), '结算不得揭示答案或做对错评判（生成律 3）');
+});
+test('结算只统计本局的尝试，不混入上一局', ()=>{
+  BUS.attempts.length = 0;
+  ['C和弦指法','C和弦指法','C和弦指法','C和弦指法'].forEach(p=>
+    reportAttempt({ point:p, ok:true, ms:400 }));
+  const mine = gameGen;                                    // 本局的代次
+  reportAttempt({ point:'通分', ok:true, ms:600 });         // 本局 1/3 ≈ 0.33
+  reportAttempt({ point:'通分', ok:false, ms:600 });
+  reportAttempt({ point:'通分', ok:false, ms:600 });
+  BUS.attempts.push({ point:'上一局的知识点', ok:false, ms:900, run: mine - 1 });   // 0/2，比本局最低还低
+  const s = summarize();
+  assert(s.weak.includes('通分'), '本局最低的应是通分（0.33），实际 ' + s.weak);
+  assert(!s.weak.includes('上一局的知识点'),
+    '结算应只统计本局（run === gameGen）的尝试，实际 weak=' + s.weak);
 });
 
 // ── 启动
