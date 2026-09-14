@@ -35,6 +35,77 @@
   }
   nav.tabbar .tab .ico{ font-size:17px; }
   nav.tabbar .tab.on{ color:var(--brand-2); }
+
+  /* ── 目标首页 ── */
+  .scr-head{ padding:22px 18px 14px; }
+  .scr-head h1{ font-size:20px; font-weight:600; }
+  .scr-head p{ margin-top:6px; font-size:12px; color:var(--ink-dim); }
+  .scr-head.with-back{ position:relative; padding-left:48px; }
+  .scr-head .back{
+    position:absolute; left:14px; top:20px; width:28px; height:28px;
+    background:var(--surface-2); border:1px solid var(--line); color:var(--ink);
+    border-radius:var(--r-sm); font-size:16px; line-height:1; cursor:pointer; font-family:inherit;
+  }
+  .goal-list{ padding:0 14px 18px; display:flex; flex-direction:column; gap:10px; }
+  .goal-card{
+    width:100%; text-align:left; cursor:pointer; font-family:inherit;
+    background:var(--surface); border:1px solid var(--line); color:var(--ink);
+    border-radius:var(--r-lg); padding:14px 16px;
+  }
+  .goal-card[data-depth="shallow"]{ opacity:.55; }
+  .gc-top{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+  .gc-title{ font-size:15px; font-weight:600; }
+  .gc-subject{
+    flex:none; font-size:10px; color:var(--brand-2);
+    border:1px solid var(--line); border-radius:var(--r-sm); padding:2px 7px;
+  }
+  .bar{ height:6px; margin:12px 0 9px; background:var(--surface-2); border-radius:var(--r-sm); overflow:hidden; }
+  .bar > i{ display:block; height:100%; background:linear-gradient(90deg,var(--brand),var(--brand-2)); }
+  .gc-foot{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .gc-tag{ font-size:11px; color:var(--ink-dim); }
+  .gc-num{ font-size:11px; color:var(--ink-soft); }
+  .goal-new{
+    width:100%; padding:15px; cursor:pointer; font-family:inherit; font-size:13px;
+    color:var(--ink-dim); background:none; border:1px dashed var(--line); border-radius:var(--r-lg);
+  }
+
+  /* ── 成长轨迹 ── */
+  .trail{
+    margin:0 14px 16px; padding:14px 16px;
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg);
+  }
+  .trail-title{ font-size:11px; color:var(--ink-dim); }
+  .trail-bar{ display:flex; gap:6px; margin:10px 0; }
+  .dot{ flex:1; height:5px; background:var(--surface-2); border-radius:var(--r-sm); }
+  .dot.done{ background:var(--ok); }
+  .trail-note{ font-size:11px; color:var(--ink-soft); line-height:1.5; }
+
+  /* ── 关卡序列 ── */
+  .ability-list{ list-style:none; padding:0 14px 20px; display:flex; flex-direction:column; gap:8px; }
+  .ability{
+    display:flex; align-items:center; gap:10px; padding:13px 14px;
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--r-md);
+    font-size:13px; color:var(--ink-dim);
+  }
+  .ability.done{ color:var(--ink); }
+  .ab-idx{
+    flex:none; width:22px; height:22px; border-radius:50%; background:var(--surface-2);
+    color:var(--ink-soft); font-size:11px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .ability.done .ab-idx{ background:var(--ok); color:var(--bg); }
+  .ab-name{ flex:1; }
+  .ab-play{ flex:none; font-size:11px; color:var(--brand-2); }
+
+  /* ── toast ── */
+  #toast{
+    position:absolute; left:50%; bottom:88px; transform:translateX(-50%);
+    opacity:0; pointer-events:none; transition:opacity .2s;
+    background:var(--surface-2); border:1px solid var(--line); color:var(--ink);
+    border-radius:var(--r-md); padding:10px 14px; font-size:12px;
+    max-width:78%; text-align:center; z-index:5;
+  }
+  #toast.on{ opacity:1; }
 </style>
 </head>
 <body>
@@ -54,6 +125,7 @@
     <button class="tab" data-goto="rank"><span class="ico">🏆</span>排行榜</button>
     <button class="tab" data-goto="me"><span class="ico">🙂</span>我</button>
   </nav>
+  <div id="toast"></div>
 </div>
 </div>
 <script>
@@ -69,6 +141,22 @@ function fitScale(){
 window.addEventListener('resize', fitScale);
 
 // ══ 2. DATA  （Task 2 起填充）
+// Goal = { id, title, subject, levelTag, depth:'deep'|'shallow', done, total, abilities:string[], note }
+const GOALS = [
+  { id:'guitar', title:'能弹唱一首歌', subject:'乐理', levelTag:'想能看着谱弹唱', depth:'deep',
+    done:1, total:6, abilities:['认识四和弦指法','和弦转换不卡','节奏稳定','扫弦型入门','跟谱弹唱','完整来一遍'],
+    note:'从 40 BPM 起手，先求不错音，再求速度' },
+  { id:'fraction', title:'搞定五年级通分', subject:'数学', levelTag:'分数加减老出错', depth:'deep',
+    done:0, total:6, abilities:['同分母加减','找公分母','通分','异分母加减','约分','混合运算'],
+    note:'通分是这一步的坎，过了后面都顺' },
+  { id:'english', title:'看懂美剧不用字幕', subject:'英语', levelTag:'听力跟不上语速', depth:'shallow',
+    done:0, total:5, abilities:['高频词听辨','连读','弱读','语块整听','整句复述'], note:'' },
+  { id:'fund', title:'搞懂基金定投', subject:'财商', levelTag:'不想再被割', depth:'shallow',
+    done:0, total:4, abilities:['净值与份额','定投摊薄','止盈线','组合分散'], note:'' },
+];
+const getGoal = id => GOALS.find(g=>g.id === id);
+// 深做目标 → 该目标当前该玩的关卡（Task 5 / Task 7 提供对应机制）
+const GOAL_GAME = { guitar:'guitar-l1', fraction:'fraction-l3' };
 
 // ══ 3. ROUTER
 function showScreen(id){
@@ -81,6 +169,76 @@ document.querySelectorAll('.tab').forEach(t=>{
 });
 
 // ══ 4. COMPONENTS （Task 2 起填充）
+function toast(msg, ms = 1800){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('on');
+  if(!SELFTEST_MODE) setTimeout(()=> el.classList.remove('on'), ms);
+}
+
+function renderGoals(){
+  const hosts = document.querySelectorAll('[data-screen="goal"]');
+  hosts.forEach(h=>{
+    h.innerHTML = `
+      <header class="scr-head"><h1>我的目标</h1><p>你说想学什么，它给你造一个游戏</p></header>
+      <div class="goal-list">
+        ${GOALS.map(g=>`
+          <button class="goal-card" data-goal="${g.id}" data-depth="${g.depth}">
+            <div class="gc-top">
+              <span class="gc-title">${g.title}</span>
+              <span class="gc-subject">${g.subject}</span>
+            </div>
+            <div class="bar"><i style="width:${Math.round(g.done/g.total*100)}%"></i></div>
+            <div class="gc-foot"><span class="gc-tag">${g.levelTag}</span><span class="gc-num">${g.done}/${g.total}</span></div>
+          </button>`).join('')}
+        <button class="goal-new" id="newGoal">＋ 我想学新东西…</button>
+      </div>`;
+    h.querySelectorAll('.goal-card').forEach(c=>{
+      c.addEventListener('click', ()=> openGoal(c.dataset.goal));
+    });
+    h.querySelector('#newGoal').addEventListener('click', ()=> startCreation());
+  });
+}
+
+function openGoal(id){
+  const g = getGoal(id);
+  if(!g) return;
+  if(g.depth === 'shallow'){ toast('「' + g.title + '」在 demo 里还没实现，挑另外两个试试'); return; }
+  state.goalId = id;
+  renderGoalDetail(id);
+  showScreen('goalDetail');
+}
+
+function renderGoalDetail(id){
+  const g = getGoal(id);
+  const hosts = document.querySelectorAll('[data-screen="goalDetail"]');
+  hosts.forEach(h=>{
+    h.innerHTML = `
+      <header class="scr-head with-back">
+        <button class="back" data-back="goal">‹</button>
+        <h1>${g.title}</h1><p>${g.subject} · ${g.levelTag}</p>
+      </header>
+      <div class="trail">
+        <div class="trail-title">成长轨迹</div>
+        <div class="trail-bar">${g.abilities.map((_,i)=>
+          `<span class="dot ${i < g.done ? 'done' : ''}"></span>`).join('')}</div>
+        <div class="trail-note">${g.note}</div>
+      </div>
+      <ol class="ability-list">
+        ${g.abilities.map((a,i)=>`
+          <li class="ability ${i < g.done ? 'done' : ''}" data-i="${i}">
+            <span class="ab-idx">${i < g.done ? '✓' : i+1}</span>
+            <span class="ab-name">${a}</span>
+            ${i === g.done ? '<span class="ab-play">开始这一关 ›</span>' : ''}
+          </li>`).join('')}
+      </ol>`;
+    h.querySelectorAll('[data-back]').forEach(b=>{
+      b.addEventListener('click', ()=> showScreen(b.dataset.back));
+    });
+    const next = h.querySelector('.ab-play');
+    if(next) next.addEventListener('click', ()=> openGame(GOAL_GAME[g.id]));
+  });
+}
 
 // ══ 5. GAMES （Task 4 起填充）
 
@@ -142,6 +300,33 @@ test('异步用例抛错会被捕获，不会误报 OK', async ()=>{
 test('自检器确实等待了异步用例（顺序屏障）', ()=>{
   assert(awaitedProbeMarks >= 1, '排在异步用例之后的同步用例应当已看到它跑完；为 0 说明 runSelftests 没有 await，异步用例的失败会被静默吞掉');
 });
+
+test('四个目标，两个深做两个浅做', ()=>{
+  assertCount('.goal-card', 4);
+  assert(GOALS.filter(g=>g.depth==='deep').length === 2, '深做目标应为 2 个');
+  assert(GOALS.filter(g=>g.depth==='shallow').length === 2, '浅做目标应为 2 个');
+});
+test('目标卡显示标题、学科与进度', ()=>{
+  assertText('.goal-card[data-goal="guitar"]', '能弹唱一首歌');
+  assertText('.goal-card[data-goal="guitar"]', '乐理');
+  assertText('.goal-card[data-goal="guitar"]', '1/6');
+});
+test('浅做目标弹 toast 不进详情', ()=>{
+  openGoal('english');
+  assert(state.screen === 'goal', '浅做目标不应切屏，实际 ' + state.screen);
+  assert(document.querySelector('#toast').classList.contains('on'), 'toast 应出现');
+});
+test('深做目标进详情并点亮已过关卡', ()=>{
+  openGoal('guitar');
+  assert(state.screen === 'goalDetail', '应进入目标详情');
+  assertCount('.ability', 6);
+  assertCount('.ability.done', 1);
+  assertText('.ability[data-i="0"]', '认识四和弦指法');
+});
+
+// ── 启动
+renderGoals();
+showScreen('goal');
 
 window.addEventListener('load', ()=>{ fitScale(); if(SELFTEST_MODE) setTimeout(runSelftests, 50); });
 </script>
