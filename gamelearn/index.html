@@ -170,6 +170,45 @@
     background:none; border:0; color:var(--ink-dim); font-size:16px; line-height:1;
     cursor:pointer; font-family:inherit; touch-action:none;
   }
+
+  /* ── 机制：抢拍 · 手指跑酷 ── */
+  .rhythm{ position:absolute; inset:0; display:flex; flex-direction:column; padding:56px 12px 16px; }
+  .rhythm .hud{ display:flex; align-items:baseline; justify-content:space-between; padding:0 4px 10px; }
+  .rhythm .hp{ font-size:15px; font-weight:600; color:var(--ink); }
+  .rhythm .hp::before{ content:'♥ '; color:var(--danger); }
+  .rhythm .combo{ font-size:12px; color:var(--ink-dim); }
+  .rhythm .combo::before{ content:'连击 '; }
+  .rhythm .lanes{
+    position:relative; flex:1; display:flex; overflow:hidden; border-radius:var(--r-md);
+  }
+  .rhythm .track{
+    flex:1 1 25%; display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+    gap:4px; padding-bottom:14px; cursor:pointer; font-family:inherit; touch-action:manipulation;
+    background:var(--surface-2); border:0; border-right:1px solid var(--line); color:var(--ink);
+  }
+  .rhythm .track:last-of-type{ border-right:0; }
+  .rhythm .track:active{ box-shadow:inset 0 0 0 2px var(--brand); }
+  .rhythm .tk-chord{ font-size:18px; font-weight:600; color:var(--brand-2); }
+  .rhythm .tk-fing{ font-size:10px; color:var(--ink-soft); letter-spacing:1px; }
+  .rhythm .blocks{ position:absolute; inset:0; z-index:2; overflow:hidden; pointer-events:none; }
+  .rhythm .block{
+    position:absolute; width:calc(25% - 10px); height:46px; box-sizing:border-box;
+    display:flex; align-items:center; justify-content:center;
+    font-size:15px; font-weight:600; color:var(--bg); border-radius:var(--r-sm);
+    background:linear-gradient(180deg,var(--brand-2),var(--brand));
+  }
+  .rhythm .block[data-track="0"]{ left:5px; }
+  .rhythm .block[data-track="1"]{ left:calc(25% + 5px); }
+  .rhythm .block[data-track="2"]{ left:calc(50% + 5px); }
+  .rhythm .block[data-track="3"]{ left:calc(75% + 5px); }
+  .rhythm .judge-line{
+    position:absolute; left:0; right:0; top:82%; z-index:1;
+    border-top:2px dashed var(--warn); pointer-events:none;
+  }
+  .rhythm.fx-hit .lanes{ animation:rh-hit .32s ease-out; }
+  .rhythm.fx-miss .lanes{ animation:rh-miss .32s ease-out; }
+  @keyframes rh-hit{ from{ box-shadow:inset 0 0 0 3px var(--ok) } to{ box-shadow:inset 0 0 0 3px var(--line) } }
+  @keyframes rh-miss{ from{ box-shadow:inset 0 0 0 3px var(--danger) } to{ box-shadow:inset 0 0 0 3px var(--line) } }
 </style>
 </head>
 <body>
@@ -244,8 +283,22 @@ const CREATION_SCRIPT = [
   { kind:'preview', gameId:'guitar-l1', title:'手指跑酷', mechanic:'抢拍', knowledge:'和弦转换', emoji:'🎸' },
 ];
 
+// 抢拍 · 手指跑酷：4 条轨道 = C / Am / F / G 四个和弦指法位
+const CHORDS = [
+  { label:'C',  fingering:'x32010' },
+  { label:'Am', fingering:'x02210' },
+  { label:'F',  fingering:'133211' },
+  { label:'G',  fingering:'320003' },
+];
+const GUITAR_BLOCKS = Array.from({ length:24 }, (_,i)=>({
+  at:i, track:i % 4, point: CHORDS[i % 4].label + '和弦指法',
+}));
+
 // 机制内容：Task 5 / Task 7 按 gameId 填充（runMechanic 需容忍 undefined）
-const MECHANIC_CONTENT = {};
+// fall / gap 是节奏常量，放在内容对象里，让「一局 60–120 秒」的估算有同一个真值来源
+const MECHANIC_CONTENT = {
+  'guitar-l1': { tracks:CHORDS, blocks:GUITAR_BLOCKS, hp:5, speed:1.0, fall:0.00022, gap:1.1 },
+};
 
 // ══ 3. ROUTER
 function showScreen(id){
@@ -428,6 +481,7 @@ function mountNow(gameId){
   const g = GAMES_INDEX[gameId];
   const c = document.getElementById('container');
   const stage = c.querySelector('.cg-stage');
+  activeMechanic?.destroy?.();               // 先销毁上一局，否则旧 rAF 循环会成为孤儿并污染 BUS
   c.querySelector('.cg-skeleton').hidden = true;
   c.querySelector('.cd-count').hidden = true;
   stage.hidden = false;
@@ -444,10 +498,118 @@ function closeGame(){
   state.gameId = null;
 }
 
-// Task 5 会用真正的机制分发替换这个桩
 function runMechanic(mechanicId, content, mount){
+  if(mechanicId === 'rhythm') return runRhythm(content, mount);
   mount.innerHTML = '<div class="cg-todo">这个机制在 demo 里还没做</div>';
   return { destroy(){} };
+}
+
+// 抢拍：4 条轨道，和弦方块自上落下，到判定线时点对应轨道
+function runRhythm(content, mount){
+  const JUDGE = 0.82;                 // 判定线位置（0=顶 1=底）
+  const WINDOW = 0.18;                // 判定窗口半径
+  const FALL = content.fall;          // 每毫秒下落比例，乘速度
+  const GAP  = content.gap;           // 相邻方块的出发间距
+  let hp = content.hp, combo = 0, maxCombo = 0, hits = 0, t0 = performance.now();
+  let queue = content.blocks.map(b=>({ ...b, pos: -b.at * GAP, live:true }));
+  let raf = null, last = 0, over = false;
+
+  mount.innerHTML = `
+    <div class="rhythm">
+      <div class="hud">
+        <span class="hp">${hp}</span>
+        <span class="combo">0</span>
+      </div>
+      <div class="lanes">
+        ${content.tracks.map((c,i)=>`
+          <button class="track" data-track="${i}">
+            <span class="tk-chord">${c.label}</span>
+            <span class="tk-fing">${c.fingering}</span>
+          </button>`).join('')}
+        <div class="judge-line"></div>
+        <div class="blocks"></div>
+      </div>
+    </div>`;
+
+  const lanes = mount.querySelector('.blocks');
+  const elHp = mount.querySelector('.hp');
+  const elCombo = mount.querySelector('.combo');
+
+  function paint(){
+    lanes.innerHTML = queue.filter(b=>b.live)
+      .map(b=>`<div class="block" data-track="${b.track}" data-live="1"
+                    style="top:${(b.pos*100).toFixed(1)}%">${content.tracks[b.track].label}</div>`).join('');
+  }
+
+  function step(dt){
+    if(over) return;
+    const speed = content.speed * (1 + Math.min(0.6, (performance.now() - t0) / 150000));
+    queue.forEach(b=>{
+      if(!b.live) return;
+      b.pos += FALL * dt * speed;
+      if(b.pos >= JUDGE + 0.06){                  // 漏掉
+        b.live = false; combo = 0;
+        hp--; reportAttempt({ point:b.point, ok:false, ms: dt });
+        flash('miss');
+      }
+    });
+    elHp.textContent = hp;
+    elCombo.textContent = combo;
+    paint();
+    if(hp <= 0) return end('lose');
+    if(hits >= content.blocks.length) return end('win');
+  }
+
+  function hit(trackIdx){
+    if(over) return;
+    const cand = queue.filter(b=>b.live && b.track === trackIdx && Math.abs(b.pos - JUDGE) < WINDOW);
+    const target = cand.sort((a,b)=> Math.abs(a.pos-JUDGE) - Math.abs(b.pos-JUDGE))[0];
+    if(target){
+      target.live = false; hits++; combo++; maxCombo = Math.max(maxCombo, combo);
+      reportAttempt({ point: target.point, ok:true, ms: Math.round(performance.now() - t0) });
+      flash('hit');
+    } else {
+      combo = 0; hp--;
+      reportAttempt({ point: content.tracks[trackIdx].label + '和弦指法', ok:false, ms: 0 });
+      flash('miss');
+    }
+    elHp.textContent = hp;
+    elCombo.textContent = combo;
+    paint();
+    if(hp <= 0) return end('lose');
+  }
+
+  function flash(kind){
+    const el = mount.querySelector('.rhythm');
+    el.classList.remove('fx-hit','fx-miss');
+    void el.offsetWidth;
+    el.classList.add('fx-' + kind);
+  }
+
+  function end(outcome){
+    over = true;
+    cancelAnimationFrame(raf);
+    finishRun({ outcome, ms: Math.round(performance.now() - t0), maxCombo, hits, total: content.blocks.length });
+    showResult(outcome, { maxCombo, hits, total: content.blocks.length });
+  }
+
+  mount.querySelectorAll('.track').forEach(t=>{
+    t.addEventListener('click', ()=> hit(Number(t.dataset.track)));
+  });
+
+  function loop(now){
+    const dt = last ? now - last : 16;
+    last = now;
+    step(dt);
+    if(!over) raf = requestAnimationFrame(loop);
+  }
+  if(!SELFTEST_MODE){ raf = requestAnimationFrame(loop); }
+  paint();
+
+  return {
+    destroy(){ over = true; cancelAnimationFrame(raf); },
+    _step(dt){ step(dt); },
+  };
 }
 
 document.querySelector('.cg-exit').addEventListener('click', closeGame);
@@ -608,6 +770,57 @@ test('倒计时在飞时重开另一局，旧倒计时作废', async ()=>{
   await p;
   assert(state.gameId === 'fraction-l3', '应停在 B，实际 ' + state.gameId);
   assert(activeMechanic === null, 'A 的倒计时不应事后挂上机制（会盖掉 B）');
+});
+
+test('跑酷：四条轨道、初始满血', ()=>{
+  openGame('guitar-l1'); mountNow('guitar-l1');
+  assertCount('.rhythm .track', 4);
+  assertText('.rhythm .hp', '5');
+});
+test('跑酷：按对轨道则击碎并累计连击', ()=>{
+  openGame('guitar-l1'); mountNow('guitar-l1');
+  const m = activeMechanic;
+  m._step(3700);                                  // 把第 1 个方块推到判定线附近
+  const sel = '.rhythm .block[data-track="0"][data-live="1"]';
+  const before = document.querySelectorAll(sel).length;
+  assert(before >= 1, '判定线附近应有轨道 0 的方块');
+  document.querySelector('.rhythm .track[data-track="0"]').click();
+  assertCount(sel, before - 1);                   // 该轨道少了一个方块
+  assertText('.rhythm .combo', '1');
+  assert(BUS.attempts.at(-1).ok === true, '应上报一次正确 attempt');
+});
+test('跑酷：同一轨道连点两次，第二次落空扣血断连击', ()=>{
+  openGame('guitar-l1'); mountNow('guitar-l1');
+  const m = activeMechanic;
+  m._step(3700);
+  document.querySelector('.rhythm .track[data-track="0"]').click();   // 命中
+  document.querySelector('.rhythm .track[data-track="0"]').click();   // 落空
+  assertText('.rhythm .hp', '4');
+  assertText('.rhythm .combo', '0');
+  assert(!document.getElementById('container').textContent.includes('正确答案'), '不允许出现「正确答案」');
+  assert(BUS.attempts.at(-1).ok === false, '应上报一次错误 attempt');
+});
+test('跑酷一局时长落在 60–120 秒', ()=>{
+  const c = MECHANIC_CONTENT['guitar-l1'];
+  const END = 0.88;                                  // 判定线 + 漏接阈值
+  const travel = END + (c.blocks.length - 1) * c.gap;  // 最后一个方块要走的全程
+  let pos = 0, ms = 0;
+  while(pos < travel && ms < 400000){
+    pos += c.fall * 100 * (1 + Math.min(0.6, ms / 150000));   // 速度随时间线性升到 1.6
+    ms += 100;
+  }
+  const sec = ms / 1000;
+  assert(sec >= 60 && sec <= 120,
+    '一局应落在 60–120 秒（生成律），按常量估算约 ' + sec.toFixed(0) + ' 秒');
+});
+test('重新挂载前会销毁上一局的机制', ()=>{
+  openGame('guitar-l1'); mountNow('guitar-l1');
+  const first = activeMechanic;
+  assert(first && typeof first.destroy === 'function', '机制应暴露 destroy');
+  let destroyed = false;
+  first.destroy = ()=>{ destroyed = true; };
+  openGame('guitar-l1'); mountNow('guitar-l1');
+  assert(destroyed, '重新挂载前应先销毁上一局，否则旧 rAF 循环会成为孤儿并污染 BUS.attempts');
 });
 
 // ── 启动
