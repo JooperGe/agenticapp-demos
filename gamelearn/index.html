@@ -2355,6 +2355,7 @@ test('通关后目标首页的进度会重画（不是只改数据）', ()=>{
 
 test('作品榜按真实的玩完率排，不按点击量', ()=>{
   const savedBoard = state.rankBoard, savedSubject = state.rankSubject;
+  const savedPublished = PUBLISHED.map(w=>({ ...w }));
   try {
     state.rankBoard = 'works'; state.rankSubject = '全部';
     renderRankings();
@@ -2370,9 +2371,20 @@ test('作品榜按真实的玩完率排，不按点击量', ()=>{
     assert(rates.join() === sorted.join(), '作品榜应按玩完率降序，实际 ' + vals.join());
     state.rankBoard = 'creators';
     renderRankings();
-    const score = Number(document.querySelector('.rank-row .rr-val').textContent.replace(/\D/g,''));
-    assert(score > 0, '创作者榜首行应有非零分，实际 ' + score);
+    // 期望值写死，并自播种成种子态：前面的「发布 / 二创」探针会往 PUBLISHED 加作品、
+    // 且给 w-fraction-zombie.remixes 累加 +4（种子 12 → 16），直接拿现有 PUBLISHED 算，
+    // 这个期望值会随探针注册顺序漂移（实测 2564）。这里只保留种子作品、把 remixes 复位再算。
+    const seedIds = new Set(SEED_WORKS.map(w=> w[0]));
+    const seedRemix = new Map(SEED_WORKS.map(w=> [w[0], w[9]]));
+    PUBLISHED.length = 0;
+    savedPublished.filter(w=> seedIds.has(w.id)).forEach(w=>{
+      const c = { ...w }; delete c.mine; c.remixes = seedRemix.get(c.id); PUBLISHED.push(c);
+    });
+    assert(creatorScore('豆豆') === 2148,
+      '创作者榜分应是被玩完量 × 被二创数：豆豆 = 104×12 + 77×4 + 95×5 + 39×3 = 2148，实际 ' + creatorScore('豆豆'));
   } finally {
+    PUBLISHED.length = 0;                       // 不留残留：还原成探针进来时的 PUBLISHED
+    savedPublished.forEach(w=> PUBLISHED.push(w));
     state.rankBoard = savedBoard; state.rankSubject = savedSubject;
     renderRankings();
   }
@@ -2440,6 +2452,8 @@ test('结算层真的在最上面（elementFromPoint 命中结算区）', ()=>{
     const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
     assert(hit && box.contains(hit),
       '结算区中心点应命中结算区自身，实际命中 ' + (hit ? hit.className || hit.tagName : 'null') + '（有东西盖在结算上面）');
+    assert(document.querySelector('#container .cg-stage').hidden,
+      '结算时游戏舞台应被藏起（showResult 里 stage.hidden = true），否则下落的方块会画在结算上面');
   } finally {
     document.querySelector('#container .result')?.remove();
     closeGame();
