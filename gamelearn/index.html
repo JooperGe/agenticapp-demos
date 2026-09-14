@@ -17,7 +17,7 @@
     display:flex; align-items:center; justify-content:center;
     font-family:-apple-system,"PingFang SC",system-ui,sans-serif;
   }
-  #stage{ width:390px; height:844px; flex:none; transform-origin:center; }
+  #scaler{ width:390px; height:844px; flex:none; transform-origin:center; }
   #phone{
     width:390px; height:844px; background:var(--bg); position:relative;
     border-radius:36px; overflow:hidden; border:1px solid var(--line);
@@ -38,7 +38,7 @@
 </style>
 </head>
 <body>
-<div id="stage">
+<div id="scaler">
 <div id="phone">
   <div id="app">
     <section data-screen="goal"></section>
@@ -63,8 +63,8 @@ const state = { screen:'goal', goalId:null, gameId:null, pageId:null, rankBoard:
 // ══ 1b. 画布缩放
 function computeScale(w, h){ return Math.min(1, w / 390, h / 844); }
 function fitScale(){
-  const stage = document.getElementById('stage');
-  stage.style.transform = 'scale(' + computeScale(window.innerWidth, window.innerHeight) + ')';
+  const scaler = document.getElementById('scaler');
+  scaler.style.transform = 'scale(' + computeScale(window.innerWidth, window.innerHeight) + ')';
 }
 window.addEventListener('resize', fitScale);
 
@@ -101,11 +101,15 @@ function assertCount(sel, n){
 const SELFTEST_MODE = new URLSearchParams(location.search).get('selftest') === '1';
 const wait = ms => SELFTEST_MODE ? Promise.resolve() : new Promise(r=>setTimeout(r, ms));
 
-async function runSelftests(){
+async function runList(list){
   const failed = [];
-  for(const t of SELFTESTS){
-    try{ await t.fn(); } catch(e){ failed.push(t.name + ': ' + e.message); }
+  for(const t of list){
+    try { await t.fn(); } catch(e){ failed.push(t.name + ': ' + e.message); }
   }
+  return failed;
+}
+async function runSelftests(){
+  const failed = await runList(SELFTESTS);
   document.title = failed.length ? ('SELFTEST FAIL: ' + failed[0]) : 'SELFTEST OK';
 }
 
@@ -123,6 +127,15 @@ test('画布在窗口过小时等比缩放', ()=>{
   assert(computeScale(195, 422) === 0.5, '减半时缩放 0.5，实际 ' + computeScale(195,422));
   assert(computeScale(2000, 2000) === 1, '窗口更大时不放大');
   assert(Math.abs(computeScale(390, 400) - 400/844) < 1e-9, '高度是瓶颈时按高度缩放');
+});
+test('异步用例抛错会被捕获，不会误报 OK', async ()=>{
+  const failed = await runList([
+    { name:'同步通过', fn: ()=>{} },
+    { name:'异步通过', fn: async ()=>{ await wait(0); } },
+    { name:'异步失败', fn: async ()=>{ await wait(0); throw new Error('boom'); } },
+  ]);
+  assert(failed.length === 1, '三个用例里应恰好 1 条失败，实际 ' + failed.length + ' 条：' + JSON.stringify(failed));
+  assert(/^异步失败: boom$/.test(failed[0]), '失败条目应带用例名与原因，实际 ' + failed[0]);
 });
 
 window.addEventListener('load', ()=>{ fitScale(); if(SELFTEST_MODE) setTimeout(runSelftests, 50); });
