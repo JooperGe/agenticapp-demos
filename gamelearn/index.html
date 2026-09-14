@@ -316,6 +316,7 @@
   .chain-node:nth-child(4){ padding-left:54px; }
   .chain-node:nth-child(5){ padding-left:72px; }
   .chain-node:nth-child(6){ padding-left:90px; }
+  .chain-node:nth-child(n+7){ padding-left:90px; }   /* 深度 7+ 沿用最深缩进，避免 nth-child 失配后回落到根节点缩进 */
   .chain-node em{ font-style:normal; margin-left:6px; font-size:11px; color:var(--ink-soft); }
   .chain-node.cur{ color:var(--brand-2); font-weight:600; }
   .chain-node.cur em{ color:var(--brand-2); }
@@ -332,6 +333,33 @@
     display:block; width:calc(100% - 28px); margin:2px 14px 20px; padding:13px;
     font-family:inherit; font-size:13px; font-weight:600; cursor:pointer;
     color:var(--bg); background:var(--brand-2); border:0; border-radius:var(--r-md);
+  }
+
+  /* ── 二创抽屉：从底部升起，选完档位即关闭 ── */
+  .remix-sheet{
+    position:absolute; left:0; right:0; bottom:0; z-index:10;
+    padding:18px 16px 20px; display:flex; flex-direction:column; gap:10px;
+    background:var(--surface); border-top:1px solid var(--line);
+    border-radius:var(--r-lg) var(--r-lg) 0 0;
+    animation:rs-rise .22s ease-out;
+  }
+  @keyframes rs-rise{ from{ transform:translateY(24px); opacity:.4 } to{ transform:none; opacity:1 } }
+  .rs-head{ padding:0 2px 4px; font-size:14px; font-weight:600; color:var(--ink); }
+  .tier{
+    display:flex; flex-direction:column; align-items:flex-start; gap:4px;
+    width:100%; padding:14px 16px; text-align:left; cursor:pointer; font-family:inherit;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-md);
+  }
+  .tier-n{ font-size:15px; font-weight:600; color:var(--brand); }
+  .tier-d{ font-size:11px; color:var(--ink-dim); }
+  .rs-cancel{
+    width:100%; padding:12px; cursor:pointer; font-family:inherit; font-size:13px;
+    color:var(--ink-dim); background:none; border:1px solid var(--line); border-radius:var(--r-md);
+  }
+  .skin-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .skin-opt, .mech-opt{
+    padding:14px 8px; cursor:pointer; font-family:inherit; font-size:14px; color:var(--ink);
+    background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-md);
   }
 </style>
 </head>
@@ -712,6 +740,88 @@ function renderGamePage(gameId){
     if(typeof startRemix === 'function') startRemix(g.id);   // Task 9 落地后自动接上
     else toast('二创功能马上就好');
   });
+}
+
+// ── 二创三档位：换皮（一键）/ 换料（换学科）/ 改造（换机制）
+// 血缘永不断：任何档位产出的新作品 parentId 指向原作，原作 remixes +1
+const SKINS = ['太空','深海','夜市','雨林','工坊','雪原'];
+const SUBJECTS = ['乐理','英语','语文','化学','财商','常识'];
+
+function startRemix(gameId){
+  const g = PUBLISHED.find(w=> w.id === gameId);
+  if(!g) return;
+  document.querySelector('.remix-sheet')?.remove();
+  document.getElementById('phone').insertAdjacentHTML('beforeend', `
+    <div class="remix-sheet on">
+      <div class="rs-head">改一版《${g.title}》</div>
+      <button class="tier" data-tier="skin">
+        <span class="tier-n">换皮</span><span class="tier-d">换个主题，内容不变 · 点一下就好</span>
+      </button>
+      <button class="tier" data-tier="material">
+        <span class="tier-n">换料</span><span class="tier-d">机制不变，换学科内容</span>
+      </button>
+      <button class="tier" data-tier="mechanic">
+        <span class="tier-n">改造</span><span class="tier-d">换个机制，保留目标</span>
+      </button>
+      <button class="rs-cancel">取消</button>
+    </div>`);
+  const sheet = document.querySelector('.remix-sheet');
+  sheet.querySelector('.rs-cancel').addEventListener('click', ()=> sheet.remove());
+  sheet.querySelectorAll('.tier').forEach(t=>{
+    t.addEventListener('click', ()=>{
+      const tier = t.dataset.tier;
+      if(tier === 'skin'){
+        sheet.querySelector('.rs-head').textContent = '换个主题';
+        sheet.querySelectorAll('.tier').forEach(x=> x.remove());
+        sheet.insertAdjacentHTML('afterbegin', `
+          <div class="skin-grid">
+            ${SKINS.map(s=>`<button class="skin-opt" data-skin="${s}">${s}</button>`).join('')}
+          </div>`);
+        sheet.querySelectorAll('.skin-opt').forEach(b=>{
+          b.addEventListener('click', ()=> doRemix(gameId, 'skin', b.dataset.skin));
+        });
+      } else if(tier === 'material'){
+        sheet.querySelector('.rs-head').textContent = '换成哪个学科';
+        sheet.querySelectorAll('.tier').forEach(x=> x.remove());
+        sheet.insertAdjacentHTML('afterbegin', `
+          <div class="skin-grid">
+            ${SUBJECTS.map(s=>`<button class="material-opt" data-subject="${s}">${s}</button>`).join('')}
+          </div>`);
+        sheet.querySelectorAll('.material-opt').forEach(b=>{
+          b.addEventListener('click', ()=> doRemix(gameId, 'material', b.dataset.subject));
+        });
+      } else {
+        sheet.querySelector('.rs-head').textContent = '换成哪个机制';
+        sheet.querySelectorAll('.tier').forEach(x=> x.remove());
+        sheet.insertAdjacentHTML('afterbegin', `
+          <div class="skin-grid">
+            ${MECHANICS.map(m=>`<button class="mech-opt" data-mech="${m.id}">${m.name}</button>`).join('')}
+          </div>`);
+        sheet.querySelectorAll('.mech-opt').forEach(b=>{
+          b.addEventListener('click', ()=> doRemix(gameId, 'mechanic', b.dataset.mech));
+        });
+      }
+    });
+  });
+}
+
+function doRemix(gameId, tier, payload){
+  const parent = PUBLISHED.find(w=> w.id === gameId);
+  if(!parent) return;
+  const mech = tier === 'mechanic' ? MECHANICS.find(m=> m.id === payload) : MECHANICS.find(m=> m.id === parent.mechanic);
+  const title = tier === 'skin'  ? `${payload}版${parent.title}`
+              : tier === 'material' ? `${parent.title}·${payload}版`
+              : `${mech.name}版${parent.title}`;
+  const id = 'w-remix-' + (PUBLISHED.filter(w=> w.id.startsWith('w-remix-')).length + 1);
+  PUBLISHED.unshift({
+    id, title, author:'我', subject: tier === 'material' ? payload : parent.subject,
+    mechanic: mech.id, plays:0, emoji: parent.emoji,
+    cover: tier === 'skin' ? ['#1E2E5A','#5A8AFF'] : parent.cover,
+    parentId: parent.id, remixes:0, score:0, mine:true,
+  });
+  parent.remixes++;
+  document.querySelector('.remix-sheet')?.remove();
+  toast(tier === 'skin' ? '换好皮了，已放进广场' : '改好了，已放进广场');
 }
 
 // ══ 5. GAMES （Task 4 起填充）
@@ -1453,6 +1563,49 @@ test('广场屏经路由进入时会渲染', ()=>{
   host.innerHTML = '';                 // 清空，确保是路由把它画回来的，而不是上一次渲染的残留
   showScreen('square');
   assert(host.querySelectorAll('.work-card').length > 0, '经 showScreen 进入广场应渲染作品卡');
+});
+
+test('二创档位面板有三档，换皮一档即可完成', ()=>{
+  startRemix('w-fraction-zombie');
+  assert(document.querySelector('.remix-sheet').classList.contains('on'), '面板应打开');
+  assertCount('.tier', 3);
+  const before = PUBLISHED.length;
+  document.querySelector('.tier[data-tier="skin"]').click();   // 换皮先展开主题网格
+  document.querySelector('.skin-opt[data-skin="太空"]').click();
+  assert(document.querySelector('.remix-sheet') === null, '选完主题后面板应关闭');
+  renderSquare();
+  assertCount('.work-card', before + 1);
+});
+test('二创产物血缘指向原作', ()=>{
+  const before = PUBLISHED.length;
+  doRemix('w-fraction-zombie','skin','太空');   // 自播种：不依赖上一条用例留下的产物
+  assert(PUBLISHED.length === before + 1, '应新增一件作品');
+  const child = PUBLISHED.find(w=> w.parentId === 'w-fraction-zombie' && w.id !== 'w-unit-swap');
+  assert(child, '应存在新的衍生作品');
+  const parent = PUBLISHED.find(w=> w.id === 'w-fraction-zombie');
+  assert(parent.remixes >= 13, '原作衍生计数应增加，实际 ' + parent.remixes);
+});
+test('换料档位产出换学科内容的新作品', ()=>{
+  const before = PUBLISHED.length;
+  startRemix('w-fraction-zombie');
+  document.querySelector('.tier[data-tier="material"]').click();
+  document.querySelector('.material-opt[data-subject="乐理"]').click();
+  assert(PUBLISHED.length === before + 1, '应新增一件作品');
+  assert(PUBLISHED[0].subject === '乐理', '新作品学科应为乐理，实际 ' + PUBLISHED[0].subject);
+});
+test('改造档位产出换机制的新作品，学科继承原作', ()=>{
+  const before = PUBLISHED.length;
+  const parent = PUBLISHED.find(w=> w.id === 'w-fraction-zombie');
+  const mech = MECHANICS.find(m=> m.id === 'rhythm');
+  startRemix('w-fraction-zombie');
+  document.querySelector('.tier[data-tier="mechanic"]').click();
+  document.querySelector('.mech-opt[data-mech="rhythm"]').click();
+  assert(PUBLISHED.length === before + 1, '应新增一件作品');
+  assert(PUBLISHED[0].mechanic === 'rhythm', '新作品机制应为 rhythm，实际 ' + PUBLISHED[0].mechanic);
+  assert(PUBLISHED[0].title.includes(mech.name),
+    '标题应含机制名「' + mech.name + '」，实际 ' + PUBLISHED[0].title);
+  assert(PUBLISHED[0].subject === parent.subject, '学科应继承原作，实际 ' + PUBLISHED[0].subject);
+  assert(PUBLISHED[0].parentId === 'w-fraction-zombie', '血缘应指向原作');
 });
 
 // ── 启动
