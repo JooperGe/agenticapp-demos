@@ -2180,6 +2180,87 @@ test('通关会把进度累积回目标（一局打完，回目标详情就多�
   }
 });
 
+test('跑酷能打完一局（按对每一块则通关）', ()=>{
+  // 端到端：把「手指跑酷」真驱动到 end('win')，而不是按 fall/gap 估算时长。
+  // 照抄对撞时长探针的范式：openGame + mountNow，循环 _step，直到 BUS.runs 增长。
+  const savedGoals = GOALS.map(g=>({ ...g }));
+  const savedGameId = state.gameId;
+  const savedRuns = BUS.runs.length, savedAttempts = BUS.attempts.length;
+  const container = document.getElementById('container');
+  try{
+    openGame('guitar-l1'); mountNow('guitar-l1');
+    const m = activeMechanic, runsBefore = BUS.runs.length;
+    let steps = 0;                                     // 循环护栏：绝不让探针可能死循环
+    while(BUS.runs.length === runsBefore && steps < 4000){
+      m._step(200); steps++;
+      // 只在判定窗口内出手（JUDGE-窗口 < pos < 漏接阈值）：窗外点击 = miss = 掉血，会把探针变成不确定性来源
+      const tracks = [...new Set(
+        [...document.querySelectorAll('#container .rhythm .block[data-live="1"]')]
+          .map(el=>({ track:Number(el.dataset.track), pos: parseFloat(el.style.top) / 100 }))
+          .filter(b=> b.pos > 0.65 && b.pos < 0.88)
+          .map(b=> b.track)
+      )];
+      tracks.forEach(t=>{
+        document.querySelector('#container .rhythm .track[data-track="' + t + '"]').click();
+      });
+    }
+    assert(BUS.runs.length > runsBefore, '跑酷应能打完一局（按对每一块），实际 ' + steps + ' 步仍未结束');
+    assert(BUS.runs.at(-1).outcome === 'win', '按对每一块应通关，实际 ' + BUS.runs.at(-1).outcome);
+    // 结算区真的渲染出通关态，而不是只有 BUS 里的内部状态对
+    assert(document.querySelector('#container .result'), '通关后应渲染结算区');
+    assertText('#container .result .rs-title', '这局拿下');
+  } finally {
+    document.querySelector('#container .result')?.remove();
+    closeGame();
+    GOALS.forEach((g,i)=> Object.assign(g, savedGoals[i]));
+    state.gameId = savedGameId;
+    BUS.runs.length = savedRuns; BUS.attempts.length = savedAttempts;
+    showScreen('goal');
+  }
+});
+
+test('Esc 退出容器并回到原屏', ()=>{
+  const container = document.getElementById('container');
+  const saved = { screen: state.screen, gameId: state.gameId, pageId: state.pageId };
+  try{
+    showScreen('square');                              // 原屏取非默认屏，才验得出「回到原屏」而非「回到 goal」
+    openGame('guitar-l1');                             // 真进容器：Esc 分支以 state.gameId 为前置
+    assert(container.classList.contains('on'), '前置：容器应已打开');
+    assert(state.gameId === 'guitar-l1', '前置：state.gameId 应已置位，否则这条会因没开容器而恒真');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key:'Escape' }));
+    assert(!container.classList.contains('on'), 'Esc 应关闭容器');
+    assert(state.screen === 'square', 'Esc 应回到进入前的原屏 square，实际 ' + state.screen);
+  } finally {
+    document.querySelector('#container .result')?.remove();
+    container.classList.remove('on');
+    state.screen = saved.screen; state.gameId = saved.gameId; state.pageId = saved.pageId;
+    showScreen(saved.screen || 'goal');
+  }
+});
+
+test('左上下滑退出容器（合成指针事件）', ()=>{
+  const container = document.getElementById('container');
+  const saved = { screen: state.screen, gameId: state.gameId, pageId: state.pageId };
+  try{
+    showScreen('square');
+    openGame('guitar-l1');
+    assert(container.classList.contains('on'), '前置：容器应已打开');
+    const btn = document.querySelector('.cg-exit');
+    assert(btn, '应有左上角下滑退出按钮');
+    const base = { bubbles:true, cancelable:true, pointerId:1, pointerType:'touch',
+                   isPrimary:true, buttons:1, clientX:30, clientY:80 };
+    btn.dispatchEvent(new PointerEvent('pointerdown', base));
+    btn.dispatchEvent(new PointerEvent('pointermove', Object.assign({}, base, { clientY:140 })));
+    assert(!container.classList.contains('on'), '下滑超过 40px 应关闭容器');
+    assert(state.screen === 'square', '下滑退出应回到原屏 square，实际 ' + state.screen);
+  } finally {
+    document.querySelector('#container .result')?.remove();
+    container.classList.remove('on');
+    state.screen = saved.screen; state.gameId = saved.gameId; state.pageId = saved.pageId;
+    showScreen(saved.screen || 'goal');
+  }
+});
+
 // ── 启动
 renderGoals();
 showScreen('goal');

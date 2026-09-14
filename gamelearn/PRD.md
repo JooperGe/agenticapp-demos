@@ -282,7 +282,7 @@ spec 明写三环各自失败会怎样（`:73-77`）：① 不成立 → 用户�
 
 ### `?selftest=1` 自检协议
 
-原型内置一套自检探针（**交付时 58 条**，`grep -c "^test(" gamelearn/index.html`）。在 URL 后加 `?selftest=1` 即进入自检模式：探针逐条跑完，全绿时页面 `<title>` 变成 `SELFTEST OK`，任一条失败则变成 `SELFTEST FAIL: <用例名>: <原因>`（在第一条失败处停止报告）。
+原型内置一套自检探针（**交付时 61 条**，`grep -c "^test(" gamelearn/index.html`）。在 URL 后加 `?selftest=1` 即进入自检模式：探针逐条跑完，全绿时页面 `<title>` 变成 `SELFTEST OK`，任一条失败则变成 `SELFTEST FAIL: <用例名>: <原因>`（在第一条失败处停止报告）。
 
 自检模式会绕过所有需要真实时间的演出（打字、3 秒倒计时、rAF 循环），改走 `mountNow()` 直接挂载，因此可离线、可重复、可无人值守地跑。
 
