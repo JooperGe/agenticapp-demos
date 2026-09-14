@@ -487,7 +487,18 @@ const state = { screen:'goal', goalId:null, gameId:null, pageId:null, rankBoard:
 // 累积轨迹（Task 12 的 myStats）才读未过滤的 BUS.attempts
 const BUS = { attempts: [], runs: [] };
 const reportAttempt = a => BUS.attempts.push({ ...a, run: gameGen });
-const finishRun = r => BUS.runs.push(r);
+// 一局只在这里结束（跑酷 / 对撞都走它）：赢了才把进度累积回目标
+const finishRun = r => { BUS.runs.push(r); if(r.outcome === 'win') advanceGoal(state.gameId); };
+
+// 通关反哺：赢了才把进度推一格，输了不动（失败不能解锁下一项能力）
+function advanceGoal(gameId){
+  const gid = Object.keys(GOAL_GAME).find(k=> GOAL_GAME[k] === gameId);
+  if(!gid) return;                                  // 自造 / 二创的作品不属于任何目标
+  const g = GOALS.find(x=> x.id === gid);
+  if(!g || g.done >= g.total) return;               // 到顶不越界
+  g.done++;
+  if(state.screen === 'goalDetail' && state.goalId === gid) renderGoalDetail(gid);  // 详情开着就地重画
+}
 
 // ══ 1b. 画布缩放
 function computeScale(w, h){ return Math.min(1, w / 390, h / 844); }
@@ -996,7 +1007,9 @@ function myStats(){
     .map(([point,v])=>({ point, rate: +(v.ok / v.n).toFixed(2) }))
     .sort((a,b)=> b.rate - a.rate);
   return {
-    played: GOALS.reduce((s,g)=> s + g.done, 0) + BUS.runs.length,
+    // 「玩过」= 本会话打完的局数。不要写成 + GOALS.reduce((s,g)=> s+g.done, 0)：
+    // 那是「已通关的能力数」，两种单位相加会让赢一局同时推进两处、一局显示成两局
+    played: BUS.runs.length,
     made: PUBLISHED.filter(w=> w.mine && !w.parentId).length,
     remixed: PUBLISHED.filter(w=> w.mine && w.parentId).length,
     best: Math.max(0, ...PUBLISHED.filter(w=> w.mine).map(w=> w.score)),
@@ -2046,9 +2059,76 @@ test('成长轨迹按正确率画条，且不排名', ()=>{
       '100% 的条应约为 50% 的两倍，实际 ' + w100 + ' / ' + w50 + ' = ' + (w100 / w50));
     assert(!host.textContent.includes('排名'), '「我」页面不做人名排名');
   } finally {
+    // showScreen 必须在复原 innerHTML 之前：savedScreen 恰为 me 时它会再跑一次 renderMe 把作品卡写回
+    showScreen(savedScreen || 'goal');
     host.innerHTML = saved;
     BUS.attempts.length = 0; BUS.attempts.push(...savedAttempts);
-    showScreen(savedScreen || 'goal');      // 还原屏状态与 tab 高亮
+  }
+});
+test('四格统计的数值口径正确，不是一个只数格子的空壳', ()=>{
+  // 变异「made: …length + 1」必须变红 —— 只断个数=4 是抓不住口径错的
+  const host = document.querySelector('[data-screen="me"]');
+  const saved = host.innerHTML;
+  const savedScreen = state.screen;
+  const cells = ()=> [...document.querySelectorAll('.me-stats .ms-cell b')].map(b=> b.textContent);
+  const savedGoals = GOALS.map(g=>({ ...g }));
+  const savedRuns = BUS.runs.length, savedAttempts = BUS.attempts.length;
+  const savedMine = PUBLISHED.map(w=> w.mine);   // 前面的用例发布过「我的」作品，先摘掉才验得出干净态的 0
+  try{
+    // 干净加载态：guitar 已通关 1 项（Task 2 烤进数据），它对「玩过」不该有任何贡献。
+    // 刻意不清零 done —— 清零会把「口径算进了 Σdone」这个错正好遮住（brief 原文在此会空过）。
+    GOALS.forEach(g=> g.done = 0); GOALS.find(g=> g.id === 'guitar').done = 1;
+    BUS.runs.length = 0;
+    PUBLISHED.forEach(w=> w.mine = false);
+    showScreen('me');
+    assert(JSON.stringify(cells()) === JSON.stringify(['0','0','0','0']),
+      '干净状态四格应全为 0（已通关的 1 项不能算成「玩过」），实际 ' + cells().join(','));
+    BUS.runs.push({ outcome:'win', ms:1 }); BUS.runs.push({ outcome:'lose', ms:1 });
+    renderMe();
+    assert(cells()[0] === '2', '「玩过」应等于对局数 2，实际 ' + cells()[0]);
+  } finally {
+    showScreen(savedScreen || 'goal');
+    host.innerHTML = saved;
+    GOALS.forEach((g,i)=> Object.assign(g, savedGoals[i]));
+    BUS.runs.length = savedRuns; BUS.attempts.length = savedAttempts;
+    PUBLISHED.forEach((w,i)=>{ if(savedMine[i]) w.mine = true; else delete w.mine; });
+  }
+});
+test('通关会把进度累积回目标（一局打完，回目标详情就多点亮一格）', ()=>{
+  // spec §四 ③「轨迹累积到目标下」：没有任何别的地方写 GOALS.done，
+  // 只靠 Task 2 烤进数据的 done:1，这一条永远是死数
+  const host = document.querySelector('[data-screen="me"]');
+  const savedMe = host.innerHTML;
+  const savedScreen = state.screen;
+  const savedGoals = GOALS.map(g=>({ ...g }));
+  const savedGameId = state.gameId;
+  const savedRuns = BUS.runs.length, savedAttempts = BUS.attempts.length;
+  try{
+    const g = GOALS.find(x=> x.id === 'guitar');
+    g.done = 1;
+    // 赢一局 → 目标前进一格
+    state.gameId = GOAL_GAME.guitar;
+    finishRun({ outcome:'win', ms:1 });
+    assert(g.done === 2, '赢了应推进到 2，实际 ' + g.done);
+    // 输一局不推进：「没撑住」不能解锁下一项能力
+    finishRun({ outcome:'lose', ms:1 });
+    assert(g.done === 2, '输了不应推进，实际 ' + g.done);
+    // 不属于任何目标的作品（自造 / 二创）不推进
+    g.done = 1;
+    state.gameId = 'w-remix-1';
+    finishRun({ outcome:'win', ms:1 });
+    assert(g.done === 1, '自造作品不应推进目标，实际 ' + g.done);
+    // 到顶不越界
+    g.done = g.total;
+    state.gameId = GOAL_GAME.guitar;
+    finishRun({ outcome:'win', ms:1 });
+    assert(g.done === g.total, '不应超过 total，实际 ' + g.done);
+  } finally {
+    showScreen(savedScreen || 'goal');
+    host.innerHTML = savedMe;
+    GOALS.forEach((g,i)=> Object.assign(g, savedGoals[i]));
+    state.gameId = savedGameId;
+    BUS.runs.length = savedRuns; BUS.attempts.length = savedAttempts;
   }
 });
 
