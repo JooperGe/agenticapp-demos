@@ -129,7 +129,7 @@
     opacity:0; pointer-events:none; transition:opacity .2s;
     background:var(--surface-2); border:1px solid var(--line); color:var(--ink);
     border-radius:var(--r-md); padding:10px 14px; font-size:12px;
-    max-width:78%; text-align:center; z-index:5;
+    max-width:78%; text-align:center; z-index:30;   /* 必须高于 #container 的 20：结算页（在容器里）弹的发布/分享 toast，低于 20 会被整块盖住 */
   }
   #toast.on{ opacity:1; }
 
@@ -397,8 +397,10 @@
   .rr-val{ font-size:12px; color:var(--brand-2); text-align:right; }
 
   /* ── 站外邀请卡：居中的出站预览，只带身份描述 ── */
+  /* z-index 必须高于 #container 的 20：邀请卡由结算页的「发给朋友」触发，而结算页就在
+     #container 里（showResult 不关容器），且 #container 是不透明的整屏块 —— 低于 20 会被完全盖住 */
   .share-card{
-    position:absolute; left:18px; right:18px; top:50%; z-index:15;
+    position:absolute; left:18px; right:18px; top:50%; z-index:30;
     transform:translateY(-50%); padding:22px 20px 18px;
     display:flex; flex-direction:column; gap:10px; text-align:center;
     background:var(--surface); border:1px solid var(--brand); border-radius:var(--r-lg);
@@ -1871,6 +1873,34 @@ test('卡片上不出现头像或账号 ID', ()=>{
   assert(el, '应先生成一张分享卡');
   const txt = el.innerHTML;
   assert(!/avatar|user-?id|@/.test(txt), '不得出现头像或账号痕迹');
+  // 红线不止 latin 词：卡片文本里也不能出现任何他人昵称（title/line 插值是最容易漏的口子）。
+  // 排除「我」—— publishCurrent 给自己打的标记，单字且广场到处在用，算进来会误伤正常文案。
+  const handles = [...new Set(PUBLISHED.map(w=> w.author))].filter(a=> a !== '我');
+  const leak = handles.find(h=> txt.includes(h));
+  assert(!leak, '卡片文本不得出现他人昵称，实际出现「' + leak + '」');
+});
+test('分享卡盖在游戏容器之上，真实路径下可见可命中', ()=>{
+  // 其余用例都在断文本和 class —— 绘制顺序对它们完全不可见。这条补上命中测试：
+  // 走真实入口（结算页的「发给朋友」），此时 #container 正开着，卡片必须盖在它上面。
+  openGame('guitar-l1');
+  showResult('win', { maxCombo:12, hits:24, total:24 });
+  assert(document.getElementById('container').classList.contains('on'),
+    '结算时容器应是打开状态（正是「发给朋友」可用的状态）');
+  const btn = document.querySelector('#container .result .rs-share');
+  assert(btn, '结算页应有「发给朋友」');
+  btn.click();
+  const card = document.querySelector('.share-card');
+  assert(card, '点「发给朋友」后应出现分享卡');
+  const r = card.getBoundingClientRect();            // viewport 坐标，已含 #scaler 的缩放
+  assert(r.width > 0 && r.height > 0,
+    '卡片应有非零尺寸，否则命中测试没有意义（实际 ' + r.width + '×' + r.height + '）');
+  const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+  assert(hit === card || card.contains(hit),
+    '卡片中心应命中卡片或其后代（z-index 必须高于 #container 的 20），实际命中 ' +
+    (hit ? (hit.className || hit.tagName) : hit));
+  card.remove();                                     // 清理，别把容器和卡片开着漏给后续用例
+  document.querySelector('#container .result')?.remove();
+  closeGame();
 });
 
 // ── 启动
