@@ -405,8 +405,8 @@ function openGame(gameId){
   c.querySelector('.cg-skeleton').hidden = false;
   c.querySelector('.result')?.remove();      // 清掉上一局的结算，避免叠在游戏上
   c.classList.add('on');
+  gameGen++;                                // 每次开新局都作废在飞的倒计时
   if(SELFTEST_MODE) return;                 // 自检不跑倒计时，改用 mountNow
-  gameGen++;
   countdownThenMount(gameId, gameGen);
 }
 
@@ -465,6 +465,7 @@ document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && state.gameId)
     if(y0 !== null && e.clientY - y0 > 40){ y0 = null; closeGame(); }
   });
   btn.addEventListener('pointerup', ()=>{ y0 = null; });
+  btn.addEventListener('pointercancel', ()=>{ y0 = null; });   // 手势被系统接管时别留下陈旧的 y0
 })();
 
 // ══ 6. SELFTESTS
@@ -599,6 +600,14 @@ test('倒计时期间退出，不会事后挂上孤儿局面', async ()=>{
   await p;
   assert(activeMechanic === null,
     '退出后不应还挂上机制（会成为无法 destroy 的孤儿，并污染 BUS.attempts），实际 ' + activeMechanic);
+});
+test('倒计时在飞时重开另一局，旧倒计时作废', async ()=>{
+  openGame('guitar-l1');
+  const p = countdownThenMount('guitar-l1', gameGen);   // A 的倒计时在飞
+  openGame('fraction-l3');                              // 重开 B，代次自增
+  await p;
+  assert(state.gameId === 'fraction-l3', '应停在 B，实际 ' + state.gameId);
+  assert(activeMechanic === null, 'A 的倒计时不应事后挂上机制（会盖掉 B）');
 });
 
 // ── 启动
