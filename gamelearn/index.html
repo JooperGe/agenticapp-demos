@@ -395,6 +395,28 @@
   .rr-n{ font-size:13px; font-weight:600; }
   .rr-sub{ font-size:11px; color:var(--ink-soft); }
   .rr-val{ font-size:12px; color:var(--brand-2); text-align:right; }
+
+  /* ── 站外邀请卡：居中的出站预览，只带身份描述 ── */
+  .share-card{
+    position:absolute; left:18px; right:18px; top:50%; z-index:15;
+    transform:translateY(-50%); padding:22px 20px 18px;
+    display:flex; flex-direction:column; gap:10px; text-align:center;
+    background:var(--surface); border:1px solid var(--brand); border-radius:var(--r-lg);
+    animation:rs-rise .22s ease-out;
+  }
+  .sc-top{ font-size:11px; color:var(--ink-soft); }
+  .sc-anon{ font-size:12px; color:var(--ink-dim); }
+  .sc-title{ font-size:20px; font-weight:600; color:var(--ink); }
+  .sc-line{ font-size:13px; color:var(--brand-2); }
+  .sc-cta{
+    padding:13px; font-size:14px; font-weight:600; cursor:pointer;
+    color:var(--bg); background:var(--brand); border-radius:var(--r-md);
+  }
+  .sc-foot{ font-size:10px; color:var(--ink-soft); line-height:1.5; }
+  .sc-close{
+    width:100%; padding:12px; cursor:pointer; font-family:inherit; font-size:13px;
+    color:var(--ink-dim); background:none; border:1px solid var(--line); border-radius:var(--r-md);
+  }
 </style>
 </head>
 <body>
@@ -1307,7 +1329,45 @@ function publishCurrent(){
   });
   toast('已发布到广场');
 }
-function shareCurrent(){ toast('分享卡已生成'); }
+// Task 11：站外邀请卡。卡片可以出站，但出站的只有身份描述 ——
+// 姓名 / 头像 / 账号都在站内，绝不进这张卡（spec §9.4 的匿名化红线）。
+const ANON_LABELS = {
+  '数学':'一位五年级同学', '乐理':'一位吉他初学者', '英语':'一位在追美剧的人',
+  '语文':'一位爱看闲书的人', '化学':'一位在补化学的人', '财商':'一位想学理财的人',
+  '常识':'一位爱琢磨生活的人', '健身':'一位刚开始练的人',
+};
+
+// 只读 PUBLISHED / GAMES_INDEX 的 title 与 subject，绝不读 author —— 卡片上没有昵称的位置
+function makeShareCard(gameId){
+  const g = PUBLISHED.find(w=> w.id === gameId) || GAMES_INDEX[gameId];
+  if(!g) return null;
+  const pts = BUS.attempts.filter(a=> a.ok).length;
+  return {
+    anon: ANON_LABELS[g.subject] || '一位刚开始学的人',
+    title: g.title,
+    line: pts ? `拿下了 ${pts * 320} 分` : '来试试这一局',
+    cta: '去 App 里玩',
+    score: pts ? pts * 320 : null,
+  };
+}
+
+function shareCurrent(){
+  const card = makeShareCard(state.gameId || state.pageId || 'w-fraction-zombie');
+  if(!card){ toast('没有可分享的内容'); return; }
+  document.querySelector('.share-card')?.remove();
+  document.getElementById('phone').insertAdjacentHTML('beforeend', `
+    <div class="share-card on">
+      <div class="sc-top">站外预览 · 微信里看到的样子</div>
+      <div class="sc-anon">${card.anon}</div>
+      <div class="sc-title">《${card.title}》</div>
+      <div class="sc-line">${card.line}</div>
+      <div class="sc-cta">${card.cta} ›</div>
+      <div class="sc-foot">卡片上不会出现你的姓名、头像和账号</div>
+      <button class="sc-close">关闭</button>
+    </div>`);
+  const el = document.querySelector('.share-card');
+  el.querySelector('.sc-close').addEventListener('click', ()=> el.remove());
+}
 
 // ══ 6. SELFTESTS
 const SELFTESTS = [];
@@ -1782,6 +1842,35 @@ test('点榜上一行能跳到作品页', ()=>{
   assert(state.pageId === id, '点榜行应打开对应作品页，实际 pageId=' + state.pageId + '，点击的是 ' + id);
   assert(!document.querySelector('[data-screen="gamePage"]').hidden, '作品页应成为可见屏');
   showScreen('goal');                          // 还原到无害处
+});
+
+test('邀请卡匿名为身份描述，不含真实昵称', ()=>{
+  const card = makeShareCard('w-fraction-zombie');
+  assert(card.anon === '一位五年级同学', '实际 ' + card.anon);
+  assert(!card.anon.includes('豆豆'), '不得出现作者昵称');
+  assert(!/小明|小红/.test(card.anon), '不得出现真实姓名');
+});
+test('邀请卡渲染出四个要素', ()=>{
+  state.gameId = 'guitar-l1';
+  state.pageId = null;
+  shareCurrent();
+  assert(document.querySelector('.share-card').classList.contains('on'), '卡片应出现');
+  assertText('.sc-anon', '一位吉他初学者');
+  assertText('.sc-title', '手指跑酷');
+  assert(document.querySelector('.sc-cta'), '应有进入 App 的按钮');
+  state.gameId = null;
+});
+test('卡片上不出现头像或账号 ID', ()=>{
+  // 自播种：上一条用例若失败就没留下卡片，这里自己造一张，别去读 null.innerHTML
+  if(!document.querySelector('.share-card')){
+    state.gameId = 'guitar-l1'; state.pageId = null;
+    shareCurrent();
+    state.gameId = null;
+  }
+  const el = document.querySelector('.share-card');
+  assert(el, '应先生成一张分享卡');
+  const txt = el.innerHTML;
+  assert(!/avatar|user-?id|@/.test(txt), '不得出现头像或账号痕迹');
 });
 
 // ── 启动
