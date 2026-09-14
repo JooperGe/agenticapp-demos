@@ -132,6 +132,44 @@
     max-width:78%; text-align:center; z-index:5;
   }
   #toast.on{ opacity:1; }
+
+  /* ── 游戏容器 ── */
+  #container{
+    position:absolute; inset:0; z-index:20; background:var(--bg);
+    display:none;
+  }
+  #container.on{ display:block; }
+  .cg-forecast{
+    position:absolute; left:0; right:0; top:0; padding:20px 64px 0 18px;
+    font-size:12px; color:var(--brand-2);
+  }
+  .cg-skeleton{
+    position:absolute; left:18px; right:18px; top:64px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .cg-skeleton[hidden]{ display:none; }   /* 作者样式的 display 会盖掉 UA 的 [hidden]，显式补回 */
+  .cg-skeleton .sk-bar{
+    height:14px; border-radius:var(--r-sm); background:var(--surface-2);
+    animation:sk-breath 1.2s ease-in-out infinite;
+  }
+  .cg-skeleton .sk-bar.short{ width:56%; }
+  @keyframes sk-breath{ 0%,100%{ opacity:.35 } 50%{ opacity:1 } }
+  .cd-count{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:72px; font-weight:600; color:var(--ink);
+  }
+  .cd-count[hidden]{ display:none; }      /* 同上：居中用了 display:flex */
+  .cg-stage{ position:absolute; inset:0; }
+  .cg-stage[hidden]{ display:none; }
+  .cg-todo{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:12px; color:var(--ink-soft);
+  }
+  .cg-exit{
+    position:absolute; left:0; top:0; z-index:2; width:44px; height:44px;
+    background:none; border:0; color:var(--ink-dim); font-size:16px; line-height:1;
+    cursor:pointer; font-family:inherit; touch-action:none;
+  }
 </style>
 </head>
 <body>
@@ -145,6 +183,13 @@
     <section data-screen="goalDetail" hidden></section>
     <section data-screen="gamePage" hidden></section>
   </div>
+  <div id="container">
+    <div class="cg-forecast"></div>
+    <div class="cg-skeleton"><div class="sk-bar"></div><div class="sk-bar short"></div></div>
+    <div class="cd-count"></div>
+    <div class="cg-stage" hidden></div>
+    <button class="cg-exit">✕</button>
+  </div>
   <nav class="tabbar">
     <button class="tab on" data-goto="goal"><span class="ico">🎯</span>目标</button>
     <button class="tab" data-goto="square"><span class="ico">🛰️</span>广场</button>
@@ -157,6 +202,11 @@
 <script>
 // ══ 1. STATE
 const state = { screen:'goal', goalId:null, gameId:null, pageId:null, rankBoard:null, rankSubject:null };
+
+// 上报总线：机制往里塞 attempt / run，结算据此算"过了什么、卡在哪"
+const BUS = { attempts: [], runs: [] };
+const reportAttempt = a => BUS.attempts.push(a);
+const finishRun = r => BUS.runs.push(r);
 
 // ══ 1b. 画布缩放
 function computeScale(w, h){ return Math.min(1, w / 390, h / 844); }
@@ -193,6 +243,9 @@ const CREATION_SCRIPT = [
   { from:'ai', text:'不用背，玩两局就熟了。' },
   { kind:'preview', gameId:'guitar-l1', title:'手指跑酷', mechanic:'抢拍', knowledge:'和弦转换', emoji:'🎸' },
 ];
+
+// 机制内容：Task 5 / Task 7 按 gameId 填充（runMechanic 需容忍 undefined）
+const MECHANIC_CONTENT = {};
 
 // ══ 3. ROUTER
 function showScreen(id){
@@ -332,6 +385,82 @@ function typeInto(el, text){
 }
 
 // ══ 5. GAMES （Task 4 起填充）
+const GAMES_INDEX = {
+  'guitar-l1':   { id:'guitar-l1',   title:'手指跑酷',   subject:'乐理', mechanic:'rhythm',  knowledge:'和弦转换', emoji:'🎸', skin:'stage',
+                   cover:['#4A1E3A','#C86AA8'] },
+  'fraction-l3': { id:'fraction-l3', title:'分数僵尸战', subject:'数学', mechanic:'collide', knowledge:'通分',     emoji:'🧟', skin:'graveyard',
+                   cover:['#2E1E4A','#7C5CFF'] },
+};
+
+let activeMechanic = null;
+
+function openGame(gameId){
+  const g = GAMES_INDEX[gameId];
+  if(!g){ toast('这一关 demo 还没做'); return; }
+  state.gameId = gameId;
+  const c = document.getElementById('container');
+  c.querySelector('.cg-forecast').textContent = '给你造一个 ' + g.title + ' · 练' + g.knowledge;
+  c.querySelector('.cg-stage').hidden = true;
+  c.querySelector('.cg-skeleton').hidden = false;
+  c.querySelector('.result')?.remove();      // 清掉上一局的结算，避免叠在游戏上
+  c.classList.add('on');
+  if(SELFTEST_MODE) return;                 // 自检不跑倒计时，改用 mountNow
+  countdownThenMount(gameId);
+}
+
+// 藏等待：预告条已出、骨架屏在呼吸，3 秒倒计时数完再注入内容 —— 全程不出现进度条
+async function countdownThenMount(gameId){
+  const cd = document.querySelector('#container .cd-count');
+  cd.hidden = false;
+  for(const n of [3, 2, 1]){
+    cd.textContent = n;
+    await wait(700);
+  }
+  cd.hidden = true;
+  mountNow(gameId);
+}
+
+function mountNow(gameId){
+  const g = GAMES_INDEX[gameId];
+  const c = document.getElementById('container');
+  const stage = c.querySelector('.cg-stage');
+  c.querySelector('.cg-skeleton').hidden = true;
+  c.querySelector('.cd-count').hidden = true;
+  stage.hidden = false;
+  stage.className = 'cg-stage cg-live';
+  stage.innerHTML = '';
+  activeMechanic = runMechanic(g.mechanic, MECHANIC_CONTENT[gameId], stage);
+}
+
+function closeGame(){
+  activeMechanic?.destroy?.();
+  activeMechanic = null;
+  document.getElementById('container').classList.remove('on');
+  state.gameId = null;
+}
+
+// Task 5 会用真正的机制分发替换这个桩
+function runMechanic(mechanicId, content, mount){
+  mount.innerHTML = '<div class="cg-todo">这个机制在 demo 里还没做</div>';
+  return { destroy(){} };
+}
+
+document.querySelector('.cg-exit').addEventListener('click', closeGame);
+document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && state.gameId) closeGame(); });
+
+// 左上角下滑退出 —— spec 第七章的"统一手势"
+(()=>{
+  const btn = document.querySelector('.cg-exit');
+  let y0 = null;
+  btn.addEventListener('pointerdown', e=>{
+    y0 = e.clientY;
+    btn.setPointerCapture(e.pointerId);      // 不加捕获，指针一出 44×44 就收不到 pointermove，下滑永远触发不了
+  });
+  btn.addEventListener('pointermove', e=>{
+    if(y0 !== null && e.clientY - y0 > 40){ y0 = null; closeGame(); }
+  });
+  btn.addEventListener('pointerup', ()=>{ y0 = null; });
+})();
 
 // ══ 6. SELFTESTS
 const SELFTESTS = [];
@@ -427,6 +556,35 @@ test('创作对话能推进到预告卡', ()=>{
 });
 test('对话里出现过换机制重生成的过程', ()=>{
   assertText('.chat', '换个机制');
+});
+
+test('进容器：预告 + 骨架 + 倒计时', ()=>{
+  openGame('guitar-l1');
+  assert(document.getElementById('container').classList.contains('on'), '容器应打开');
+  assertText('#container .cg-forecast', '手指跑酷');
+  assert(document.querySelector('#container .cg-skeleton'), '应有骨架屏');
+  assert(document.querySelector('#container .cd-count'), '应有倒计时');
+});
+test('跳过倒计时可直接挂载', ()=>{
+  openGame('guitar-l1');
+  mountNow('guitar-l1');                       // 自检专用：绕过倒计时
+  assert(document.querySelector('#container .cg-stage'), '挂载点应存在');
+});
+test('退出容器返回原屏', ()=>{
+  reportAttempt({ point:'和弦转换', ok:true, ms:820 });
+  assert(BUS.attempts.length === 1, 'attempt 应入总线');
+  closeGame();
+  assert(!document.getElementById('container').classList.contains('on'), '容器应关闭');
+});
+test('预告卡上的开始按钮进入容器', ()=>{
+  startCreation();
+  for(let i = 0; i <= CREATION_SCRIPT.length && !document.querySelector('.preview-card'); i++){
+    advanceCreation();
+  }
+  document.querySelector('.preview-card .pv-start').click();
+  assert(state.gameId === 'guitar-l1', '应打开 guitar-l1，实际 ' + state.gameId);
+  assert(document.getElementById('container').classList.contains('on'), '容器应打开');
+  closeGame();
 });
 
 // ── 启动
