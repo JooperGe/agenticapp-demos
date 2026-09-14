@@ -351,7 +351,7 @@
   .chain-node.cur{ color:var(--brand-2); font-weight:600; }
   .chain-node.cur em{ color:var(--brand-2); }
   .gp-chain-note{ margin-top:10px; font-size:11px; color:var(--ink-soft); line-height:1.5; }
-  .board-row{ display:flex; align-items:center; gap:10px; padding:8px 0; font-size:13px; }
+  .board-row{ display:flex; align-items:center; gap:10px; padding:8px 0; font-size:13px; cursor:pointer; }
   .board-row + .board-row{ border-top:1px solid var(--line); }
   .br-i{ flex:none; width:18px; font-size:11px; color:var(--ink-soft); }
   .br-n{ flex:1; }
@@ -432,16 +432,18 @@
   .share-card{
     position:absolute; left:18px; right:18px; top:50%; z-index:30;
     transform:translateY(-50%); padding:22px 20px 18px;
-    display:flex; flex-direction:column; gap:10px; text-align:center;
+    display:none;                       /* 只有 .on 才显示 */
+    flex-direction:column; gap:10px; text-align:center;
     background:var(--surface); border:1px solid var(--brand); border-radius:var(--r-lg);
     animation:rs-rise .22s ease-out;
   }
+  .share-card.on{ display:flex; }
   .sc-top{ font-size:11px; color:var(--ink-soft); }
   .sc-anon{ font-size:12px; color:var(--ink-dim); }
   .sc-title{ font-size:20px; font-weight:600; color:var(--ink); }
   .sc-line{ font-size:13px; color:var(--brand-2); }
   .sc-cta{
-    padding:13px; font-size:14px; font-weight:600; cursor:pointer;
+    padding:13px; font-size:14px; font-weight:600;
     color:var(--bg); background:var(--brand); border-radius:var(--r-md);
   }
   .sc-foot{ font-size:10px; color:var(--ink-soft); line-height:1.5; }
@@ -573,6 +575,7 @@ const FRACTION_WAVES = [
 MECHANIC_CONTENT['fraction-l3'] = { waves:FRACTION_WAVES, wallHp:3, speed:1, enter:0.45 };
 
 // 六种机制：id → 人话名字 + 玩法形状 + 皮肤。playable 标记 demo 里真做出来的机制。
+// playable 只声明契约；「哪件作品落到哪个可玩关卡」由 playTarget()（:789 一带）决定 —— 改机制时两处一起看。
 const MECHANICS = [
   { id:'collide', name:'对撞', shape:'唯一答案的计算', skins:['坟场','太空','深海'], playable:true },
   { id:'rhythm',  name:'抢拍', shape:'时序与反应',     skins:['舞台','夜市','雨林'], playable:true },
@@ -582,27 +585,28 @@ const MECHANICS = [
   { id:'boss',    name:'Boss 战', shape:'综合应用',    skins:['王座','决赛场','火山'], playable:false },
 ];
 
-// 广场预置作品。[id,title,author,subject,mechanic,plays,emoji,cover,parentId,remixes,score]
+// 广场预置作品。[id,title,author,subject,mechanic,plays,emoji,cover,parentId,remixes,score,done]
+// done = 真玩完过的人数（≤ plays）。作品榜排的是 done/plays（玩完率），不是 plays。
 const SEED_WORKS = [
-  ['w-fraction-zombie','分数僵尸战','豆豆','数学','collide',248,'🧟',['#3B2E5A','#7C5CFF'],'w-fraction-base',12,8600],
-  ['w-fraction-base','分数大作战','小红','数学','collide',512,'➗',['#233B5A','#4A9BE8'],null,31,9100],
-  ['w-chord-run','和弦跑酷','阿力','乐理','rhythm',187,'🎸',['#5A2E3B','#FF7A9C'],null,9,7400],
-  ['w-space-chord','太空版和弦跑酷','豆豆','乐理','rhythm',96,'🛰️',['#1E3A4A','#39D0D8'],'w-chord-run',4,6800],
-  ['w-word-snake','词性贪吃蛇','小满','英语','collect',331,'🐍',['#2E5A3B','#5CE88A'],null,17,7900],
-  ['w-syntax-bridge','语法搭桥','阿力','英语','path',142,'🌉',['#4A3A1E','#E8B44A'],null,6,6200],
-  ['w-periodic-build','元素配平工坊','老周','化学','build',88,'⚗️',['#3A1E4A','#C46AE8'],null,3,5400],
-  ['w-ear-train','音程听辨','小满','乐理','collect',204,'👂',['#1E4A4A','#4AE8C4'],null,11,8100],
-  ['w-unit-swap','单位换算大乱斗','豆豆','数学','collide',173,'📐',['#4A2E1E','#E88A4A'],'w-fraction-zombie',5,7200],
-  ['w-idiom-path','成语接龙跳台','小满','语文','path',266,'🀄',['#5A1E2E','#E85A7A'],null,14,7700],
-  ['w-earnings','汇率狙击','老周','财商','collide',119,'💱',['#1E4A2E','#4AE87A'],null,2,6600],
-  ['w-recycle','垃圾分类快手','阿力','常识','collect',402,'♻️',['#2E4A1E','#8AE84A'],null,21,8300],
-  ['w-scale-build','音阶建造','豆豆','乐理','build',77,'🎹',['#2E2E5A','#7A7AFF'],'w-chord-run',3,5900],
-  ['w-fitness-pace','动作节奏器','老周','健身','rhythm',156,'🏋️',['#5A3A1E','#E8A44A'],null,7,7000],
-  ['w-grammar-boss','语法总攻','小满','英语','boss',63,'👑',['#4A1E1E','#E85A5A'],'w-syntax-bridge',1,5800],
-  ['w-mix-boss','混合运算决战','小红','数学','boss',221,'🔥',['#5A2E1E','#FF8A3A'],'w-fraction-base',8,8800],
+  ['w-fraction-zombie','分数僵尸战','豆豆','数学','collide',248,'🧟',['#3B2E5A','#7C5CFF'],'w-fraction-base',12,8600,104],
+  ['w-fraction-base','分数大作战','小红','数学','collide',512,'➗',['#233B5A','#4A9BE8'],null,31,9100,205],
+  ['w-chord-run','和弦跑酷','阿力','乐理','rhythm',187,'🎸',['#5A2E3B','#FF7A9C'],null,9,7400,152],
+  ['w-space-chord','太空版和弦跑酷','豆豆','乐理','rhythm',96,'🛰️',['#1E3A4A','#39D0D8'],'w-chord-run',4,6800,77],
+  ['w-word-snake','词性贪吃蛇','小满','英语','collect',331,'🐍',['#2E5A3B','#5CE88A'],null,17,7900,106],
+  ['w-syntax-bridge','语法搭桥','阿力','英语','path',142,'🌉',['#4A3A1E','#E8B44A'],null,6,6200,68],
+  ['w-periodic-build','元素配平工坊','老周','化学','build',88,'⚗️',['#3A1E4A','#C46AE8'],null,3,5400,41],
+  ['w-ear-train','音程听辨','小满','乐理','collect',204,'👂',['#1E4A4A','#4AE8C4'],null,11,8100,126],
+  ['w-unit-swap','单位换算大乱斗','豆豆','数学','collide',173,'📐',['#4A2E1E','#E88A4A'],'w-fraction-zombie',5,7200,95],
+  ['w-idiom-path','成语接龙跳台','小满','语文','path',266,'🀄',['#5A1E2E','#E85A7A'],null,14,7700,133],
+  ['w-earnings','汇率狙击','老周','财商','collide',119,'💱',['#1E4A2E','#4AE87A'],null,2,6600,24],
+  ['w-recycle','垃圾分类快手','阿力','常识','collect',402,'♻️',['#2E4A1E','#8AE84A'],null,21,8300,161],
+  ['w-scale-build','音阶建造','豆豆','乐理','build',77,'🎹',['#2E2E5A','#7A7AFF'],'w-chord-run',3,5900,39],
+  ['w-fitness-pace','动作节奏器','老周','健身','rhythm',156,'🏋️',['#5A3A1E','#E8A44A'],null,7,7000,47],
+  ['w-grammar-boss','语法总攻','小满','英语','boss',63,'👑',['#4A1E1E','#E85A5A'],'w-syntax-bridge',1,5800,13],
+  ['w-mix-boss','混合运算决战','小红','数学','boss',221,'🔥',['#5A2E1E','#FF8A3A'],'w-fraction-base',8,8800,155],
 ];
-const PUBLISHED = SEED_WORKS.map(([id,title,author,subject,mechanic,plays,emoji,cover,parentId,remixes,score])=>
-  ({ id, title, author, subject, mechanic, plays, emoji, cover, parentId, remixes, score }));
+const PUBLISHED = SEED_WORKS.map(([id,title,author,subject,mechanic,plays,emoji,cover,parentId,remixes,score,done])=>
+  ({ id, title, author, subject, mechanic, plays, emoji, cover, parentId, remixes, score, done }));
 
 // 排行榜：三层榜 + 学科 chips。周期是周榜（周一零点重置），新人永远有机会。
 const RANK_DEFS = [
@@ -610,7 +614,7 @@ const RANK_DEFS = [
   { id:'creators', name:'创作者榜', hint:'被玩完量 × 被二创数，不按作品数量' },
   { id:'mine',     name:'我的战绩', hint:'你进过的榜、你保持的记录' },
 ];
-// 常识 / 健身 刻意不在榜内（PRD 的 7 学科）；它们的作品仍在「全部」里可见
+// 常识 / 健身 刻意不在榜内（榜单按 RANK_SUBJECTS 的 7 个 chips 筛）；它们的作品仍在「全部」里可见
 const RANK_SUBJECTS = ['全部','数学','乐理','英语','语文','化学','财商'];
 
 // ══ 3. ROUTER
@@ -621,6 +625,7 @@ function showScreen(id){
   if(id === 'square') renderSquare();
   if(id === 'rank') renderRankings();
   if(id === 'me') renderMe();
+  if(id === 'goal') renderGoals();
 }
 document.querySelectorAll('.tab').forEach(t=>{
   t.addEventListener('click', ()=> showScreen(t.dataset.goto));
@@ -936,11 +941,13 @@ function doRemix(gameId, tier, payload){
 }
 
 // ── 排行榜：作品榜 / 创作者榜 / 我的战绩，学科 chips 筛选，周榜周期
-// 排的是「被玩完」而不是「被点开」——所以作品榜用 plays×完成率估算，
-// 创作者榜用 被玩完量 × 被二创数，刻意不按作品数量排。
+// 作品榜排「玩完率」= done/plays（真实数据），不排点击量；创作者榜排 被玩完量 × 被二创数。
+const completionRate = w => w.plays ? Math.round((w.done || 0) / w.plays * 100) : 0;
+
+// 创作者榜用 被玩完量 × 被二创数，刻意不按作品数量排。没人二创过就是 0 分，不送底分。
 function creatorScore(author){
   return PUBLISHED.filter(w=> w.author === author)
-    .reduce((s,w)=> s + w.plays * Math.max(1, w.remixes), 0);
+    .reduce((s,w)=> s + (w.done || 0) * w.remixes, 0);
 }
 
 function renderRankings(){
@@ -951,7 +958,7 @@ function renderRankings(){
     rows = PUBLISHED
       .filter(w=> state.rankSubject === '全部' || w.subject === state.rankSubject)
       .map(w=>({ key:w.id, name:w.title, sub:w.subject,
-                 val:'玩完 ' + Math.round(w.plays * 0.62) + ' 次', sort:w.plays * 0.62 }))
+                 val:'玩完率 ' + completionRate(w) + '%', sort:completionRate(w) }))
       .sort((a,b)=> b.sort - a.sort).slice(0, 8);
   } else if(state.rankBoard === 'creators'){
     const authors = [...new Set(PUBLISHED.map(w=> w.author))];
@@ -1382,9 +1389,15 @@ function summarize(){
   const weak = rows.filter(r=> r.rate < 0.8).sort((a,b)=> a.rate - b.rate);
   const strongTxt = strong.length ? strong.map(r=>r.point).join('、') : '还没有稳定的部分';
   const weakTxt = weak.length ? weak[0].point : '这局没有明显卡点';
+  // 兜底文案不能硬编码《完整来一遍》——那是吉他目标的最后一项，数学用户会被指去玩音乐游戏。
+  // 反哺的对象是知识点：按本局所属目标的下一项能力取名。
+  const gid = Object.keys(GOAL_GAME).find(k=> GOAL_GAME[k] === state.gameId);
+  const g = gid ? getGoal(gid) : null;
   const next = weak.length
     ? `下一关把${weak[0].point}放慢一点，多给你几次机会`
-    : '下一关提速，试试《完整来一遍》';
+    : (g && g.done < g.total
+        ? `这局没卡点，下一关提速，冲《${g.abilities[g.done]}》`
+        : '这局没卡点，下一关难度再加一档');
   return { strong: strongTxt, weak: weakTxt, next };
 }
 
@@ -2003,10 +2016,13 @@ test('邀请卡渲染出四个要素', ()=>{
   state.gameId = 'guitar-l1';
   state.pageId = null;
   shareCurrent();
-  assert(document.querySelector('.share-card').classList.contains('on'), '卡片应出现');
+  const card = document.querySelector('.share-card');
+  assert(card, '卡片应出现');
+  assert(card.classList.contains('on'), '卡片应带 .on（它是卡片的显示开关）');
+  assert(getComputedStyle(card).display === 'flex', '卡片应真的可见，实际 display=' + getComputedStyle(card).display);
   assertText('.sc-anon', '一位吉他初学者');
   assertText('.sc-title', '手指跑酷');
-  assert(document.querySelector('.sc-cta'), '应有进入 App 的按钮');
+  assert(document.querySelector('.sc-cta'), '应有进入 App 的引导块');
   state.gameId = null;
 });
 test('卡片上不出现头像或账号 ID', ()=>{
@@ -2313,8 +2329,143 @@ test('pointercancel 后不残留陈旧 y0（下滑不应误关容器）', ()=>{
   }
 });
 
+test('通关后目标首页的进度会重画（不是只改数据）', ()=>{
+  // F1 的形状是「数据对了、屏幕没重画」—— 任何读数据的探针都看不见它。
+  // 所以这里比的是 DOM 文本 vs 模型状态：数据推动一格后，回到目标首页必须显示新的数字。
+  const g = GOALS.find(x=> x.id === 'guitar');
+  const saved = g.done, savedScreen = state.screen;
+  try {
+    showScreen('goal');
+    const before = document.querySelector('.goal-card[data-goal="guitar"] .gc-num').textContent.trim();
+    assert(before === saved + '/' + g.total, '前置：目标卡应显示当前进度，实际 ' + before);
+    advanceGoal('guitar-l1');                       // 赢一局做的事：把进度推一格
+    const data = g.done + '/' + g.total;
+    assert(data !== before, '前置：advanceGoal 应真的推进了数据（' + before + ' → ' + data + '）');
+    showScreen('square');
+    showScreen('goal');
+    const after = document.querySelector('.goal-card[data-goal="guitar"] .gc-num').textContent.trim();
+    assert(after === data, '回到目标首页应显示最新进度 ' + data + '，实际 ' + after + '（数据对了但屏幕没重画）');
+    const w = document.querySelector('.goal-card[data-goal="guitar"] .bar i').style.width;
+    assert(w === Math.round(g.done / g.total * 100) + '%', '进度条宽度也要跟着重画，实际 ' + w);
+  } finally {
+    g.done = saved;                                 // 不留残留：收尾探针（F9）会查
+    showScreen(savedScreen || 'goal');
+  }
+});
+
+test('作品榜按真实的玩完率排，不按点击量', ()=>{
+  const savedBoard = state.rankBoard, savedSubject = state.rankSubject;
+  try {
+    state.rankBoard = 'works'; state.rankSubject = '全部';
+    renderRankings();
+    const names = [...document.querySelectorAll('.rank-row .rr-n')].map(e=> e.textContent.trim());
+    const vals  = [...document.querySelectorAll('.rank-row .rr-val')].map(e=> e.textContent.trim());
+    assert(names.length >= 3, '作品榜应至少三行，实际 ' + names.length + ' 行（为空时下面的排序断言会空过）');
+    // 期望值写死：《和弦跑酷》播放量只有 187 但玩完率 81% 最高；播放量第一的《分数大作战》只有 40%。
+    // 若有人把排序改回按 plays，第一名会变成《分数大作战》，这条就红。
+    assert(names[0] === '和弦跑酷', '作品榜第一名应是玩完率最高的《和弦跑酷》，实际 ' + names[0]);
+    assert(/^玩完率 \d+%$/.test(vals[0]), '.rr-val 应显示玩完率，实际 ' + vals[0]);
+    const rates = vals.map(v=> Number(v.replace(/\D/g, '')));
+    const sorted = [...rates].sort((a,b)=> b - a);
+    assert(rates.join() === sorted.join(), '作品榜应按玩完率降序，实际 ' + vals.join());
+    state.rankBoard = 'creators';
+    renderRankings();
+    const score = Number(document.querySelector('.rank-row .rr-val').textContent.replace(/\D/g,''));
+    assert(score > 0, '创作者榜首行应有非零分，实际 ' + score);
+  } finally {
+    state.rankBoard = savedBoard; state.rankSubject = savedSubject;
+    renderRankings();
+  }
+});
+
+test('数学关的结算反哺不会点名吉他曲目', ()=>{
+  const savedGameId = state.gameId;
+  try {
+    state.gameId = 'fraction-l3';
+    const s = summarize();
+    assert(s.next.includes('同分母加减'), '数学关应点名数学目标里的下一项能力，实际「' + s.next + '」');
+    assert(!/完整来一遍|和弦|吉他/.test(s.next), '数学关的反哺不应出现吉他内容，实际「' + s.next + '」');
+  } finally {
+    state.gameId = savedGameId;
+  }
+});
+
+test('作品能被开成它自己机制的关卡，而不是一律回落到同一个游戏', ()=>{
+  const w = id => PUBLISHED.find(x=> x.id === id);
+  assert(playTarget(w('w-fraction-zombie')) === 'fraction-l3', '对撞作品应开对撞关，实际 ' + playTarget(w('w-fraction-zombie')));
+  assert(playTarget(w('w-chord-run')) === 'guitar-l1', '抢拍作品应开抢拍关，实际 ' + playTarget(w('w-chord-run')));
+  assert(playTarget(w('w-word-snake')) === 'guitar-l1', 'demo 没做的机制按现有约定回落到抢拍，实际 ' + playTarget(w('w-word-snake')));
+  assert(playTarget(w('w-fraction-zombie')) !== playTarget(w('w-chord-run')), '两种机制的作品不应被开成同一个游戏');
+});
+
+test('二创树的血缘链从最早的祖先排到当前作品', ()=>{
+  const chain = chainOf(PUBLISHED.find(w=> w.id === 'w-unit-swap'));
+  assert(chain.length === 3, 'w-unit-swap 应有三层血缘，实际 ' + chain.length + ' 层');
+  assert(chain.map(n=> n.id).join(' > ') === 'w-fraction-base > w-fraction-zombie > w-unit-swap',
+    '血缘链应从最早祖先排到当前作品，实际 ' + chain.map(n=> n.id).join(' > '));
+});
+
+test('僵尸破墙会上报一次「通分」失败，且不揭示答案', ()=>{
+  const savedGameId = state.gameId, savedGoals = GOALS.map(g=>({ ...g }));
+  const savedRuns = BUS.runs.length, savedAttempts = BUS.attempts.length;
+  const container = document.getElementById('container');
+  try {
+    openGame('fraction-l3'); mountNow('fraction-l3');
+    const before = BUS.attempts.length;
+    activeMechanic._step(30000);                 // 让第 1 波僵尸走到城墙（破墙而非被点掉）
+    const added = BUS.attempts.slice(before);
+    const breach = added.find(a=> a.point === '通分' && a.ok === false);
+    assert(breach, '破墙应上报一条「通分」失败，实际新增 ' + added.length + ' 条：' +
+      JSON.stringify(added.map(a=> a.point + (a.ok ? '✓' : '✗'))));
+    assert(!container.textContent.includes('正确答案'), '破墙不得揭示正确答案（spec :92 的死刑判决）');
+  } finally {
+    document.querySelector('#container .result')?.remove();
+    container.classList.remove('on');
+    closeGame();
+    GOALS.forEach((g,i)=> Object.assign(g, savedGoals[i]));
+    BUS.runs.length = savedRuns; BUS.attempts.length = savedAttempts;
+    state.gameId = savedGameId;
+  }
+});
+
+test('结算层真的在最上面（elementFromPoint 命中结算区）', ()=>{
+  const savedGameId = state.gameId, savedGoals = GOALS.map(g=>({ ...g }));
+  try {
+    openGame('guitar-l1'); mountNow('guitar-l1');
+    showResult('win', { maxCombo: 1, hits: 1, total: 1 });
+    const box = document.querySelector('#container .result');
+    assert(box, '应有结算区');
+    const r = box.getBoundingClientRect();
+    assert(r.width > 0 && r.height > 0, '结算区应有实际尺寸，实际 ' + r.width + '×' + r.height);
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    assert(hit && box.contains(hit),
+      '结算区中心点应命中结算区自身，实际命中 ' + (hit ? hit.className || hit.tagName : 'null') + '（有东西盖在结算上面）');
+  } finally {
+    document.querySelector('#container .result')?.remove();
+    closeGame();
+    document.getElementById('container').classList.remove('on');
+    GOALS.forEach((g,i)=> Object.assign(g, savedGoals[i]));
+    state.gameId = savedGameId;
+  }
+});
+
+// ── 收尾不变量：整套探针跑完，产品状态必须回到探针进来时的样子。
+// 这条不变式此前没有任何断言，回归是静默的（GOALS[].done 与 #container 的类各发生过一次）。
+// 它依赖注册顺序 —— 必须留在本文件最后一条。
+const RESIDUE_SNAPSHOT = { goalsDone: GOALS.map(g=> g.done).join() };
+test('整套探针跑完不留残留（目标进度 / 容器 / 结算 / 浮层）', ()=>{
+  const done = GOALS.map(g=> g.done).join();
+  assert(done === RESIDUE_SNAPSHOT.goalsDone,
+    '探针改过目标进度没复原：期望 ' + RESIDUE_SNAPSHOT.goalsDone + '，实际 ' + done);
+  assert(!document.getElementById('container').classList.contains('on'), '容器应关着（openGame 之后没 closeGame）');
+  assert(!state.gameId, 'state.gameId 应已清空，实际 ' + state.gameId);
+  assert(state.screen === 'goal', '屏幕应回到启动时的 goal，实际 ' + state.screen);
+  assert(!document.querySelector('#container .result'), '结算区应已清掉');
+  assert(!document.querySelector('.share-card'), '分享卡应已清掉');
+  assert(!document.querySelector('.remix-sheet'), '二创面板应已清掉');
+});
+
 // ── 启动
-renderGoals();
 showScreen('goal');
 
 window.addEventListener('load', ()=>{ fitScale(); if(SELFTEST_MODE) setTimeout(runSelftests, 50); });
