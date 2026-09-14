@@ -209,6 +209,30 @@
   .rhythm.fx-miss .lanes{ animation:rh-miss .32s ease-out; }
   @keyframes rh-hit{ from{ box-shadow:inset 0 0 0 3px var(--ok) } to{ box-shadow:inset 0 0 0 3px var(--line) } }
   @keyframes rh-miss{ from{ box-shadow:inset 0 0 0 3px var(--danger) } to{ box-shadow:inset 0 0 0 3px var(--line) } }
+
+  /* ── 结算 · 反哺 ── */
+  .result{
+    position:absolute; inset:0; z-index:1; overflow-y:auto;
+    padding:64px 20px 28px; background:var(--bg);
+    display:flex; flex-direction:column; gap:12px;
+  }
+  .rs-title{ font-size:22px; font-weight:600; color:var(--ink); }
+  .rs-row{
+    padding:14px 16px; background:var(--surface);
+    border:1px solid var(--line); border-radius:var(--r-lg);
+  }
+  .rs-k{ display:block; font-size:11px; color:var(--ink-dim); }
+  .rs-strong, .rs-weak, .rs-next{ display:block; margin-top:6px; font-size:15px; font-weight:600; }
+  .rs-strong{ color:var(--brand-2); }
+  .rs-weak{ color:var(--warn); }
+  .rs-next{ font-size:13px; font-weight:400; line-height:1.6; color:var(--ink); }
+  .rs-acts{ margin-top:auto; padding-top:12px; display:flex; flex-direction:column; gap:8px; }
+  .rs-acts button{
+    width:100%; padding:13px; cursor:pointer; font-family:inherit; font-size:13px;
+    color:var(--ink); background:var(--surface-2);
+    border:1px solid var(--line); border-radius:var(--r-md);
+  }
+  .rs-replay{ font-weight:600; color:var(--bg); background:var(--brand-2); border-color:var(--brand-2); }
 </style>
 </head>
 <body>
@@ -630,6 +654,56 @@ document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && state.gameId)
   btn.addEventListener('pointercancel', ()=>{ y0 = null; });   // 手势被系统接管时别留下陈旧的 y0
 })();
 
+// ── 结算 · 反哺：按知识点正确率算出「过了什么 / 卡在哪 / 下一关」 ──
+// 反哺的对象是知识点，不是分数：stats 只是 spec §7 约定的 finished 载荷形状，
+// 这里刻意不渲染（连击/命中数一旦上行，就退回成积分式评判，违反生成律 3）。
+function summarize(){
+  const by = {};
+  BUS.attempts.forEach(a=>{
+    by[a.point] = by[a.point] || { ok:0, n:0 };
+    by[a.point].n++; if(a.ok) by[a.point].ok++;
+  });
+  const rows = Object.entries(by).map(([point,v])=>({ point, rate: v.ok / v.n }))
+    .sort((a,b)=> b.rate - a.rate);
+  const strong = rows.filter(r=> r.rate >= 0.8);
+  const weak = rows.filter(r=> r.rate < 0.8).sort((a,b)=> a.rate - b.rate);
+  const strongTxt = strong.length ? strong.map(r=>r.point).join('、') : '还没有稳定的部分';
+  const weakTxt = weak.length ? weak[0].point : '这局没有明显卡点';
+  const next = weak.length
+    ? `下一关把${weak[0].point}放慢一点，多给你几次机会`
+    : '下一关提速，试试《完整来一遍》';
+  return { strong: strongTxt, weak: weakTxt, next };
+}
+
+function showResult(outcome, stats){
+  const s = summarize();
+  const stage = document.querySelector('#container .cg-stage');
+  stage.hidden = true;                                  // 结算盖住游戏，避免两层层叠
+  document.querySelector('#container .result')?.remove();
+  stage.insertAdjacentHTML('afterend', `
+    <div class="result">
+      <div class="rs-title">${outcome === 'win' ? '这局拿下' : '这局没撑住'}</div>
+      <div class="rs-row"><span class="rs-k">过了</span><span class="rs-strong">${s.strong}</span></div>
+      <div class="rs-row"><span class="rs-k">卡在</span><span class="rs-weak">${s.weak}</span></div>
+      <div class="rs-row"><span class="rs-k">下一关</span><span class="rs-next">${s.next}</span></div>
+      <div class="rs-acts">
+        <button class="rs-replay">再来一局</button>
+        <button class="rs-publish">发布到广场</button>
+        <button class="rs-share">发给朋友</button>
+      </div>
+    </div>`);
+  const r = document.querySelector('.result');
+  r.querySelector('.rs-replay').addEventListener('click', ()=>{
+    r.remove(); openGame(state.gameId || 'guitar-l1');
+  });
+  r.querySelector('.rs-publish').addEventListener('click', publishCurrent);
+  r.querySelector('.rs-share').addEventListener('click', shareCurrent);
+}
+
+// Task 8 / Task 11 会就地替换这两个占位（不要追加同名 function，会静默遮蔽）
+function publishCurrent(){ toast('已发布到广场'); }
+function shareCurrent(){ toast('分享卡已生成'); }
+
 // ══ 6. SELFTESTS
 const SELFTESTS = [];
 let awaitedProbeMarks = 0;   // 异步用例在末尾自增，供"顺序屏障"用例观察
@@ -821,6 +895,36 @@ test('重新挂载前会销毁上一局的机制', ()=>{
   first.destroy = ()=>{ destroyed = true; };
   openGame('guitar-l1'); mountNow('guitar-l1');
   assert(destroyed, '重新挂载前应先销毁上一局，否则旧 rAF 循环会成为孤儿并污染 BUS.attempts');
+});
+
+test('结算按正确率算出过了什么与卡在哪', ()=>{
+  BUS.attempts.length = 0;
+  ['a','a','a','a','b','b','b'].forEach((p,i)=>
+    reportAttempt({ point:p, ok: p === 'a' ? i < 4 : i < 5, ms: 500 }));
+  const s = summarize();
+  assert(s.strong.includes('a'), '正确率高的应进 strong，实际 ' + s.strong);
+  assert(s.weak.includes('b'), '正确率低的应进 weak，实际 ' + s.weak);
+});
+test('结算画面三个区块齐全', ()=>{
+  BUS.attempts.length = 0;
+  ['a','a','a','a','b','b','b'].forEach((p,i)=>
+    reportAttempt({ point:p, ok: p === 'a' ? i < 4 : i < 5, ms: 500 }));
+  showResult('win', { maxCombo:12, hits:24, total:24 });
+  const keys = [...document.querySelectorAll('.result .rs-k')].map(e=> e.textContent.trim());
+  assert(keys.join('/') === '过了/卡在/下一关', '三行标签应为 过了/卡在/下一关，实际 ' + keys.join('/'));
+  assertText('.result .rs-strong', 'a');     // 正确率高的知识点
+  assertText('.result .rs-weak', 'b');       // 卡住的知识点
+  assert(document.querySelector('.result .rs-next').textContent.includes('下一关'), '下一关文案应体现反哺');
+  assert(document.querySelector('.rs-publish'), '应有发布按钮');
+  assert(document.querySelector('.rs-share'), '应有分享按钮');
+});
+test('结算画面不出现分数排名式评判', ()=>{
+  BUS.attempts.length = 0;
+  reportAttempt({ point:'通分', ok:false, ms:600 });
+  showResult('lose', { maxCombo:0, hits:1, total:24 });
+  const txt = document.querySelector('.result').textContent;
+  assert(!/第\s*\d+\s*名/.test(txt), '结算不应出现名次');
+  assert(!/答错|正确答案是/.test(txt), '结算不得揭示答案或做对错评判（生成律 3）');
 });
 
 // ── 启动
