@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>一局</title>
+<style>
+  :root{
+    --bg:#0F1117; --surface:#171A23; --surface-2:#1F2430; --line:rgba(255,255,255,.08);
+    --ink:#F2F4F8; --ink-dim:#9AA3B2; --ink-soft:#5F6875;
+    --brand:#6C5CE7; --brand-2:#00D2A8; --ok:#2BD97C; --warn:#FFB020; --danger:#FF5C5C;
+    --r-lg:20px; --r-md:14px; --r-sm:10px;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{
+    background:#08090D; color:var(--ink); min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+    font-family:-apple-system,"PingFang SC",system-ui,sans-serif;
+  }
+  #phone{
+    width:390px; height:844px; background:var(--bg); position:relative;
+    border-radius:36px; overflow:hidden; border:1px solid var(--line);
+    box-shadow:0 40px 80px -20px rgba(0,0,0,.8);
+  }
+  #app{ position:absolute; inset:0 0 64px 0; overflow-y:auto; }
+  nav.tabbar{
+    position:absolute; left:0; right:0; bottom:0; height:64px;
+    display:flex; border-top:1px solid var(--line); background:rgba(15,17,23,.94);
+  }
+  nav.tabbar .tab{
+    flex:1; background:none; border:0; color:var(--ink-soft); cursor:pointer;
+    font-size:11px; display:flex; flex-direction:column; gap:3px;
+    align-items:center; justify-content:center; font-family:inherit;
+  }
+  nav.tabbar .tab .ico{ font-size:17px; }
+  nav.tabbar .tab.on{ color:var(--brand-2); }
+</style>
+</head>
+<body>
+<div id="phone">
+  <div id="app">
+    <section data-screen="goal"></section>
+    <section data-screen="square" hidden></section>
+    <section data-screen="rank" hidden></section>
+    <section data-screen="me" hidden></section>
+    <section data-screen="goalDetail" hidden></section>
+    <section data-screen="gamePage" hidden></section>
+  </div>
+  <nav class="tabbar">
+    <button class="tab on" data-goto="goal"><span class="ico">🎯</span>目标</button>
+    <button class="tab" data-goto="square"><span class="ico">🛰️</span>广场</button>
+    <button class="tab" data-goto="rank"><span class="ico">🏆</span>排行榜</button>
+    <button class="tab" data-goto="me"><span class="ico">🙂</span>我</button>
+  </nav>
+</div>
+<script>
+// ══ 1. STATE
+const state = { screen:'goal', goalId:null, gameId:null, pageId:null, rankBoard:null, rankSubject:null };
+
+// ══ 2. DATA  （Task 2 起填充）
+
+// ══ 3. ROUTER
+function showScreen(id){
+  document.querySelectorAll('[data-screen]').forEach(s=>{ s.hidden = s.dataset.screen !== id; });
+  state.screen = id;
+  document.querySelectorAll('.tab').forEach(t=>{ t.classList.toggle('on', t.dataset.goto === id); });
+}
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click', ()=> showScreen(t.dataset.goto));
+});
+
+// ══ 4. COMPONENTS （Task 2 起填充）
+
+// ══ 5. GAMES （Task 4 起填充）
+
+// ══ 6. SELFTESTS
+const SELFTESTS = [];
+function test(name, fn){ SELFTESTS.push({ name, fn }); }
+function assert(cond, msg){ if(!cond) throw new Error(msg || 'assert failed'); }
+function assertText(sel, expected){
+  const el = document.querySelector(sel);
+  assert(el, '缺失元素 ' + sel);
+  const got = el.textContent.trim();
+  assert(got.includes(expected), sel + ' 期望包含「' + expected + '」，实际「' + got + '」');
+}
+function assertCount(sel, n){
+  const got = document.querySelectorAll(sel).length;
+  assert(got === n, sel + ' 期望 ' + n + ' 个，实际 ' + got + ' 个');
+}
+const SELFTEST_MODE = new URLSearchParams(location.search).get('selftest') === '1';
+const wait = ms => SELFTEST_MODE ? Promise.resolve() : new Promise(r=>setTimeout(r, ms));
+
+function runSelftests(){
+  const failed = [];
+  SELFTESTS.forEach(t=>{ try{ t.fn(); } catch(e){ failed.push(t.name + ': ' + e.message); } });
+  document.title = failed.length ? ('SELFTEST FAIL: ' + failed[0]) : 'SELFTEST OK';
+}
+
+// 探针用例
+test('默认停在目标屏', ()=>{ assert(state.screen === 'goal', '默认屏幕应为 goal'); });
+test('四个 tab', ()=>{ assertCount('nav.tabbar .tab', 4); });
+test('切到广场后目标屏隐藏', ()=>{
+  showScreen('square');
+  assert(document.querySelector('[data-screen="goal"]').hidden, '目标屏应隐藏');
+  assert(!document.querySelector('[data-screen="square"]').hidden, '广场屏应显示');
+  showScreen('goal');
+});
+
+window.addEventListener('load', ()=>{ if(SELFTEST_MODE) setTimeout(runSelftests, 50); });
+</script>
+</body>
+</html>
