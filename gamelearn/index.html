@@ -273,6 +273,66 @@
     border:1px solid var(--line); border-radius:var(--r-md);
   }
   .rs-replay{ font-weight:600; color:var(--bg); background:var(--brand-2); border-color:var(--brand-2); }
+
+  /* ── 广场 · 作品卡 ── */
+  .work-list{ padding:0 14px 18px; display:flex; flex-direction:column; gap:10px; }
+  .work-card{
+    display:flex; align-items:center; gap:12px; width:100%; text-align:left; cursor:pointer;
+    font-family:inherit; color:var(--ink); background:var(--surface);
+    border:1px solid var(--line); border-radius:var(--r-lg); padding:12px;
+  }
+  .wc-cover{
+    flex:none; width:52px; height:52px; border-radius:var(--r-md);
+    display:flex; align-items:center; justify-content:center; font-size:24px;
+  }
+  .wc-body{ flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+  .wc-title{ font-size:14px; font-weight:600; }
+  .wc-meta{ font-size:11px; color:var(--ink-dim); }
+  .wc-mech{ font-size:10px; color:var(--brand-2); }
+  .wc-plays{ font-size:10px; color:var(--ink-soft); }
+  .wc-mine{
+    align-self:flex-start; margin-top:2px; font-size:10px; color:var(--brand-2);
+    border:1px solid var(--line); border-radius:var(--r-sm); padding:1px 6px;
+  }
+
+  /* ── 作品页 ── */
+  .gp-play{
+    display:block; width:calc(100% - 28px); margin:2px 14px 16px; padding:14px;
+    font-family:inherit; font-size:14px; font-weight:600; cursor:pointer;
+    color:var(--ink); background:var(--brand); border:0; border-radius:var(--r-md);
+  }
+  .gp-chain-wrap, .gp-board, .gp-comments{
+    margin:0 14px 12px; padding:14px 16px;
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg);
+  }
+  .gp-chain-wrap h2, .gp-board h2, .gp-comments h2{
+    font-size:12px; font-weight:600; color:var(--ink-dim); margin-bottom:10px;
+  }
+  /* 二创树是本产品最重要的可视化：缩进体现层级，↳ 由数据渲染，当前节点主色高亮 */
+  .gp-chain{ display:flex; flex-direction:column; gap:6px; }
+  .chain-node{ font-size:13px; color:var(--ink-dim); }
+  .chain-node:nth-child(2){ padding-left:18px; }
+  .chain-node:nth-child(3){ padding-left:36px; }
+  .chain-node:nth-child(4){ padding-left:54px; }
+  .chain-node:nth-child(5){ padding-left:72px; }
+  .chain-node:nth-child(6){ padding-left:90px; }
+  .chain-node em{ font-style:normal; margin-left:6px; font-size:11px; color:var(--ink-soft); }
+  .chain-node.cur{ color:var(--brand-2); font-weight:600; }
+  .chain-node.cur em{ color:var(--brand-2); }
+  .gp-chain-note{ margin-top:10px; font-size:11px; color:var(--ink-soft); line-height:1.5; }
+  .board-row{ display:flex; align-items:center; gap:10px; padding:8px 0; font-size:13px; }
+  .board-row + .board-row{ border-top:1px solid var(--line); }
+  .br-i{ flex:none; width:18px; font-size:11px; color:var(--ink-soft); }
+  .br-n{ flex:1; }
+  .br-s{ font-weight:600; }
+  .board-row.me .br-n{ color:var(--brand-2); }
+  .cmt{ font-size:12px; line-height:1.6; color:var(--ink-dim); padding:7px 0; }
+  .cmt + .cmt{ border-top:1px solid var(--line); }
+  .gp-remix{
+    display:block; width:calc(100% - 28px); margin:2px 14px 20px; padding:13px;
+    font-family:inherit; font-size:13px; font-weight:600; cursor:pointer;
+    color:var(--bg); background:var(--brand-2); border:0; border-radius:var(--r-md);
+  }
 </style>
 </head>
 <body>
@@ -284,7 +344,7 @@
     <section data-screen="rank" hidden></section>
     <section data-screen="me" hidden></section>
     <section data-screen="goalDetail" hidden></section>
-    <section data-screen="gamePage" hidden></section>
+    <section data-screen="gamePage" class="game-page" hidden></section>
   </div>
   <div id="container">
     <div class="cg-forecast"></div>
@@ -385,11 +445,44 @@ const FRACTION_WAVES = [
 // 它同时是「一局 60–120 秒」的结构下限（完美通关也要走完 8 波的走进时间）。
 MECHANIC_CONTENT['fraction-l3'] = { waves:FRACTION_WAVES, wallHp:3, speed:1, enter:0.45 };
 
+// 六种机制：id → 人话名字 + 玩法形状 + 皮肤。playable 标记 demo 里真做出来的机制。
+const MECHANICS = [
+  { id:'collide', name:'对撞', shape:'唯一答案的计算', skins:['坟场','太空','深海'], playable:true },
+  { id:'rhythm',  name:'抢拍', shape:'时序与反应',     skins:['舞台','夜市','雨林'], playable:true },
+  { id:'collect', name:'筛选', shape:'归类判断',       skins:['海洋','厨房','回收站'], playable:false },
+  { id:'path',    name:'搭路', shape:'序列与顺序',     skins:['峡谷','电路板','星系'], playable:false },
+  { id:'build',   name:'组合', shape:'结构组合',       skins:['工坊','厨房','实验室'], playable:false },
+  { id:'boss',    name:'Boss 战', shape:'综合应用',    skins:['王座','决赛场','火山'], playable:false },
+];
+
+// 广场预置作品。[id,title,author,subject,mechanic,plays,emoji,cover,parentId,remixes,score]
+const SEED_WORKS = [
+  ['w-fraction-zombie','分数僵尸战','豆豆','数学','collide',248,'🧟',['#3B2E5A','#7C5CFF'],'w-fraction-base',12,8600],
+  ['w-fraction-base','分数大作战','小红','数学','collide',512,'➗',['#233B5A','#4A9BE8'],null,31,9100],
+  ['w-chord-run','和弦跑酷','阿力','乐理','rhythm',187,'🎸',['#5A2E3B','#FF7A9C'],null,9,7400],
+  ['w-space-chord','太空版和弦跑酷','豆豆','乐理','rhythm',96,'🛰️',['#1E3A4A','#39D0D8'],'w-chord-run',4,6800],
+  ['w-word-snake','词性贪吃蛇','小满','英语','collect',331,'🐍',['#2E5A3B','#5CE88A'],null,17,7900],
+  ['w-syntax-bridge','语法搭桥','阿力','英语','path',142,'🌉',['#4A3A1E','#E8B44A'],null,6,6200],
+  ['w-periodic-build','元素配平工坊','老周','化学','build',88,'⚗️',['#3A1E4A','#C46AE8'],null,3,5400],
+  ['w-ear-train','音程听辨','小满','乐理','collect',204,'👂',['#1E4A4A','#4AE8C4'],null,11,8100],
+  ['w-unit-swap','单位换算大乱斗','豆豆','数学','collide',173,'📐',['#4A2E1E','#E88A4A'],'w-fraction-zombie',5,7200],
+  ['w-idiom-path','成语接龙跳台','小满','语文','path',266,'🀄',['#5A1E2E','#E85A7A'],null,14,7700],
+  ['w-earnings','汇率狙击','老周','财商','collide',119,'💱',['#1E4A2E','#4AE87A'],null,2,6600],
+  ['w-recycle','垃圾分类快手','阿力','常识','collect',402,'♻️',['#2E4A1E','#8AE84A'],null,21,8300],
+  ['w-scale-build','音阶建造','豆豆','乐理','build',77,'🎹',['#2E2E5A','#7A7AFF'],'w-chord-run',3,5900],
+  ['w-fitness-pace','动作节奏器','老周','健身','rhythm',156,'🏋️',['#5A3A1E','#E8A44A'],null,7,7000],
+  ['w-grammar-boss','语法总攻','小满','英语','boss',63,'👑',['#4A1E1E','#E85A5A'],'w-syntax-bridge',1,5800],
+  ['w-mix-boss','混合运算决战','小红','数学','boss',221,'🔥',['#5A2E1E','#FF8A3A'],'w-fraction-base',8,8800],
+];
+const PUBLISHED = SEED_WORKS.map(([id,title,author,subject,mechanic,plays,emoji,cover,parentId,remixes,score])=>
+  ({ id, title, author, subject, mechanic, plays, emoji, cover, parentId, remixes, score }));
+
 // ══ 3. ROUTER
 function showScreen(id){
   document.querySelectorAll('[data-screen]').forEach(s=>{ s.hidden = s.dataset.screen !== id; });
   state.screen = id;
   document.querySelectorAll('.tab').forEach(t=>{ t.classList.toggle('on', t.dataset.goto === id); });
+  if(id === 'square') renderSquare();
 }
 document.querySelectorAll('.tab').forEach(t=>{
   t.addEventListener('click', ()=> showScreen(t.dataset.goto));
@@ -519,6 +612,105 @@ function typeInto(el, text){
       el.textContent = text.slice(0, ++i);
       if(i >= text.length){ clearInterval(t); resolve(); }
     }, 26);
+  });
+}
+
+// ── 广场：预置作品列表，点开进作品页
+function renderSquare(){
+  const h = document.querySelector('[data-screen="square"]');
+  h.innerHTML = `
+    <header class="scr-head"><h1>广场</h1><p>别人造的，点开就玩；想改就改一版</p></header>
+    <div class="work-list">
+      ${PUBLISHED.map(w=>{
+        const m = MECHANICS.find(x=> x.id === w.mechanic);
+        return `
+        <button class="work-card" data-game="${w.id}">
+          <span class="wc-cover" style="background:linear-gradient(140deg,${w.cover[0]},${w.cover[1]})">${w.emoji}</span>
+          <span class="wc-body">
+            <span class="wc-title">${w.title}</span>
+            <span class="wc-meta">${w.author} · ${w.subject} · ${m.name}</span>
+            <span class="wc-mech">${m.name}</span>
+            <span class="wc-plays">${w.plays} 人玩过</span>
+            ${w.mine ? '<span class="wc-mine">我的</span>' : ''}
+          </span>
+        </button>`;
+      }).join('')}
+    </div>`;
+  h.querySelectorAll('.work-card').forEach(c=>{
+    c.addEventListener('click', ()=> openGamePage(c.dataset.game));
+  });
+}
+
+function openGamePage(gameId){
+  state.pageId = gameId;              // 与 state.gameId（容器里正在玩的）区分开
+  renderGamePage(gameId);
+  showScreen('gamePage');
+}
+
+// 二创树的血缘链：从最早的祖先一路排到当前作品
+function chainOf(game){
+  const arr = [game];
+  let cur = game;
+  while(cur.parentId){
+    const p = PUBLISHED.find(w=> w.id === cur.parentId);
+    if(!p) break;
+    arr.unshift(p); cur = p;
+  }
+  return arr;
+}
+
+function renderGamePage(gameId){
+  const found = PUBLISHED.find(w=> w.id === gameId) || GAMES_INDEX[gameId];
+  if(!found){ toast('这件作品不见了'); return; }
+  // GAMES_INDEX 的条目没有 author/plays/score/remixes —— 缺省补齐，否则头部印 undefined、本局榜算出 NaN
+  const g = { author:'我', plays:1, score:0, remixes:0, parentId:null, ...found };
+  const chain = chainOf(g);
+  const m = MECHANICS.find(x=> x.id === g.mechanic);
+  const board = [
+    { name:'阿力', score: g.score + 400 },
+    { name:'我',   score: g.score, me:true },
+    { name:'小满', score: Math.max(0, g.score - 900) },
+  ].sort((a,b)=> b.score - a.score);
+  const h = document.querySelector('[data-screen="gamePage"]');
+  h.innerHTML = `
+    <header class="scr-head with-back">
+      <button class="back" data-back="square">‹</button>
+      <h1 class="gp-title">${g.title}</h1>
+      <p>${g.author} · ${g.subject} · ${m.name}机制</p>
+    </header>
+    <button class="gp-play" data-play="${g.id}">▶ 立刻玩一局</button>
+    <section class="gp-chain-wrap">
+      <h2>二创树</h2>
+      <div class="gp-chain">
+        ${chain.map((c,i)=>`
+          <span class="chain-node ${c.id === g.id ? 'cur' : ''}">
+            ${i === 0 ? '' : '↳ '}《${c.title}》<em>${c.author}</em>
+          </span>`).join('')}
+      </div>
+      <p class="gp-chain-note">${g.parentId ? '改自上一件作品 · ' : ''}衍生 ${g.remixes} 版 · 血缘不断，署名不改</p>
+    </section>
+    <section class="gp-board">
+      <h2>本局榜</h2>
+      ${board.map((r,i)=>`<div class="board-row ${r.me ? 'me' : ''}">
+        <span class="br-i">${i+1}</span><span class="br-n">${r.name}</span><span class="br-s">${r.score}</span>
+      </div>`).join('')}
+    </section>
+    <section class="gp-comments">
+      <h2>评论</h2>
+      <div class="cmt">小满：第三波的陷阱太阴了，我连着踩两次</div>
+      <div class="cmt">阿力：把速度调慢一点会好玩很多，我改了一版</div>
+    </section>
+    <button class="gp-remix" data-remix="${g.id}">改一版</button>`;
+  h.querySelector('[data-back]').addEventListener('click', ()=> showScreen('square'));
+  h.querySelector('.gp-play').addEventListener('click', e=>{
+    const id = e.currentTarget.dataset.play;
+    // demo 里只有对撞 / 抢拍真做出来了：按机制挑可玩的那一局，别把对撞游戏错开成节奏游戏
+    const target = GAMES_INDEX[id] ? id : (g.mechanic === 'collide' ? 'fraction-l3' : 'guitar-l1');
+    openGame(target);
+  });
+  h.querySelector('.gp-remix').addEventListener('click', ()=>{
+    if(typeof startRemix === 'function') startRemix(g.id);   // Task 9 落地后自动接上
+    else toast('二创功能马上就好');
   });
 }
 
@@ -883,7 +1075,19 @@ function showResult(outcome, stats){
 }
 
 // Task 8 / Task 11 会就地替换这两个占位（不要追加同名 function，会静默遮蔽）
-function publishCurrent(){ toast('已发布到广场'); }
+function publishCurrent(){
+  const id = state.gameId;
+  const src = GAMES_INDEX[id] || PUBLISHED.find(w=> w.id === id);
+  if(!src){ toast('没有可发布的作品'); return; }
+  if(PUBLISHED.some(w=> w.id === id)){ toast('已经发布过了'); return; }
+  PUBLISHED.unshift({
+    id, title: src.title, author:'我', subject: src.subject,
+    mechanic: src.mechanic, plays:1, emoji: src.emoji,
+    cover: src.cover || ['#2E1E5A','#7C5CFF'],
+    parentId:null, remixes:0, score: 5200 + BUS.attempts.filter(a=>a.ok).length * 320, mine:true,
+  });
+  toast('已发布到广场');
+}
 function shareCurrent(){ toast('分享卡已生成'); }
 
 // ══ 6. SELFTESTS
@@ -1220,6 +1424,35 @@ test('同一帧两只僵尸破墙也只结算一次', ()=>{
   assert(BUS.runs.length === runsBefore + 1,
     '同一帧两只破墙应只结算一次，实际 ' + (BUS.runs.length - runsBefore) + ' 次');
   MECHANIC_CONTENT['fraction-l3'].wallHp = saved;
+});
+
+test('广场有 16 个作品且每个都有机制与学科', ()=>{
+  renderSquare();
+  assertCount('.work-card', 16);
+  const tags = [...document.querySelectorAll('.work-card .wc-mech')].map(e=> e.textContent.trim());
+  assert(tags.length === 16 && tags.every(Boolean), '每个作品都该有机制标签');
+});
+test('作品页有二创树、单局榜和评论', ()=>{
+  openGamePage('w-unit-swap');
+  assertText('.game-page .gp-title', '单位换算大乱斗');
+  assertCount('.gp-chain .chain-node', 3);        // 分数大作战 → 分数僵尸战 → 单位换算大乱斗
+  assertText('.gp-chain-note', '改自');            // 血缘说明在 .gp-chain 的兄弟节点里，不在链内
+  assert(document.querySelector('.gp-board .board-row'), '应有单局榜');
+  assert(document.querySelector('.gp-comments'), '应有评论区');
+});
+test('发布后广场多一件自己的作品', ()=>{
+  const before = document.querySelectorAll('.work-card').length;
+  state.gameId = 'guitar-l1';
+  publishCurrent();
+  renderSquare();
+  assertCount('.work-card', before + 1);
+  assertText('.work-card[data-game="guitar-l1"]', '我的');
+});
+test('广场屏经路由进入时会渲染', ()=>{
+  const host = document.querySelector('[data-screen="square"]');
+  host.innerHTML = '';                 // 清空，确保是路由把它画回来的，而不是上一次渲染的残留
+  showScreen('square');
+  assert(host.querySelectorAll('.work-card').length > 0, '经 showScreen 进入广场应渲染作品卡');
 });
 
 // ── 启动
