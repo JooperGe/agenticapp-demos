@@ -785,6 +785,9 @@ function openGamePage(gameId){
   showScreen('gamePage');
 }
 
+// 作品 → 实际能玩的那一局：demo 只做出 对撞 / 抢拍，按机制挑，别把对撞游戏错开成节奏游戏
+function playTarget(w){ return GAMES_INDEX[w.id] ? w.id : (w.mechanic === 'collide' ? 'fraction-l3' : 'guitar-l1'); }
+
 // 二创树的血缘链：从最早的祖先一路排到当前作品
 function chainOf(game){
   const arr = [game];
@@ -840,12 +843,10 @@ function renderGamePage(gameId){
     </section>
     <button class="gp-remix" data-remix="${g.id}">改一版</button>`;
   h.querySelector('[data-back]').addEventListener('click', ()=> showScreen('square'));
-  h.querySelector('.gp-play').addEventListener('click', e=>{
-    const id = e.currentTarget.dataset.play;
-    // demo 里只有对撞 / 抢拍真做出来了：按机制挑可玩的那一局，别把对撞游戏错开成节奏游戏
-    const target = GAMES_INDEX[id] ? id : (g.mechanic === 'collide' ? 'fraction-l3' : 'guitar-l1');
-    openGame(target);
-  });
+  h.querySelector('.gp-play').addEventListener('click', ()=> openGame(playTarget(g)));
+  // spec §9.3 :249：单局榜的条目「点一下直接进游戏容器，不经过作品页，零摩擦」
+  h.querySelectorAll('.gp-board .board-row').forEach(row=>
+    row.addEventListener('click', ()=> openGame(playTarget(g))));
   h.querySelector('.gp-remix').addEventListener('click', ()=>{
     if(typeof startRemix === 'function') startRemix(g.id);   // Task 9 落地后自动接上
     else toast('二创功能马上就好');
@@ -1368,7 +1369,7 @@ document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && state.gameId)
 // 每局结算是 per-run 的：只统计本局（run === gameGen）的尝试，喂给下一局的生成。
 // 跨局累积是成长轨迹页的事，读未过滤的 BUS.attempts。
 // 反哺的对象是知识点，不是分数：stats 只是 spec §7 约定的 finished 载荷形状，
-// 这里刻意不渲染（连击/命中数一旦上行，就退回成积分式评判，违反生成律 3）。
+// 这里刻意不渲染（连击/命中数一旦上行，就退回成积分式评判，违反 spec :92 对「选择题积分」的死刑判决）。
 function summarize(){
   const by = {};
   BUS.attempts.filter(a=> a.run === gameGen).forEach(a=>{
@@ -1948,6 +1949,36 @@ test('点榜上一行能跳到作品页', ()=>{
   assert(state.pageId === id, '点榜行应打开对应作品页，实际 pageId=' + state.pageId + '，点击的是 ' + id);
   assert(!document.querySelector('[data-screen="gamePage"]').hidden, '作品页应成为可见屏');
   showScreen('goal');                          // 还原到无害处
+});
+
+test('单局榜条目点一下直接进游戏容器（不经过作品页）', ()=>{
+  // spec §9.3 :249：单局榜留在作品页内，但它的条目「点一下直接进游戏容器，不经过作品页，零摩擦」。
+  // 排行榜页的行走作品页（那是另一回事），这里验的是作品页内的单局榜。
+  const container = document.getElementById('container');
+  const page = document.querySelector('[data-screen="gamePage"]');
+  const savedCls = container.className;
+  const saved = { screen: state.screen, gameId: state.gameId, pageId: state.pageId };
+  try{
+    openGamePage('w-unit-swap');                 // 先把作品页（含单局榜）渲染出来
+    const work = PUBLISHED.find(w=> w.id === 'w-unit-swap');
+    assert(work, '需要一件预置作品作样本');
+    showScreen('square');                        // 离开作品页：DOM 还在，board-row 仍可点到
+    assert(page.hidden, '前置：此时作品页应已隐藏');
+    const row = document.querySelector('.gp-board .board-row');
+    assert(row, '单局榜应有一行可点');
+    row.click();
+    assert(container.classList.contains('on'), '点单局榜应进入游戏容器');
+    assert(state.gameId === playTarget(work),
+      '应打开该作品对应的可玩局 ' + playTarget(work) + '，实际 ' + state.gameId);
+    // 这条是存在理由：防「又走回作品页」——零摩擦要求不经过作品页（spec §9.3 :249）
+    assert(page.hidden, '点单局榜不应又走回作品页');
+    assert(state.screen !== 'gamePage', '不应把屏幕切回作品页，实际 ' + state.screen);
+  } finally {
+    document.querySelector('#container .result')?.remove();
+    container.className = savedCls;              // 这条探针会让容器 on，必须复原，否则污染后续探针
+    state.screen = saved.screen; state.gameId = saved.gameId; state.pageId = saved.pageId;
+    showScreen(saved.screen || 'goal');
+  }
 });
 
 test('邀请卡匿名为身份描述，不含真实昵称', ()=>{
