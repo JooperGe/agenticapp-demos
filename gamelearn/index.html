@@ -1681,8 +1681,12 @@ test('结算画面三个区块齐全', ()=>{
   assertText('.result .rs-strong', 'a');     // 正确率高的知识点
   assertText('.result .rs-weak', 'b');       // 卡住的知识点
   assert(document.querySelector('.result .rs-next').textContent.includes('下一关'), '下一关文案应体现反哺');
+  assert(document.querySelector('.rs-replay'), '应有再来一局按钮');
   assert(document.querySelector('.rs-publish'), '应有发布按钮');
   assert(document.querySelector('.rs-share'), '应有分享按钮');
+  assertText('.rs-replay', '再来一局');
+  assertText('.rs-publish', '发布到广场');
+  assertText('.rs-share', '发给朋友');
 });
 test('结算画面不出现分数排名式评判', ()=>{
   BUS.attempts.length = 0;
