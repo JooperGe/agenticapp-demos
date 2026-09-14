@@ -2229,6 +2229,10 @@ test('Esc 退出容器并回到原屏', ()=>{
     assert(state.gameId === 'guitar-l1', '前置：state.gameId 应已置位，否则这条会因没开容器而恒真');
     document.dispatchEvent(new KeyboardEvent('keydown', { key:'Escape' }));
     assert(!container.classList.contains('on'), 'Esc 应关闭容器');
+    // 前瞻性哨兵，今天恒真：改 state.screen 的唯一入口是 showScreen（:619），openGame/closeGame 都不写它，
+    // 所以进出容器结构上不会动原屏，此断言不可能为假，其失败信息在声称一件没被测到的事。
+    // 今天「退出容器返回原屏」实际由上一行覆盖（容器是覆盖层，原屏从未离开）；
+    // 将来若容器从覆盖层改成「屏幕」（openGame 开始写 state.screen）而 closeGame 忘了复原，这条会红。不要为它改产品。
     assert(state.screen === 'square', 'Esc 应回到进入前的原屏 square，实际 ' + state.screen);
   } finally {
     document.querySelector('#container .result')?.remove();
@@ -2252,9 +2256,53 @@ test('左上下滑退出容器（合成指针事件）', ()=>{
     btn.dispatchEvent(new PointerEvent('pointerdown', base));
     btn.dispatchEvent(new PointerEvent('pointermove', Object.assign({}, base, { clientY:140 })));
     assert(!container.classList.contains('on'), '下滑超过 40px 应关闭容器');
+    // 前瞻性哨兵，今天恒真：改 state.screen 的唯一入口是 showScreen（:619），openGame/closeGame 都不写它，
+    // 所以进出容器结构上不会动原屏，此断言不可能为假，其失败信息在声称一件没被测到的事。
+    // 今天「退出容器返回原屏」实际由上一行覆盖（容器是覆盖层，原屏从未离开）；
+    // 将来若容器从覆盖层改成「屏幕」而 closeGame 忘了复原，这条会红。不要为它改产品。
     assert(state.screen === 'square', '下滑退出应回到原屏 square，实际 ' + state.screen);
   } finally {
     document.querySelector('#container .result')?.remove();
+    container.classList.remove('on');
+    state.screen = saved.screen; state.gameId = saved.gameId; state.pageId = saved.pageId;
+    showScreen(saved.screen || 'goal');
+  }
+});
+
+test('pointercancel 后不残留陈旧 y0（下滑不应误关容器）', ()=>{
+  // :1365 的 pointercancel → y0=null 带一句无人验证的声明「手势被系统接管时别留下陈旧的 y0」。
+  // 负向断言有特有的恒真风险：若合成事件哪天不生效，「容器仍开着」照样绿。
+  // 故内部先跑一个正向对照，证明这套合成事件确实驱动得动 closeGame，再做负向断言。
+  const container = document.getElementById('container');
+  const saved = { screen: state.screen, gameId: state.gameId, pageId: state.pageId };
+  try{
+    const btn = document.querySelector('.cg-exit');
+    assert(btn, '应有左上角下滑退出按钮');
+    const base = { bubbles:true, cancelable:true, pointerId:1, pointerType:'touch',
+                   isPrimary:true, buttons:1, clientX:30, clientY:80 };
+    const down = ()=> btn.dispatchEvent(new PointerEvent('pointerdown', base));
+    const move = ()=> btn.dispatchEvent(new PointerEvent('pointermove', Object.assign({}, base, { clientY:140 })));
+
+    // 正向对照：pointerdown + 下滑超过 40px 确实会关闭容器（证明事件链路有效，不是空过）
+    showScreen('square');
+    openGame('guitar-l1');
+    assert(container.classList.contains('on'), '前置：容器应已打开');
+    assert(state.gameId === 'guitar-l1', '前置：state.gameId 应已置位');
+    down(); move();
+    assert(!container.classList.contains('on'), '正向对照：下滑超过 40px 应关闭容器');
+
+    // 负向：pointercancel 清掉 y0 后，再来的 pointermove 不该关掉容器
+    openGame('guitar-l1');
+    assert(container.classList.contains('on'), '前置：重开容器后容器应已打开');
+    assert(state.gameId === 'guitar-l1', '前置：state.gameId 应已置位');
+    down();
+    btn.dispatchEvent(new PointerEvent('pointercancel', base));   // 手势被系统接管 → y0 应被清掉
+    move();
+    assert(container.classList.contains('on'), 'pointercancel 后不应残留陈旧 y0：此时 pointermove 不该关闭容器');
+    assert(state.gameId === 'guitar-l1', '容器应仍然开着且 state.gameId 仍在位，实际 ' + state.gameId);
+  } finally {
+    document.querySelector('#container .result')?.remove();
+    closeGame();                                       // 负向路径结束时容器是开着的，必须收干净
     container.classList.remove('on');
     state.screen = saved.screen; state.gameId = saved.gameId; state.pageId = saved.pageId;
     showScreen(saved.screen || 'goal');
