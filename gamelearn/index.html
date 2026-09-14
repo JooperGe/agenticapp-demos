@@ -1726,6 +1726,12 @@ test('排行榜默认显示作品榜且周期是本周', ()=>{
 });
 test('切到创作者榜按 玩完量×二创数 排序', ()=>{
   document.querySelector('.seg[data-board="creators"]').click();
+  // 先证明真的切过去了：否则下面读到的还是作品榜的 DOM（作品榜同样降序，会空过）
+  assert(document.querySelector('.seg[data-board="creators"]').classList.contains('on'), '点击后应切到创作者榜');
+  const names = [...document.querySelectorAll('.rank-row .rr-n')].map(e=> e.textContent.trim());
+  const authors = new Set(PUBLISHED.map(w=> w.author));
+  assert(names.some(n=> authors.has(n)),
+    '创作者榜的 .rr-n 应显示创作者名（作品榜那里显示的是作品标题），实际 ' + names.join('/'));
   const vals = [...document.querySelectorAll('.rank-row .rr-val')].map(e=> Number(e.textContent.replace(/\D/g,'')));
   assert(vals.length >= 3, '创作者榜应至少三行，实际 ' + vals.length + ' 行（为空时排序断言会空过）');
   const sorted = [...vals].sort((a,b)=> b-a);
@@ -1763,6 +1769,19 @@ test('作品页的「改一版」按钮能打开二创档位面板', ()=>{
   assertCount('.remix-sheet .tier', 3);        // 换皮 / 换料 / 改造
   document.querySelector('.remix-sheet .rs-cancel').click();   // 只验入口，不落盘新作品（不能扰动乐理计数）
   assert(document.querySelector('.remix-sheet') === null, '取消后不应残留面板');
+});
+test('点榜上一行能跳到作品页', ()=>{
+  state.rankBoard = 'works'; state.rankSubject = '全部';
+  renderRankings();
+  const row = [...document.querySelectorAll('.rank-row')]
+    .find(r=> PUBLISHED.some(w=> w.id === r.dataset.game));
+  assert(row, '作品榜应有一行的 data-game 指向 PUBLISHED 里的作品');
+  const id = row.dataset.game;
+  state.pageId = null;                         // 清掉上一屏留下的值，页面真的跳过去才可能等于 id
+  row.click();
+  assert(state.pageId === id, '点榜行应打开对应作品页，实际 pageId=' + state.pageId + '，点击的是 ' + id);
+  assert(!document.querySelector('[data-screen="gamePage"]').hidden, '作品页应成为可见屏');
+  showScreen('goal');                          // 还原到无害处
 });
 
 // ── 启动
