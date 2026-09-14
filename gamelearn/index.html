@@ -13,10 +13,11 @@
   }
   *{ box-sizing:border-box; margin:0; padding:0; }
   body{
-    background:#08090D; color:var(--ink); min-height:100vh;
+    background:#08090D; color:var(--ink); height:100vh; overflow:hidden;
     display:flex; align-items:center; justify-content:center;
     font-family:-apple-system,"PingFang SC",system-ui,sans-serif;
   }
+  #stage{ width:390px; height:844px; flex:none; transform-origin:center; }
   #phone{
     width:390px; height:844px; background:var(--bg); position:relative;
     border-radius:36px; overflow:hidden; border:1px solid var(--line);
@@ -37,6 +38,7 @@
 </style>
 </head>
 <body>
+<div id="stage">
 <div id="phone">
   <div id="app">
     <section data-screen="goal"></section>
@@ -53,9 +55,18 @@
     <button class="tab" data-goto="me"><span class="ico">🙂</span>我</button>
   </nav>
 </div>
+</div>
 <script>
 // ══ 1. STATE
 const state = { screen:'goal', goalId:null, gameId:null, pageId:null, rankBoard:null, rankSubject:null };
+
+// ══ 1b. 画布缩放
+function computeScale(w, h){ return Math.min(1, w / 390, h / 844); }
+function fitScale(){
+  const stage = document.getElementById('stage');
+  stage.style.transform = 'scale(' + computeScale(window.innerWidth, window.innerHeight) + ')';
+}
+window.addEventListener('resize', fitScale);
 
 // ══ 2. DATA  （Task 2 起填充）
 
@@ -90,9 +101,11 @@ function assertCount(sel, n){
 const SELFTEST_MODE = new URLSearchParams(location.search).get('selftest') === '1';
 const wait = ms => SELFTEST_MODE ? Promise.resolve() : new Promise(r=>setTimeout(r, ms));
 
-function runSelftests(){
+async function runSelftests(){
   const failed = [];
-  SELFTESTS.forEach(t=>{ try{ t.fn(); } catch(e){ failed.push(t.name + ': ' + e.message); } });
+  for(const t of SELFTESTS){
+    try{ await t.fn(); } catch(e){ failed.push(t.name + ': ' + e.message); }
+  }
   document.title = failed.length ? ('SELFTEST FAIL: ' + failed[0]) : 'SELFTEST OK';
 }
 
@@ -105,8 +118,14 @@ test('切到广场后目标屏隐藏', ()=>{
   assert(!document.querySelector('[data-screen="square"]').hidden, '广场屏应显示');
   showScreen('goal');
 });
+test('画布在窗口过小时等比缩放', ()=>{
+  assert(computeScale(390, 844) === 1, '刚好放得下时不缩放');
+  assert(computeScale(195, 422) === 0.5, '减半时缩放 0.5，实际 ' + computeScale(195,422));
+  assert(computeScale(2000, 2000) === 1, '窗口更大时不放大');
+  assert(Math.abs(computeScale(390, 400) - 400/844) < 1e-9, '高度是瓶颈时按高度缩放');
+});
 
-window.addEventListener('load', ()=>{ if(SELFTEST_MODE) setTimeout(runSelftests, 50); });
+window.addEventListener('load', ()=>{ fitScale(); if(SELFTEST_MODE) setTimeout(runSelftests, 50); });
 </script>
 </body>
 </html>
