@@ -1771,19 +1771,28 @@ test('僵尸战：整波僵尸破墙后推进下一波，局面不冻结', ()=>{
   assertCount('.collide .turret', 3);              // 炮台仍可用，不会无路可走
 });
 test('对撞一局最短时长落在 60–120 秒', ()=>{
-  openGame('fraction-l3'); mountNow('fraction-l3');
-  const m = activeMechanic, runsBefore = BUS.runs.length;
-  let ms = 0;
-  while(BUS.runs.length === runsBefore && ms < 400000){
-    m._step(200); ms += 200;
-    const turrets = [...document.querySelectorAll('#container .turret')];
-    const ok = turrets.findIndex(t=> t.dataset.ok === '1');
-    if(ok >= 0) m._tap(ok);
+  // 这条会真打赢一局 → finishRun 钩子调用 advanceGoal('fraction-l3') 永久推进 fraction.done。
+  // 不复原的话，整套自检跑完 GOALS 变成 [1,1,0,0]（干净加载应为 [1,0,0,0]）。
+  const savedGoals = GOALS.map(g=>({ ...g }));
+  const savedGameId = state.gameId;
+  try{
+    openGame('fraction-l3'); mountNow('fraction-l3');
+    const m = activeMechanic, runsBefore = BUS.runs.length;
+    let ms = 0;
+    while(BUS.runs.length === runsBefore && ms < 400000){
+      m._step(200); ms += 200;
+      const turrets = [...document.querySelectorAll('#container .turret')];
+      const ok = turrets.findIndex(t=> t.dataset.ok === '1');
+      if(ok >= 0) m._tap(ok);
+    }
+    const sec = ms / 1000;
+    assert(BUS.runs.length > runsBefore, '一局应能打完，实际 ' + sec.toFixed(0) + ' 秒仍未结束');
+    assert(sec >= 60 && sec <= 120,
+      '一局应落在 60–120 秒（生成律），完美通关也要 ' + sec.toFixed(0) + ' 秒');
+  } finally {
+    GOALS.forEach((g,i)=> Object.assign(g, savedGoals[i]));
+    state.gameId = savedGameId;
   }
-  const sec = ms / 1000;
-  assert(BUS.runs.length > runsBefore, '一局应能打完，实际 ' + sec.toFixed(0) + ' 秒仍未结束');
-  assert(sec >= 60 && sec <= 120,
-    '一局应落在 60–120 秒（生成律），完美通关也要 ' + sec.toFixed(0) + ' 秒');
 });
 test('同一帧两只僵尸破墙也只结算一次', ()=>{
   const saved = MECHANIC_CONTENT['fraction-l3'].wallHp;   // runCollide 在 mount 时读 content.wallHp
