@@ -361,6 +361,40 @@
     padding:14px 8px; cursor:pointer; font-family:inherit; font-size:14px; color:var(--ink);
     background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-md);
   }
+
+  /* ── 排行榜：学科 chips + 三段榜 + 榜单行 ── */
+  .rank-chips{
+    display:flex; gap:8px; overflow-x:auto; padding:2px 14px 12px;
+    scrollbar-width:none;
+  }
+  .rank-chips::-webkit-scrollbar{ display:none; }
+  .rank-chips .chip{
+    flex:none; padding:7px 14px; cursor:pointer; font-family:inherit; font-size:12px;
+    color:var(--ink-dim); background:var(--surface);
+    border:1px solid var(--line); border-radius:var(--r-sm);
+  }
+  .rank-chips .chip.on{ color:var(--ink); background:var(--brand); border-color:var(--brand); }
+  .rank-seg{
+    display:flex; margin:0 14px 10px; padding:3px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-md);
+  }
+  .rank-seg .seg{
+    flex:1 1 0; padding:9px 0; cursor:pointer; font-family:inherit; font-size:12px;
+    color:var(--ink-dim); background:none; border:0; border-radius:var(--r-sm);
+  }
+  .rank-seg .seg.on{ color:var(--ink); background:var(--surface); font-weight:600; }
+  .rank-hint{ margin:0 16px 12px; font-size:11px; color:var(--ink-soft); line-height:1.5; }
+  .rank-list{ padding:0 14px 18px; display:flex; flex-direction:column; gap:8px; }
+  .rank-row{
+    display:grid; grid-template-columns:26px minmax(0,1fr) auto auto; align-items:center; gap:10px;
+    width:100%; padding:13px 14px; text-align:left; cursor:pointer; font-family:inherit;
+    color:var(--ink); background:var(--surface);
+    border:1px solid var(--line); border-radius:var(--r-md);
+  }
+  .rr-i{ font-size:12px; color:var(--ink-soft); }
+  .rr-n{ font-size:13px; font-weight:600; }
+  .rr-sub{ font-size:11px; color:var(--ink-soft); }
+  .rr-val{ font-size:12px; color:var(--brand-2); text-align:right; }
 </style>
 </head>
 <body>
@@ -505,12 +539,22 @@ const SEED_WORKS = [
 const PUBLISHED = SEED_WORKS.map(([id,title,author,subject,mechanic,plays,emoji,cover,parentId,remixes,score])=>
   ({ id, title, author, subject, mechanic, plays, emoji, cover, parentId, remixes, score }));
 
+// 排行榜：三层榜 + 学科 chips。周期是周榜（周一零点重置），新人永远有机会。
+const RANK_DEFS = [
+  { id:'works',    name:'作品榜',   hint:'按玩完率排，不按点击量' },
+  { id:'creators', name:'创作者榜', hint:'被玩完量 × 被二创数，不按作品数量' },
+  { id:'mine',     name:'我的战绩', hint:'你进过的榜、你保持的记录' },
+];
+// 常识 / 健身 刻意不在榜内（PRD 的 7 学科）；它们的作品仍在「全部」里可见
+const RANK_SUBJECTS = ['全部','数学','乐理','英语','语文','化学','财商'];
+
 // ══ 3. ROUTER
 function showScreen(id){
   document.querySelectorAll('[data-screen]').forEach(s=>{ s.hidden = s.dataset.screen !== id; });
   state.screen = id;
   document.querySelectorAll('.tab').forEach(t=>{ t.classList.toggle('on', t.dataset.goto === id); });
   if(id === 'square') renderSquare();
+  if(id === 'rank') renderRankings();
 }
 document.querySelectorAll('.tab').forEach(t=>{
   t.addEventListener('click', ()=> showScreen(t.dataset.goto));
@@ -822,6 +866,71 @@ function doRemix(gameId, tier, payload){
   parent.remixes++;
   document.querySelector('.remix-sheet')?.remove();
   toast(tier === 'skin' ? '换好皮了，已放进广场' : '改好了，已放进广场');
+}
+
+// ── 排行榜：作品榜 / 创作者榜 / 我的战绩，学科 chips 筛选，周榜周期
+// 排的是「被玩完」而不是「被点开」——所以作品榜用 plays×完成率估算，
+// 创作者榜用 被玩完量 × 被二创数，刻意不按作品数量排。
+function creatorScore(author){
+  return PUBLISHED.filter(w=> w.author === author)
+    .reduce((s,w)=> s + w.plays * Math.max(1, w.remixes), 0);
+}
+
+function renderRankings(){
+  state.rankBoard = state.rankBoard || 'works';
+  state.rankSubject = state.rankSubject || '全部';
+  let rows = [];
+  if(state.rankBoard === 'works'){
+    rows = PUBLISHED
+      .filter(w=> state.rankSubject === '全部' || w.subject === state.rankSubject)
+      .map(w=>({ key:w.id, name:w.title, sub:w.subject,
+                 val:'玩完 ' + Math.round(w.plays * 0.62) + ' 次', sort:w.plays * 0.62 }))
+      .sort((a,b)=> b.sort - a.sort).slice(0, 8);
+  } else if(state.rankBoard === 'creators'){
+    const authors = [...new Set(PUBLISHED.map(w=> w.author))];
+    rows = authors.map(a=>{
+      const n = PUBLISHED.filter(w=> w.author === a).length;
+      return { key:a, name:a, sub:'作品 ' + n + ' 件', val:creatorScore(a) + ' 分', sort:creatorScore(a) };
+    }).sort((a,b)=> b.sort - a.sort).slice(0, 8);
+  } else {
+    rows = PUBLISHED.filter(w=> w.mine).map(w=>({
+      key:w.id, name:w.title, sub:w.subject,
+      val: w.score ? w.score + ' 分' : '还没上过榜', sort:w.score,
+    }));
+    if(!rows.length) rows = [{ key:'-', name:'还没上榜过', sub:'去玩一局', val:'—', sort:0 }];
+  }
+  const h = document.querySelector('[data-screen="rank"]');
+  h.innerHTML = `
+    <header class="scr-head"><h1>排行榜</h1><p class="rank-period">本周 · 周一零点重置，新人永远有机会</p></header>
+    <div class="rank-chips">
+      ${RANK_SUBJECTS.map(s=>`<button class="chip ${s === state.rankSubject ? 'on' : ''}"
+        data-subject="${s}">${s}</button>`).join('')}
+    </div>
+    <div class="rank-seg">
+      ${RANK_DEFS.map(d=>`<button class="seg ${d.id === state.rankBoard ? 'on' : ''}"
+        data-board="${d.id}">${d.name}</button>`).join('')}
+    </div>
+    <p class="rank-hint">${RANK_DEFS.find(d=> d.id === state.rankBoard).hint}</p>
+    <div class="rank-list">
+      ${rows.map((r,i)=>`
+        <button class="rank-row" data-game="${r.key}">
+          <span class="rr-i">${i+1}</span>
+          <span class="rr-n">${r.name}</span>
+          <span class="rr-sub">${r.sub}</span>
+          <span class="rr-val">${r.val}</span>
+        </button>`).join('')}
+    </div>`;
+  h.querySelectorAll('.chip').forEach(c=> c.addEventListener('click', ()=>{
+    state.rankSubject = c.dataset.subject; renderRankings();
+  }));
+  h.querySelectorAll('.seg').forEach(s=> s.addEventListener('click', ()=>{
+    state.rankBoard = s.dataset.board; renderRankings();
+  }));
+  // 只有真正在 PUBLISHED 里的行才跳作品页：创作者榜的 data-game 是人名，
+  // 我的战绩的空榜兜底行是 '-'，两者都会被这里挡下
+  h.querySelectorAll('.rank-row').forEach(r=> r.addEventListener('click', ()=>{
+    if(PUBLISHED.some(w=> w.id === r.dataset.game)) openGamePage(r.dataset.game);
+  }));
 }
 
 // ══ 5. GAMES （Task 4 起填充）
@@ -1606,6 +1715,54 @@ test('改造档位产出换机制的新作品，学科继承原作', ()=>{
     '标题应含机制名「' + mech.name + '」，实际 ' + PUBLISHED[0].title);
   assert(PUBLISHED[0].subject === parent.subject, '学科应继承原作，实际 ' + PUBLISHED[0].subject);
   assert(PUBLISHED[0].parentId === 'w-fraction-zombie', '血缘应指向原作');
+});
+
+test('排行榜默认显示作品榜且周期是本周', ()=>{
+  renderRankings();
+  assertCount('.rank-chips .chip', 7);
+  assertText('.rank-period', '本周');
+  assert(document.querySelector('.seg[data-board="works"]').classList.contains('on'), '默认应是作品榜');
+  assert(document.querySelectorAll('.rank-row').length >= 3, '作品榜应有三行以上');
+});
+test('切到创作者榜按 玩完量×二创数 排序', ()=>{
+  document.querySelector('.seg[data-board="creators"]').click();
+  const vals = [...document.querySelectorAll('.rank-row .rr-val')].map(e=> Number(e.textContent.replace(/\D/g,'')));
+  assert(vals.length >= 3, '创作者榜应至少三行，实际 ' + vals.length + ' 行（为空时排序断言会空过）');
+  const sorted = [...vals].sort((a,b)=> b-a);
+  assert(vals.join() === sorted.join(), '创作者榜应按分数降序，实际 ' + vals.join());
+});
+test('学科筛选只留该学科作品', ()=>{
+  document.querySelector('.seg[data-board="works"]').click();
+  document.querySelector('.chip[data-subject="乐理"]').click();
+  renderRankings();
+  const subs = [...document.querySelectorAll('.rank-row .rr-sub')].map(e=> e.textContent.trim());
+  // 不写死 4：Task 8 发布过一件乐理，Task 9 的换料档位又落过一件，按当前 PUBLISHED 推导
+  const expect = PUBLISHED.filter(w=> w.subject === '乐理').length;
+  assert(subs.length > 0 && subs.length === expect,
+    '筛选后应剩 ' + expect + ' 行乐理，实际 ' + subs.length + ' 行：' + subs.join());
+  assert(subs.every(s=> s === '乐理'), '筛选后应只剩乐理，实际 ' + subs.join());
+  state.rankSubject = '全部';                  // 还原筛选，别把乐理态漏给后续用例
+  renderRankings();
+});
+test('排行榜屏经路由进入时会渲染', ()=>{
+  const host = document.querySelector('[data-screen="rank"]');
+  host.innerHTML = '';                         // 清空，确保是路由画回来的，而不是上一次渲染的残留
+  state.rankBoard = 'works'; state.rankSubject = '全部';
+  showScreen('rank');
+  assert(host.querySelectorAll('.rank-row').length >= 3,
+    '经 showScreen 进入排行榜应渲染榜单行，实际 ' + host.querySelectorAll('.rank-row').length + ' 行');
+  showScreen('goal');                          // 屏幕状态还原到无害处
+});
+test('作品页的「改一版」按钮能打开二创档位面板', ()=>{
+  openGamePage('w-chord-run');                 // 必须是 PUBLISHED 里的作品，doRemix 要能找到父作品
+  const btn = document.querySelector('.game-page .gp-remix');
+  assert(btn, '作品页应有「改一版」入口');
+  btn.click();                                 // 走真实入口，不直接调 startRemix
+  const sheet = document.querySelector('.remix-sheet');
+  assert(sheet && sheet.classList.contains('on'), '点「改一版」应弹出二创面板');
+  assertCount('.remix-sheet .tier', 3);        // 换皮 / 换料 / 改造
+  document.querySelector('.remix-sheet .rs-cancel').click();   // 只验入口，不落盘新作品（不能扰动乐理计数）
+  assert(document.querySelector('.remix-sheet') === null, '取消后不应残留面板');
 });
 
 // ── 启动
