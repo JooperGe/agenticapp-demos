@@ -97,6 +97,32 @@
   .ab-name{ flex:1; }
   .ab-play{ flex:none; font-size:11px; color:var(--brand-2); }
 
+  /* ── 创作对话流 ── */
+  .chat{ padding:0 14px; display:flex; flex-direction:column; gap:8px; }
+  .msg{
+    max-width:78%; padding:10px 13px; font-size:13px; line-height:1.55;
+    border-radius:var(--r-md);
+  }
+  .msg.ai{ align-self:flex-start; background:var(--surface); border:1px solid var(--line); color:var(--ink); }
+  .msg.me{ align-self:flex-end; background:var(--brand); color:var(--ink); }
+  .chat-next{
+    display:block; width:calc(100% - 28px); margin:10px 14px 18px; padding:13px;
+    font-family:inherit; font-size:13px; color:var(--ink);
+    background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-md); cursor:pointer;
+  }
+  .chat-next[hidden]{ display:none; }   /* 作者样式的 display 会盖掉 UA 的 [hidden]，显式补回 */
+  .preview-card{
+    margin-top:4px; padding:16px; text-align:center;
+    background:var(--surface-2); border:1px solid var(--brand); border-radius:var(--r-md);
+  }
+  .pv-emoji{ font-size:40px; }
+  .pv-title{ margin-top:8px; font-size:14px; font-weight:600; }
+  .pv-meta{ margin-top:5px; font-size:11px; color:var(--ink-dim); }
+  .pv-start{
+    width:100%; margin-top:14px; padding:13px; font-family:inherit; font-size:13px; font-weight:600;
+    color:var(--bg); background:var(--brand-2); border:0; border-radius:var(--r-md); cursor:pointer;
+  }
+
   /* ── toast ── */
   #toast{
     position:absolute; left:50%; bottom:88px; transform:translateX(-50%);
@@ -157,6 +183,16 @@ const GOALS = [
 const getGoal = id => GOALS.find(g=>g.id === id);
 // 深做目标 → 该目标当前该玩的关卡（Task 5 / Task 7 提供对应机制）
 const GOAL_GAME = { guitar:'guitar-l1', fraction:'fraction-l3' };
+
+// 创作对话剧本：一句句追问，最后落到预告卡
+const CREATION_SCRIPT = [
+  { from:'ai', text:'今天想学点什么？' },
+  { from:'me', text:'我想能弹唱一首歌' },
+  { from:'ai', text:'好。那我们先解决最容易卡住的地方——和弦换手。' },
+  { from:'ai', text:'我先想的是一道选择题，想了想那样不好玩——换个机制，让你用手指按和弦。' },
+  { from:'ai', text:'不用背，玩两局就熟了。' },
+  { kind:'preview', gameId:'guitar-l1', title:'手指跑酷', mechanic:'抢拍', knowledge:'和弦转换', emoji:'🎸' },
+];
 
 // ══ 3. ROUTER
 function showScreen(id){
@@ -237,6 +273,61 @@ function renderGoalDetail(id){
     });
     const next = h.querySelector('.ab-play');
     if(next) next.addEventListener('click', ()=> openGame(GOAL_GAME[g.id]));
+  });
+}
+
+// ── 创作对话流
+let chatIdx = 0;
+function startCreation(){
+  chatIdx = 0;
+  state.goalId = null;
+  const h = document.querySelector('[data-screen="goalDetail"]');
+  h.innerHTML = `
+    <header class="scr-head with-back">
+      <button class="back" data-back="goal">‹</button>
+      <h1>造一个新游戏</h1><p>说说你想学什么，不用管怎么实现</p>
+    </header>
+    <div class="chat"></div>
+    <button class="chat-next" id="chatNext">继续 ›</button>`;
+  h.querySelector('[data-back]').addEventListener('click', ()=> showScreen('goal'));
+  h.querySelector('#chatNext').addEventListener('click', ()=> advanceCreation());
+  showScreen('goalDetail');
+  advanceCreation();
+}
+
+async function advanceCreation(){
+  const host = document.querySelector('[data-screen="goalDetail"] .chat');
+  const nextBtn = document.getElementById('chatNext');
+  if(!host || !nextBtn) return;
+  if(chatIdx >= CREATION_SCRIPT.length) return;      // 剧本已播完，等用户点预告卡
+  const item = CREATION_SCRIPT[chatIdx++];
+  if(item.kind === 'preview'){
+    host.insertAdjacentHTML('beforeend', `
+      <div class="preview-card">
+        <div class="pv-emoji">${item.emoji}</div>
+        <div class="pv-title">给你造一个 ${item.title} · 练${item.knowledge}</div>
+        <div class="pv-meta">${item.mechanic}机制 · 一局约 90 秒</div>
+        <button class="pv-start" data-game="${item.gameId}">开始玩 ›</button>
+      </div>`);
+    host.querySelector('.preview-card .pv-start')
+        .addEventListener('click', e=> openGame(e.currentTarget.dataset.game));
+    nextBtn.hidden = true;                            // 后面没有台词了，只等点"开始玩"
+  } else {
+    host.insertAdjacentHTML('beforeend', `<div class="msg ${item.from}"></div>`);
+    const bubble = host.querySelector('.msg:last-child');
+    if(SELFTEST_MODE){ bubble.textContent = item.text; }
+    else { await typeInto(bubble, item.text); await wait(240); }
+  }
+  host.scrollTop = host.scrollHeight;
+}
+
+function typeInto(el, text){
+  return new Promise(resolve=>{
+    let i = 0;
+    const t = setInterval(()=>{
+      el.textContent = text.slice(0, ++i);
+      if(i >= text.length){ clearInterval(t); resolve(); }
+    }, 26);
   });
 }
 
@@ -322,6 +413,20 @@ test('深做目标进详情并点亮已过关卡', ()=>{
   assertCount('.ability', 6);
   assertCount('.ability.done', 1);
   assertText('.ability[data-i="0"]', '认识四和弦指法');
+});
+
+test('创作对话能推进到预告卡', ()=>{
+  startCreation();
+  // 逐步推进直到预告卡出现（不写死句数，剧本加一句也不会碎）
+  for(let i = 0; i <= CREATION_SCRIPT.length && !document.querySelector('.preview-card'); i++){
+    advanceCreation();
+  }
+  assertCount('.preview-card', 1);
+  assertText('.preview-card', '手指跑酷');
+  assertText('.preview-card', '和弦转换');
+});
+test('对话里出现过换机制重生成的过程', ()=>{
+  assertText('.chat', '换个机制');
 });
 
 // ── 启动
