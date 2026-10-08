@@ -31,7 +31,8 @@
       "WebFetch(domain:www.businessinsider.com)",
       "WebFetch(domain:www.techwalla.com)",
       "Bash(curl -sL -A \"Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\" \"https://www.amazon.com/s?k=projection+alarm+clock&ref=nb_sb_noss\")",
-      "WebFetch(domain:www.smarthomepoint.com)"
+      "WebFetch(domain:www.smarthomepoint.com)",
+      "Bash(amr --help)"
     ]
   }
 }
