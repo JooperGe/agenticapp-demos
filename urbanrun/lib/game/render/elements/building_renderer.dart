@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import '../../model/geometry.dart';
@@ -6,20 +8,30 @@ import '../../projection/iso_projection.dart';
 import '../paint_utils.dart';
 import '../render_style.dart';
 
-/// Draws a single building/obstacle as an extruded isometric box with light
-/// and shadow walls, plus street signage labels.
+/// Draws a single building/obstacle. When an illustrated [sprite] is supplied
+/// it is blitted anchored to the footprint's front corner; otherwise the
+/// building falls back to a procedural extruded isometric box.
 class BuildingRenderer {
-  const BuildingRenderer(this.palette);
+  const BuildingRenderer(this.palette, {this.spriteScale = 1.0});
 
   final BuildingPalette palette;
+
+  /// Multiplier applied to the footprint diamond width when sizing a sprite.
+  /// Tunes how far the illustrated building overhangs its collision box.
+  final double spriteScale;
 
   void draw(
     Canvas canvas,
     SceneModel scene,
     Obstacle obstacle,
-    IsoProjection projection,
-  ) {
+    IsoProjection projection, {
+    ui.Image? sprite,
+  }) {
     final b = obstacle.bounds;
+    if (sprite != null) {
+      _drawSprite(canvas, b, sprite, projection);
+      return;
+    }
     final base = rectCorners(b, projection);
     final height = scene.id == SceneId.street ? 1.8 : .35;
     final roof = base
@@ -62,6 +74,40 @@ class BuildingRenderer {
         'MARKET',
       );
     }
+  }
+
+  void _drawSprite(
+    Canvas canvas,
+    Bounds2 b,
+    ui.Image sprite,
+    IsoProjection projection,
+  ) {
+    // Front/ground corner of the footprint diamond; the sprite's bottom-center
+    // anchor sits here so illustrated buildings line up with the collision box
+    // and sort by the same ground foot the procedural path uses.
+    final foot = projection.worldToScreen(Point2(b.right, b.bottom));
+    final diamondWidth = (b.width + b.height) * projection.tileWidth / 2;
+    final destWidth = diamondWidth * spriteScale;
+    final scale = destWidth / sprite.width;
+    final destHeight = sprite.height * scale;
+    final dst = Rect.fromLTWH(
+      foot.x - destWidth / 2,
+      foot.y - destHeight,
+      destWidth,
+      destHeight,
+    );
+    final src = Rect.fromLTWH(
+      0,
+      0,
+      sprite.width.toDouble(),
+      sprite.height.toDouble(),
+    );
+    canvas.drawImageRect(
+      sprite,
+      src,
+      dst,
+      Paint()..filterQuality = FilterQuality.medium,
+    );
   }
 
   Color _buildingColor(Bounds2 bounds) {

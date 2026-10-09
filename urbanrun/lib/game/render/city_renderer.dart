@@ -1,8 +1,11 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import '../model/geometry.dart';
 import '../model/scene_model.dart';
 import '../projection/iso_projection.dart';
+import 'building_sprites.dart';
 import 'elements/block_renderer.dart';
 import 'elements/building_renderer.dart';
 import 'elements/prop_renderer.dart';
@@ -32,6 +35,10 @@ class CityRenderer {
   final TreeRenderer _tree;
   final PropRenderer _prop;
 
+  /// Illustrated building sprites; assigned after async asset load. When null
+  /// (or missing a given building) the procedural box is drawn instead.
+  BuildingSprites? sprites;
+
   void render(
     Canvas canvas,
     SceneModel scene,
@@ -41,10 +48,17 @@ class CityRenderer {
     _drawGround(canvas, scene, projection);
     final items = <CityRenderItem>[];
     for (final obstacle in scene.obstacles) {
+      final ui.Image? sprite = scene.id == SceneId.street
+          ? sprites?.forStreetObstacle(
+              obstacle.bounds.left,
+              obstacle.bounds.top,
+            )
+          : null;
       items.add(
         CityRenderItem(
           groundFoot: obstacleGroundFoot(obstacle),
-          paint: () => _building.draw(canvas, scene, obstacle, projection),
+          paint: () =>
+              _building.draw(canvas, scene, obstacle, projection, sprite: sprite),
         ),
       );
     }

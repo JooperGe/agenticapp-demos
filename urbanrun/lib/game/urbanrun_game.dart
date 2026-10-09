@@ -12,6 +12,7 @@ import 'model/scene_model.dart';
 import 'model/world_model.dart';
 import 'movement/player_controller.dart';
 import 'projection/iso_projection.dart';
+import 'render/building_sprites.dart';
 import 'render/city_renderer.dart';
 import 'render/interaction_renderer.dart';
 import 'render/player_renderer.dart';
@@ -59,6 +60,7 @@ class UrbanrunGame extends FlameGame {
     player = PlayerController(
       position: worldModel.scenes[SceneId.street]!.spawn,
     );
+    cityRenderer.sprites = await BuildingSprites.load();
     transition = BuildingTransition(
       world: worldModel,
       input: input,
