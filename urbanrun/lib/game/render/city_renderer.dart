@@ -14,6 +14,7 @@ import 'elements/tree_renderer.dart';
 import 'interior_sprites.dart';
 import 'paint_utils.dart';
 import 'render_style.dart';
+import 'tree_sprites.dart';
 
 /// Composites the neighborhood from independent element renderers.
 ///
@@ -44,6 +45,13 @@ class CityRenderer {
   /// for the current scene the room is drawn from the image instead of the
   /// procedural floor + furniture.
   InteriorSprites? interiors;
+
+  /// Illustrated tree sprites; foot-anchored. When null/empty the procedural
+  /// tree is drawn instead.
+  TreeSprites? treeSprites;
+
+  /// Tree sprite width in tiles (foot-anchored, bottom-centre on the ground).
+  static const double _treeWidthTiles = 0.8;
 
   /// Interior room-image fit. The illustrated floor is a 2:1 iso diamond just
   /// like the walkable bounds, so we map the floor diamond onto the bounds
@@ -140,24 +148,51 @@ class CityRenderer {
     _block.drawFlowerbed(canvas, projection);
   }
 
+  CityRenderItem _treeItem(
+    Canvas canvas,
+    IsoProjection projection,
+    Point2 pos,
+    int variant,
+  ) {
+    final sprite = treeSprites?.byIndex(variant);
+    return CityRenderItem(
+      groundFoot: pos,
+      paint: sprite == null
+          ? () => _tree.draw(canvas, projection, pos)
+          : () => _drawTreeSprite(canvas, projection, pos, sprite),
+    );
+  }
+
+  void _drawTreeSprite(
+    Canvas canvas,
+    IsoProjection projection,
+    Point2 pos,
+    ui.Image sprite,
+  ) {
+    final foot = projection.worldToScreen(pos);
+    final destWidth = _treeWidthTiles * projection.tileWidth;
+    final scale = destWidth / sprite.width;
+    final destHeight = sprite.height * scale;
+    final dst = Rect.fromLTWH(
+      foot.x - destWidth / 2,
+      foot.y - destHeight,
+      destWidth,
+      destHeight,
+    );
+    canvas.drawImageRect(
+      sprite,
+      Rect.fromLTWH(0, 0, sprite.width.toDouble(), sprite.height.toDouble()),
+      dst,
+      Paint()..filterQuality = FilterQuality.medium,
+    );
+  }
+
   List<CityRenderItem> _streetProps(Canvas canvas, IsoProjection projection) =>
       <CityRenderItem>[
-        CityRenderItem(
-          groundFoot: const Point2(7.2, 6.2),
-          paint: () => _tree.draw(canvas, projection, const Point2(7.2, 6.2)),
-        ),
-        CityRenderItem(
-          groundFoot: const Point2(15.8, 8.9),
-          paint: () => _tree.draw(canvas, projection, const Point2(15.8, 8.9)),
-        ),
-        CityRenderItem(
-          groundFoot: const Point2(8.2, 15.9),
-          paint: () => _tree.draw(canvas, projection, const Point2(8.2, 15.9)),
-        ),
-        CityRenderItem(
-          groundFoot: const Point2(15.7, 15.9),
-          paint: () => _tree.draw(canvas, projection, const Point2(15.7, 15.9)),
-        ),
+        _treeItem(canvas, projection, const Point2(7.2, 6.2), 0),
+        _treeItem(canvas, projection, const Point2(15.8, 8.9), 1),
+        _treeItem(canvas, projection, const Point2(8.2, 15.9), 2),
+        _treeItem(canvas, projection, const Point2(15.7, 15.9), 0),
         CityRenderItem(
           groundFoot: const Point2(8.9, 7.1),
           paint: () =>

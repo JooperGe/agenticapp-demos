@@ -15,6 +15,7 @@ import 'projection/iso_projection.dart';
 import 'render/building_sprites.dart';
 import 'render/city_renderer.dart';
 import 'render/interior_sprites.dart';
+import 'render/tree_sprites.dart';
 import 'render/interaction_renderer.dart';
 import 'render/player_renderer.dart';
 import 'transitions/building_transition.dart';
@@ -63,6 +64,7 @@ class UrbanrunGame extends FlameGame {
     );
     cityRenderer.sprites = await BuildingSprites.load();
     cityRenderer.interiors = await InteriorSprites.load();
+    cityRenderer.treeSprites = await TreeSprites.load();
     final interiorCount = worldModel.scenes[SceneId.street]!.entrances
         .map((entrance) => entrance.targetScene)
         .where((target) => target != SceneId.street)
