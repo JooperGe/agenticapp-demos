@@ -14,6 +14,7 @@ import 'movement/player_controller.dart';
 import 'projection/iso_projection.dart';
 import 'render/building_sprites.dart';
 import 'render/city_renderer.dart';
+import 'render/interior_sprites.dart';
 import 'render/interaction_renderer.dart';
 import 'render/player_renderer.dart';
 import 'transitions/building_transition.dart';
@@ -61,10 +62,16 @@ class UrbanrunGame extends FlameGame {
       position: worldModel.scenes[SceneId.street]!.spawn,
     );
     cityRenderer.sprites = await BuildingSprites.load();
+    cityRenderer.interiors = await InteriorSprites.load();
+    final interiorCount = worldModel.scenes[SceneId.street]!.entrances
+        .map((entrance) => entrance.targetScene)
+        .where((target) => target != SceneId.street)
+        .toSet()
+        .length;
     transition = BuildingTransition(
       world: worldModel,
       input: input,
-      progress: ExplorationProgress(),
+      progress: ExplorationProgress(total: interiorCount),
     );
     _gameStateReady = true;
     if (_interactionRequested) {
@@ -202,7 +209,9 @@ class UrbanrunGame extends FlameGame {
       if (!completedBefore && transition.progress.complete &&
           !_completionFeedbackShown) {
         _completionFeedbackShown = true;
-        _showFeedback('探索完成 · 两处室内空间已发现');
+        _showFeedback(
+          '探索完成 · 已发现全部 ${transition.progress.total} 处室内空间',
+        );
       }
     } else if (transition.errorMessage != null) {
       // Keep the error visible briefly, then clear it without requiring a
@@ -256,6 +265,7 @@ class UrbanrunGame extends FlameGame {
     hudState.value = GameHudState(
       sceneName: _sceneName(transition.currentScene),
       visitedCount: transition.progress.visitedCount,
+      total: transition.progress.total,
       complete: transition.progress.complete,
       interactionLabel: nearby == null ? null : _interactionLabel(nearby),
       playerPosition: player.position,
@@ -274,6 +284,18 @@ class UrbanrunGame extends FlameGame {
         return '咖啡店 · 室内';
       case SceneId.convenienceStore:
         return '便利店 · 室内';
+      case SceneId.officeA:
+        return '写字楼 A · 室内';
+      case SceneId.officeB:
+        return '写字楼 B · 室内';
+      case SceneId.residentialA:
+        return '公寓 A · 室内';
+      case SceneId.residentialB:
+        return '公寓 B · 室内';
+      case SceneId.cornerShopA:
+        return '街角小店 A · 室内';
+      case SceneId.cornerShopB:
+        return '街角小店 B · 室内';
     }
   }
 
@@ -284,6 +306,18 @@ class UrbanrunGame extends FlameGame {
         return '进入咖啡店';
       case SceneId.convenienceStore:
         return '进入便利店';
+      case SceneId.officeA:
+        return '进入写字楼 A';
+      case SceneId.officeB:
+        return '进入写字楼 B';
+      case SceneId.residentialA:
+        return '进入公寓 A';
+      case SceneId.residentialB:
+        return '进入公寓 B';
+      case SceneId.cornerShopA:
+        return '进入街角小店 A';
+      case SceneId.cornerShopB:
+        return '进入街角小店 B';
       case SceneId.street:
         return '返回街区';
     }

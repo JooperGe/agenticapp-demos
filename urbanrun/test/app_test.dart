@@ -43,14 +43,15 @@ void main() {
       ),
     );
 
-    expect(find.text('探索街区 0/2'), findsOneWidget);
+    expect(find.text('探索街区 0/8'), findsOneWidget);
   });
 
   testWidgets('HUD shows completed exploration progress', (tester) async {
     final state = ValueNotifier<GameHudState>(
       GameHudState(
         sceneName: '探索街区',
-        visitedCount: 2,
+        visitedCount: 8,
+        total: 8,
         complete: true,
         interactionLabel: null,
         playerPosition: const Point2(12, 12),
@@ -63,7 +64,7 @@ void main() {
       ),
     );
 
-    expect(find.text('探索街区 2/2'), findsOneWidget);
+    expect(find.text('探索街区 8/8'), findsOneWidget);
     expect(find.text('区域已探索'), findsOneWidget);
   });
 
@@ -155,19 +156,33 @@ void main() {
     final game = UrbanrunGame();
     await game.onLoad();
 
-    game.player.position = const Point2(6.75, 4);
-    game.requestInteraction();
-    game.player.position = const Point2(1, 6);
-    game.requestInteraction();
-    game.player.position = const Point2(13.75, 11);
-    game.requestInteraction();
-    game.player.position = const Point2(1, 6);
-    game.requestInteraction();
-    game.player.position = const Point2(13.75, 11);
-    game.requestInteraction();
+    // Street entrance positions for all eight enterable buildings.
+    const entrances = <Point2>[
+      Point2(6.75, 4), // coffee shop
+      Point2(11, 6.75), // convenience store
+      Point2(15.25, 4), // office A
+      Point2(6.75, 11), // residential A
+      Point2(15.25, 11), // residential B
+      Point2(6.75, 18), // corner shop A
+      Point2(11, 15.25), // office B
+      Point2(15.25, 18), // corner shop B
+    ];
+    const interiorExit = Point2(1, 6);
+
+    for (var i = 0; i < entrances.length; i++) {
+      game.player.position = entrances[i];
+      game.requestInteraction();
+      expect(game.scene.id, isNot(SceneId.street));
+      if (i < entrances.length - 1) {
+        game.player.position = interiorExit;
+        game.requestInteraction();
+        expect(game.scene.id, SceneId.street);
+      }
+    }
 
     expect(game.hudState.value.complete, isTrue);
-    expect(game.hudState.value.successMessage, '探索完成 · 两处室内空间已发现');
+    expect(game.hudState.value.visitedCount, 8);
+    expect(game.hudState.value.successMessage, '探索完成 · 已发现全部 8 处室内空间');
     game.update(2);
     expect(game.hudState.value.successMessage, isNull);
 

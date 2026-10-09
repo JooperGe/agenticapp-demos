@@ -11,6 +11,7 @@ import 'elements/building_renderer.dart';
 import 'elements/prop_renderer.dart';
 import 'elements/road_renderer.dart';
 import 'elements/tree_renderer.dart';
+import 'interior_sprites.dart';
 import 'paint_utils.dart';
 import 'render_style.dart';
 
@@ -39,12 +40,35 @@ class CityRenderer {
   /// (or missing a given building) the procedural box is drawn instead.
   BuildingSprites? sprites;
 
+  /// Illustrated interior room images, keyed by interior scene. When present
+  /// for the current scene the room is drawn from the image instead of the
+  /// procedural floor + furniture.
+  InteriorSprites? interiors;
+
+  /// Interior image sizing/placement tunables (fraction of the scene's floor
+  /// diamond width, and where the scene centre lands in the image).
+  static const double _interiorScale = 1.5;
+  static const double _interiorAnchorY = 0.62;
+
   void render(
     Canvas canvas,
     SceneModel scene,
     IsoProjection projection, {
     Iterable<CityRenderItem> additionalItems = const <CityRenderItem>[],
   }) {
+    final ui.Image? room = scene.id == SceneId.street
+        ? null
+        : interiors?.forScene(scene.id);
+    if (room != null) {
+      _drawInteriorImage(canvas, scene, projection, room);
+      final items = sortCityRenderItems(additionalItems);
+      for (final item in items) {
+        item.paint();
+      }
+      _drawEntrances(canvas, scene, projection);
+      return;
+    }
+
     _drawGround(canvas, scene, projection);
     final items = <CityRenderItem>[];
     for (final obstacle in scene.obstacles) {
@@ -73,6 +97,34 @@ class CityRenderer {
       item.paint();
     }
     _drawEntrances(canvas, scene, projection);
+  }
+
+  void _drawInteriorImage(
+    Canvas canvas,
+    SceneModel scene,
+    IsoProjection projection,
+    ui.Image room,
+  ) {
+    final b = scene.bounds;
+    final center = projection.worldToScreen(
+      Point2((b.left + b.right) / 2, (b.top + b.bottom) / 2),
+    );
+    final floorWidth = (b.width + b.height) * projection.tileWidth / 2;
+    final destWidth = floorWidth * _interiorScale;
+    final destScale = destWidth / room.width;
+    final destHeight = room.height * destScale;
+    final dst = Rect.fromLTWH(
+      center.x - destWidth / 2,
+      center.y - destHeight * _interiorAnchorY,
+      destWidth,
+      destHeight,
+    );
+    canvas.drawImageRect(
+      room,
+      Rect.fromLTWH(0, 0, room.width.toDouble(), room.height.toDouble()),
+      dst,
+      Paint()..filterQuality = FilterQuality.medium,
+    );
   }
 
   void _drawGround(Canvas canvas, SceneModel scene, IsoProjection projection) {
@@ -164,7 +216,9 @@ class CityRenderer {
         paint: () =>
             _prop.drawTable(canvas, projection, const Point2(6.9, 4.1), accent),
       ),
-      if (scene.id == SceneId.convenienceStore)
+      if (scene.id == SceneId.convenienceStore ||
+          scene.id == SceneId.cornerShopA ||
+          scene.id == SceneId.cornerShopB)
         CityRenderItem(
           groundFoot: const Point2(8.0, 2.0),
           paint: () =>

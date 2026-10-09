@@ -14,8 +14,27 @@ class PropRenderer {
   final PropPalette palette;
 
   /// Interior furniture accent color for the given scene.
-  Color interiorAccent(SceneId id) =>
-      id == SceneId.coffeeShop ? palette.coffeeAccent : palette.storeAccent;
+  ///
+  /// Dedicated interior art is still procedural, so each interior type picks a
+  /// sensible furniture tint; unmapped scenes fall back to the coffee accent.
+  Color interiorAccent(SceneId id) {
+    switch (id) {
+      case SceneId.coffeeShop:
+        return palette.coffeeAccent;
+      case SceneId.convenienceStore:
+      case SceneId.cornerShopA:
+      case SceneId.cornerShopB:
+        return palette.storeAccent;
+      case SceneId.officeA:
+      case SceneId.officeB:
+        return const Color(0xFF7C8A99); // cool office gray-blue
+      case SceneId.residentialA:
+      case SceneId.residentialB:
+        return const Color(0xFFBE8A5C); // warm residential wood
+      case SceneId.street:
+        return palette.coffeeAccent;
+    }
+  }
 
   void drawLamp(Canvas canvas, IsoProjection projection, Point2 point) {
     final screen = toOffset(projection.worldToScreen(point));

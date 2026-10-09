@@ -103,7 +103,7 @@ void main() {
     expect(player.position.x, lessThanOrEqualTo(5 - player.radius));
   });
 
-  test('demo world provides a 24 by 24 street and two indoor scenes', () {
+  test('demo world provides a 24 by 24 street and eight indoor scenes', () {
     final world = WorldModel.demo();
     final street = world.scenes[SceneId.street]!;
 
@@ -115,9 +115,16 @@ void main() {
         SceneId.street,
         SceneId.coffeeShop,
         SceneId.convenienceStore,
+        SceneId.officeA,
+        SceneId.officeB,
+        SceneId.residentialA,
+        SceneId.residentialB,
+        SceneId.cornerShopA,
+        SceneId.cornerShopB,
       ]),
     );
-    expect(street.entrances.length, 2);
+    expect(world.scenes.length, 9);
+    expect(street.entrances.length, 8);
     for (final entrance in street.entrances) {
       expect(entrance.targetScene, isNot(SceneId.street));
       expect(world.scenes, contains(entrance.targetScene));
@@ -136,7 +143,9 @@ void main() {
       (scene) => scene.id != SceneId.street,
     )) {
       expect(scene.entrances, isNotEmpty);
-      expect(scene.obstacles, isNotEmpty);
+      // Interiors are illustrated rooms with baked-in furniture, so the floor
+      // is left fully walkable (no collision obstacles).
+      expect(scene.obstacles, isEmpty);
       expect(Collision.canOccupy(scene.spawn, 0.18, scene), isTrue);
       for (final entrance in scene.entrances) {
         expect(entrance.targetScene, SceneId.street);

@@ -13,6 +13,7 @@ class GameHudState {
     required this.complete,
     required this.interactionLabel,
     required this.playerPosition,
+    this.total = 8,
     this.errorMessage,
     this.successMessage,
     this.scene = SceneId.street,
@@ -22,6 +23,7 @@ class GameHudState {
   const GameHudState.street()
     : sceneName = '探索街区',
       visitedCount = 0,
+      total = 8,
       complete = false,
       interactionLabel = null,
       playerPosition = const Point2(1.5, 1.5),
@@ -32,6 +34,7 @@ class GameHudState {
 
   final String sceneName;
   final int visitedCount;
+  final int total;
   final bool complete;
   final String? interactionLabel;
   final Point2 playerPosition;
@@ -259,7 +262,7 @@ class _ExplorationCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '探索街区 ${value.visitedCount}/2',
+                  '探索街区 ${value.visitedCount}/${value.total}',
                   style: TextStyle(
                     color: color,
                     fontSize: 14,
@@ -273,7 +276,7 @@ class _ExplorationCard extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(99),
             child: LinearProgressIndicator(
-              value: (value.visitedCount / 2).clamp(0.0, 1.0),
+              value: (value.visitedCount / value.total).clamp(0.0, 1.0),
               minHeight: 5,
               backgroundColor: UrbanrunHud._navyLight,
               valueColor: const AlwaysStoppedAnimation<Color>(

@@ -1,6 +1,16 @@
 import 'geometry.dart';
 
-enum SceneId { street, coffeeShop, convenienceStore }
+enum SceneId {
+  street,
+  coffeeShop,
+  convenienceStore,
+  officeA,
+  officeB,
+  residentialA,
+  residentialB,
+  cornerShopA,
+  cornerShopB,
+}
 
 class Bounds2 {
   const Bounds2(this.left, this.top, this.right, this.bottom)
