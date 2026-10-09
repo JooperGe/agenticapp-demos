@@ -1,0 +1,4 @@
+{"type":"server-started","port":63435,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:63435/?key=88fa89b76e6a429853742bf8cf8b19b4e5d4e5b83b26ba0a45e0e4e822ec1023","screen_dir":"/Users/jooper/Documents/samples/todoapp/.superpowers/brainstorm/69759-1791462884/content","state_dir":"/Users/jooper/Documents/samples/todoapp/.superpowers/brainstorm/69759-1791462884/state","idle_timeout_ms":14400000}
+{"type":"screen-added","file":"/Users/jooper/Documents/samples/todoapp/.superpowers/brainstorm/69759-1791462884/content/map-camera-layout.html"}
+{"type":"screen-added","file":"/Users/jooper/Documents/samples/todoapp/.superpowers/brainstorm/69759-1791462884/content/waiting.html"}
+{"type":"server-stopped","reason":"idle timeout"}

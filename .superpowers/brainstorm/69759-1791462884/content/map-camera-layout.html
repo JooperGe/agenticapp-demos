@@ -1,0 +1,58 @@
+<h2>Urbanrun 地图镜头与布局</h2>
+<p class="subtitle">请选择最接近参考图、也最适合首版移动演示的地图呈现方式。点击卡片即可记录选择。</p>
+
+<div class="cards" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:18px">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;background:#101c2b;overflow:hidden">
+      <svg viewBox="0 0 420 250" width="100%" height="220" xmlns="http://www.w3.org/2000/svg">
+        <rect width="420" height="250" fill="#9eaa99"/>
+        <path d="M0 94L420 220M120 0L310 250" stroke="#425465" stroke-width="64"/>
+        <path d="M0 94L420 220M120 0L310 250" stroke="#697b89" stroke-width="50"/>
+        <path d="M0 94L420 220M120 0L310 250" stroke="#e8d99c" stroke-width="2" stroke-dasharray="10 8"/>
+        <rect x="15" y="18" width="100" height="60" rx="5" fill="#d8bfae"/><rect x="315" y="15" width="86" height="62" rx="5" fill="#c88f7c"/>
+        <rect x="42" y="160" width="98" height="65" rx="5" fill="#c6b299"/><rect x="285" y="165" width="110" height="60" rx="5" fill="#b9c4ca"/>
+        <circle cx="220" cy="104" r="47" fill="#567b55" stroke="#d7d7b2" stroke-width="6"/><circle cx="220" cy="104" r="22" fill="#95af67"/>
+        <circle cx="214" cy="119" r="7" fill="#55c8f1" stroke="#fff" stroke-width="3"/>
+        <text x="14" y="238" fill="#fff" font-size="14" font-family="sans-serif">3×3街区 · 斜45°等距视角</text>
+      </svg>
+    </div>
+    <div class="card-body"><h3>A · 斜45°等距视角（推荐）</h3><p>最接近参考图的城市俯视感。街道、建筑、公园层次清晰，适合做小范围探索和镜头跟随。</p></div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;background:#101c2b;overflow:hidden">
+      <svg viewBox="0 0 420 250" width="100%" height="220" xmlns="http://www.w3.org/2000/svg">
+        <rect width="420" height="250" fill="#aac29c"/>
+        <path d="M0 125H420M210 0V250" stroke="#536575" stroke-width="75"/>
+        <path d="M0 125H420M210 0V250" stroke="#788896" stroke-width="60"/>
+        <path d="M0 125H420M210 0V250" stroke="#e8d99c" stroke-width="2" stroke-dasharray="12 9"/>
+        <rect x="18" y="20" width="125" height="70" fill="#d6b89f"/><rect x="265" y="20" width="138" height="70" fill="#c99183"/>
+        <rect x="20" y="162" width="125" height="64" fill="#b9c3bf"/><rect x="270" y="162" width="135" height="64" fill="#d1b888"/>
+        <circle cx="92" cy="125" r="16" fill="#55c8f1" stroke="#fff" stroke-width="3"/>
+        <text x="14" y="238" fill="#fff" font-size="14" font-family="sans-serif">3×3街区 · 正交俯视</text>
+      </svg>
+    </div>
+    <div class="card-body"><h3>B · 正交俯视视角</h3><p>实现最直接，碰撞和建筑入口更容易处理；但城市纵深和参考图里的“斜向街区”氛围会弱一些。</p></div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;background:#101c2b;overflow:hidden">
+      <svg viewBox="0 0 420 250" width="100%" height="220" xmlns="http://www.w3.org/2000/svg">
+        <rect width="420" height="250" fill="#a8bf9b"/>
+        <path d="M0 70L420 70M0 180L420 180" stroke="#596b7b" stroke-width="58"/>
+        <path d="M0 70L420 70M0 180L420 180" stroke="#7c8b96" stroke-width="44"/>
+        <path d="M105 0V250M315 0V250" stroke="#596b7b" stroke-width="54"/>
+        <path d="M105 0V250M315 0V250" stroke="#7c8b96" stroke-width="40"/>
+        <g fill="#cba98e"><rect x="12" y="10" width="70" height="45"/><rect x="118" y="10" width="70" height="45"/><rect x="328" y="10" width="78" height="45"/><rect x="12" y="198" width="70" height="42"/><rect x="118" y="198" width="70" height="42"/><rect x="328" y="198" width="78" height="42"/></g>
+        <circle cx="205" cy="125" r="16" fill="#55c8f1" stroke="#fff" stroke-width="3"/>
+        <text x="14" y="238" fill="#fff" font-size="14" font-family="sans-serif">3×3街区 · 俯视网格</text>
+      </svg>
+    </div>
+    <div class="card-body"><h3>C · 纯俯视网格</h3><p>最轻量、最容易跨平台，但更像传统2D地图，难以体现参考图中的建筑立体感。</p></div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:22px">
+  <h3>推荐默认值</h3>
+  <p>选择 A 后，地图会采用“可旋转但首版固定45°”的伪等距镜头：角色保持清晰，建筑使用可穿行入口标记，镜头随角色在小街区内平滑移动。</p>
+</div>
