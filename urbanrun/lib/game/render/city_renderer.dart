@@ -45,10 +45,12 @@ class CityRenderer {
   /// procedural floor + furniture.
   InteriorSprites? interiors;
 
-  /// Interior image sizing/placement tunables (fraction of the scene's floor
-  /// diamond width, and where the scene centre lands in the image).
-  static const double _interiorScale = 1.5;
-  static const double _interiorAnchorY = 0.62;
+  /// Interior room-image fit. The illustrated floor is a 2:1 iso diamond just
+  /// like the walkable bounds, so we map the floor diamond onto the bounds
+  /// diamond: these fractions locate the floor within the source image.
+  static const double _floorFracW = 0.95;
+  static const double _floorCenterFracX = 0.5;
+  static const double _floorCenterFracY = 0.675;
 
   void render(
     Canvas canvas,
@@ -106,16 +108,17 @@ class CityRenderer {
     ui.Image room,
   ) {
     final b = scene.bounds;
-    final center = projection.worldToScreen(
+    final boundsCenter = projection.worldToScreen(
       Point2((b.left + b.right) / 2, (b.top + b.bottom) / 2),
     );
-    final floorWidth = (b.width + b.height) * projection.tileWidth / 2;
-    final destWidth = floorWidth * _interiorScale;
+    // Match the illustrated floor diamond onto the walkable bounds diamond.
+    final boundsDiamondWidth = (b.width + b.height) * projection.tileWidth / 2;
+    final destWidth = boundsDiamondWidth / _floorFracW;
     final destScale = destWidth / room.width;
     final destHeight = room.height * destScale;
     final dst = Rect.fromLTWH(
-      center.x - destWidth / 2,
-      center.y - destHeight * _interiorAnchorY,
+      boundsCenter.x - _floorCenterFracX * room.width * destScale,
+      boundsCenter.y - _floorCenterFracY * room.height * destScale,
       destWidth,
       destHeight,
     );

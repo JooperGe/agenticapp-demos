@@ -136,7 +136,7 @@ const _roomLayout = <Obstacle>[];
 // return/safe positions mirror the street entrance that leads here.
 const _coffeeShop = SceneModel(
   id: SceneId.coffeeShop,
-  bounds: Bounds2(0, 0, 10, 8),
+  bounds: Bounds2(0, 0, 10, 10),
   spawn: Point2(2, 6),
   obstacles: _cafeLayout,
   entrances: <Entrance>[
@@ -154,7 +154,7 @@ const _coffeeShop = SceneModel(
 
 const _convenienceStore = SceneModel(
   id: SceneId.convenienceStore,
-  bounds: Bounds2(0, 0, 10, 8),
+  bounds: Bounds2(0, 0, 10, 10),
   spawn: Point2(2, 6),
   obstacles: _shopLayout,
   entrances: <Entrance>[
@@ -172,7 +172,7 @@ const _convenienceStore = SceneModel(
 
 const _officeA = SceneModel(
   id: SceneId.officeA,
-  bounds: Bounds2(0, 0, 10, 8),
+  bounds: Bounds2(0, 0, 10, 10),
   spawn: Point2(2, 6),
   obstacles: _roomLayout,
   entrances: <Entrance>[
@@ -190,7 +190,7 @@ const _officeA = SceneModel(
 
 const _officeB = SceneModel(
   id: SceneId.officeB,
-  bounds: Bounds2(0, 0, 10, 8),
+  bounds: Bounds2(0, 0, 10, 10),
   spawn: Point2(2, 6),
   obstacles: _roomLayout,
   entrances: <Entrance>[
@@ -208,7 +208,7 @@ const _officeB = SceneModel(
 
 const _residentialA = SceneModel(
   id: SceneId.residentialA,
-  bounds: Bounds2(0, 0, 10, 8),
+  bounds: Bounds2(0, 0, 10, 10),
   spawn: Point2(2, 6),
   obstacles: _cafeLayout,
   entrances: <Entrance>[
@@ -226,7 +226,7 @@ const _residentialA = SceneModel(
 
 const _residentialB = SceneModel(
   id: SceneId.residentialB,
-  bounds: Bounds2(0, 0, 10, 8),
+  bounds: Bounds2(0, 0, 10, 10),
   spawn: Point2(2, 6),
   obstacles: _cafeLayout,
   entrances: <Entrance>[
@@ -244,7 +244,7 @@ const _residentialB = SceneModel(
 
 const _cornerShopA = SceneModel(
   id: SceneId.cornerShopA,
-  bounds: Bounds2(0, 0, 10, 8),
+  bounds: Bounds2(0, 0, 10, 10),
   spawn: Point2(2, 6),
   obstacles: _shopLayout,
   entrances: <Entrance>[
@@ -262,7 +262,7 @@ const _cornerShopA = SceneModel(
 
 const _cornerShopB = SceneModel(
   id: SceneId.cornerShopB,
-  bounds: Bounds2(0, 0, 10, 8),
+  bounds: Bounds2(0, 0, 10, 10),
   spawn: Point2(2, 6),
   obstacles: _shopLayout,
   entrances: <Entrance>[
