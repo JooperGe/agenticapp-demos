@@ -31,7 +31,7 @@ class UrbanrunGame extends FlameGame {
   final IsoProjection projection;
   final PlayerInput input;
   final ValueNotifier<GameHudState> hudState;
-  final CityRenderer cityRenderer = const CityRenderer();
+  final CityRenderer cityRenderer = CityRenderer();
   final PlayerRenderer playerRenderer = const PlayerRenderer();
   final InteractionRenderer interactionRenderer = const InteractionRenderer();
 
