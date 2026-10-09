@@ -19,12 +19,18 @@ List<Point2> rectCorners(Bounds2 bounds, IsoProjection projection) => <Point2>[
 ];
 
 /// A closed polygon path through the given screen-space points.
-Path polygon(List<Point2> points) => Path()
-  ..moveTo(points.first.x, points.first.y)
-  ..addPolygon(
-    points.skip(1).map((point) => Offset(point.x, point.y)).toList(),
-    true,
-  );
+///
+/// Note: `moveTo` + `addPolygon` would start a *separate* sub-path from the
+/// second point, dropping the first vertex (filling only the triangle of the
+/// remaining points). We build the contour explicitly so every vertex is
+/// included — important for the large ground quad, not just thin road bands.
+Path polygon(List<Point2> points) {
+  final path = Path()..moveTo(points.first.x, points.first.y);
+  for (final point in points.skip(1)) {
+    path.lineTo(point.x, point.y);
+  }
+  return path..close();
+}
 
 /// Draws a line between two world-space points, scaling [width] (expressed in
 /// tiles) by the projection tile height.
