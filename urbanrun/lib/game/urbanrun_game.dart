@@ -13,6 +13,7 @@ import 'model/world_model.dart';
 import 'movement/player_controller.dart';
 import 'projection/iso_projection.dart';
 import 'render/building_sprites.dart';
+import 'render/character_sprite.dart';
 import 'render/city_renderer.dart';
 import 'render/interior_sprites.dart';
 import 'render/tree_sprites.dart';
@@ -40,6 +41,7 @@ class UrbanrunGame extends FlameGame {
 
   late final PlayerController player;
   late final BuildingTransition transition;
+  CharacterSprite? _character;
   double _animationTime = 0;
   double _cameraX = 0;
   double _cameraY = 0;
@@ -65,6 +67,7 @@ class UrbanrunGame extends FlameGame {
     cityRenderer.sprites = await BuildingSprites.load();
     cityRenderer.interiors = await InteriorSprites.load();
     cityRenderer.treeSprites = await TreeSprites.load();
+    _character = await CharacterSprite.load();
     final interiorCount = worldModel.scenes[SceneId.street]!.entrances
         .map((entrance) => entrance.targetScene)
         .where((target) => target != SceneId.street)
@@ -147,6 +150,7 @@ class UrbanrunGame extends FlameGame {
             player.facing,
             _animationTime,
             input.groundDirection(projection).length > 0,
+            frames: _character?.frames ?? const <ui.Image>[],
           ),
         ),
       ],

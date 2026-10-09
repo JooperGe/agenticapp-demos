@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -7,14 +8,26 @@ import '../model/geometry.dart';
 class PlayerRenderer {
   const PlayerRenderer();
 
+  /// Illustrated character height in pixels (foot-anchored on the ground).
+  static const double _spriteHeight = 64;
+
   void render(
     Canvas canvas,
     Point2 screenPosition,
     Point2 facing,
     double animationTime,
-    bool moving,
-  ) {
+    bool moving, {
+    List<ui.Image> frames = const <ui.Image>[],
+  }) {
     final center = Offset(screenPosition.x, screenPosition.y);
+    if (frames.isNotEmpty) {
+      // Cycle the walk frames while moving at ~8 fps; rest on the first frame.
+      final index = moving
+          ? (animationTime * 8).floor() % frames.length
+          : 0;
+      _renderSprite(canvas, center, facing, animationTime, moving, frames[index]);
+      return;
+    }
     final bob = moving ? math.sin(animationTime * 12) * 2.2 : 0.0;
     final swing = moving ? math.sin(animationTime * 12) * .25 : 0.0;
     final body = center.translate(0, -17 + bob);
@@ -59,5 +72,37 @@ class PlayerRenderer {
       3,
       Paint()..color = const Color(0xFFE3A07E),
     );
+  }
+
+  void _renderSprite(
+    Canvas canvas,
+    Offset center,
+    Point2 facing,
+    double animationTime,
+    bool moving,
+    ui.Image sprite,
+  ) {
+    // Teal ground ring under the player's feet.
+    canvas.drawOval(
+      Rect.fromCenter(center: center.translate(0, 3), width: 22, height: 8),
+      Paint()..color = const Color(0xFF55D6E4).withValues(alpha: .35),
+    );
+    final bob = moving ? math.sin(animationTime * 12).abs() * 2.4 : 0.0;
+    final scale = _spriteHeight / sprite.height;
+    final w = sprite.width * scale;
+    const h = _spriteHeight;
+    // Face toward the on-screen horizontal of the movement; mirror the single
+    // sprite for the opposite side.
+    final faceLeft = (facing.x - facing.y) < 0;
+    canvas.save();
+    canvas.translate(center.dx, center.dy - bob);
+    if (faceLeft) canvas.scale(-1, 1);
+    canvas.drawImageRect(
+      sprite,
+      Rect.fromLTWH(0, 0, sprite.width.toDouble(), sprite.height.toDouble()),
+      Rect.fromLTWH(-w / 2, -h + 4, w, h),
+      Paint()..filterQuality = FilterQuality.medium,
+    );
+    canvas.restore();
   }
 }
