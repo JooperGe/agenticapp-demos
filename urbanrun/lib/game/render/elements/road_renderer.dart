@@ -1,7 +1,10 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import '../../model/geometry.dart';
 import '../../projection/iso_projection.dart';
+import '../ground_textures.dart';
 import '../paint_utils.dart';
 import '../render_style.dart';
 
@@ -12,9 +15,18 @@ class RoadRenderer {
 
   final RoadPalette palette;
 
-  void draw(Canvas canvas, IsoProjection projection) {
-    final pavement = Paint()..color = palette.pavement;
-    final road = Paint()..color = palette.surface;
+  void draw(
+    Canvas canvas,
+    IsoProjection projection, {
+    ui.Image? asphalt,
+    ui.Image? pavementTexture,
+  }) {
+    final pavement = pavementTexture != null
+        ? tiledPaint(pavementTexture, 80)
+        : (Paint()..color = palette.pavement);
+    final road = asphalt != null
+        ? tiledPaint(asphalt, 80)
+        : (Paint()..color = palette.surface);
     final roadEdge = Paint()..color = palette.laneMarking;
     final paths = <List<Point2>>[
       [

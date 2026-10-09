@@ -11,6 +11,7 @@ import 'elements/building_renderer.dart';
 import 'elements/prop_renderer.dart';
 import 'elements/road_renderer.dart';
 import 'elements/tree_renderer.dart';
+import 'ground_textures.dart';
 import 'interior_sprites.dart';
 import 'paint_utils.dart';
 import 'render_style.dart';
@@ -49,6 +50,10 @@ class CityRenderer {
   /// Illustrated tree sprites; foot-anchored. When null/empty the procedural
   /// tree is drawn instead.
   TreeSprites? treeSprites;
+
+  /// Seamless ground textures (grass / road / pavement). When null the flat
+  /// palette colors are used, keeping the exact road geometry.
+  GroundTextures? ground;
 
   /// Tree sprite width in tiles (foot-anchored, bottom-centre on the ground).
   static const double _treeWidthTiles = 0.8;
@@ -139,12 +144,17 @@ class CityRenderer {
   }
 
   void _drawGround(Canvas canvas, SceneModel scene, IsoProjection projection) {
-    _block.drawGroundBase(canvas, scene, projection);
+    _block.drawGroundBase(canvas, scene, projection, grass: ground?.grass);
     if (scene.id != SceneId.street) {
       _block.drawInteriorFloor(canvas, scene, projection);
       return;
     }
-    _road.draw(canvas, projection);
+    _road.draw(
+      canvas,
+      projection,
+      asphalt: ground?.road,
+      pavementTexture: ground?.pavement,
+    );
     _block.drawFlowerbed(canvas, projection);
   }
 

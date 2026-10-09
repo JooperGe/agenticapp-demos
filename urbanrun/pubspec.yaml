@@ -63,6 +63,7 @@ flutter:
     - assets/buildings/interior-cut/
     - assets/trees/cut/
     - assets/character/cut/
+    - assets/ground/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -1,8 +1,11 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import '../../model/geometry.dart';
 import '../../model/scene_model.dart';
 import '../../projection/iso_projection.dart';
+import '../ground_textures.dart';
 import '../paint_utils.dart';
 import '../render_style.dart';
 
@@ -18,12 +21,16 @@ class BlockRenderer {
   void drawGroundBase(
     Canvas canvas,
     SceneModel scene,
-    IsoProjection projection,
-  ) {
-    final ground = Paint()
-      ..color = scene.id == SceneId.street
-          ? palette.streetGround
-          : palette.interiorGround;
+    IsoProjection projection, {
+    ui.Image? grass,
+  }) {
+    final isStreet = scene.id == SceneId.street;
+    final ground = grass != null && isStreet
+        ? tiledPaint(grass, 96)
+        : (Paint()
+            ..color = isStreet
+                ? palette.streetGround
+                : palette.interiorGround);
     canvas.drawPath(polygon(rectCorners(scene.bounds, projection)), ground);
   }
 
