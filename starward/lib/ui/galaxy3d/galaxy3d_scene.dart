@@ -40,6 +40,7 @@ class Galaxy3DScene {
     required this.planetPositions,
     required this.worldScale,
     required this.hyg,
+    this.extraGalaxies = const <HygStars>[],
     this.stars = const <SceneStar>[],
   });
 
@@ -49,6 +50,9 @@ class Galaxy3DScene {
   final double worldScale;
   final HygStars? hyg;
 
+  /// Extra (fictional) galaxies to render alongside the real HYG field.
+  final List<HygStars> extraGalaxies;
+
   Vec3 positionOf(String planetId) =>
       planetPositions[planetId] ?? const Vec3(0, 0, 0);
 
@@ -57,6 +61,7 @@ class Galaxy3DScene {
     required HygStars hyg,
     double worldScale = 12.0,
     Vec3? deepSpaceOrigin,
+    List<HygStars> extraGalaxies = const <HygStars>[],
   }) {
     final positions = <String, Vec3>{};
     final planets = <ScenePlanet>[];
@@ -73,6 +78,7 @@ class Galaxy3DScene {
       planetPositions: positions,
       worldScale: worldScale,
       hyg: hyg,
+      extraGalaxies: extraGalaxies,
     );
   }
 }

@@ -12,6 +12,7 @@ import '../data/models/journey.dart';
 import '../data/models/planet.dart';
 import '../data/models/player_state.dart';
 import '../data/models/training_session.dart';
+import '../data/synthetic_galaxy.dart';
 import '../data/universe.dart';
 
 /// Sentinel origin id for a journey that departs from open space (the player's
@@ -79,7 +80,7 @@ class GameController extends ChangeNotifier {
   Future<void> init() async {
     // Build the universe first — spawn and planet lookups depend on it.
     final hyg = await HygCatalog.load() ?? HygCatalog.curatedFallback();
-    _universe = Universe(hyg);
+    _universe = Universe(hyg, extraGalaxies: <HygStars>[SyntheticGalaxy.build()]);
 
     final save = await _repository.load();
     if (save == null) {

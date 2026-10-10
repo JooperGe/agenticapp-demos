@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
+import '../../data/hyg_catalog.dart';
 import '../../data/models/journey.dart';
 import '../widgets/planet_disc.dart';
 import 'camera3d.dart';
@@ -39,10 +40,12 @@ class Galaxy3DPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final vp = Size2(size.width, size.height);
 
-    // Star backdrop: fast HYG path (109k real stars) when loaded, else the
-    // curated SceneStar list.
+    // Star backdrop: fast path over the real HYG field plus any extra galaxies.
     if (scene.hyg != null) {
-      _drawHygStars(canvas, size);
+      _drawStarField(canvas, size, scene.hyg!, 5000);
+    }
+    for (final g in scene.extraGalaxies) {
+      _drawStarField(canvas, size, g, 5200);
     }
 
     // Planets (billboarded procedural discs), depth-sorted among themselves.
@@ -68,18 +71,20 @@ class Galaxy3DPainter extends CustomPainter {
     for (final d in calls) {
       d.draw(canvas);
     }
-    if (scene.hyg != null) _drawHygLabels(canvas, size);
+    if (scene.hyg != null) _drawFieldLabels(canvas, size, scene.hyg!);
+    for (final g in scene.extraGalaxies) {
+      _drawFieldLabels(canvas, size, g);
+    }
     _drawShip(canvas, vp);
   }
 
-  /// Allocation-free render of the full HYG field. Precomputes the camera basis
-  /// once, then iterates the packed arrays with inline projection. Stars are
-  /// pre-sorted brightest-first, so a draw cap keeps the most important stars
-  /// and bounds the work regardless of zoom.
-  void _drawHygStars(Canvas canvas, Size size) {
-    final hyg = scene.hyg!;
+  /// Allocation-free render of a packed star field (the real HYG catalogue or a
+  /// synthetic galaxy). Precomputes the camera basis once, then iterates with
+  /// inline projection. Stars are pre-sorted brightest-first, so [maxDraw]
+  /// keeps the most important stars and bounds the work regardless of zoom.
+  void _drawStarField(Canvas canvas, Size size, HygStars field, int maxDraw) {
+    final hyg = field;
     const near = 1.0;
-    const maxDraw = 5000;
 
     // Camera basis as plain doubles.
     final f = camera.forward.normalized;
@@ -132,11 +137,11 @@ class Galaxy3DPainter extends CustomPainter {
   }
 
   /// Labels only the brightest named stars, so famous landmarks (Sirius, Vega,
-  /// Arcturus…) are identifiable without flooding the view with text.
-  void _drawHygLabels(Canvas canvas, Size size) {
-    final hyg = scene.hyg!;
+  /// Arcturus, the synthetic galaxy's core…) are identifiable without flooding
+  /// the view with text.
+  void _drawFieldLabels(Canvas canvas, Size size, HygStars field) {
     final vp = Size2(size.width, size.height);
-    for (final n in hyg.named.values) {
+    for (final n in field.named.values) {
       if (n.magnitude > 1.6) continue;
       final pr = camera.project(n.position, vp);
       if (!pr.visible) continue;

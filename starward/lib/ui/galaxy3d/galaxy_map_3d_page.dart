@@ -53,6 +53,7 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
         hyg: _c.stars,
         worldScale: _worldScale,
         deepSpaceOrigin: _c.deepSpaceOrigin3D,
+        extraGalaxies: _c.universe.extraGalaxies,
       );
 
   /// The ship's 3D world position: its planet when docked, otherwise the

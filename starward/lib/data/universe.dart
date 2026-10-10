@@ -18,11 +18,15 @@ const int kUniverseVersion = 1;
 ///
 /// A handful of hand-authored "hero" planets are injected at real anchor stars.
 class Universe {
-  Universe(this.stars) {
+  Universe(this.stars, {this.extraGalaxies = const <HygStars>[]}) {
     _buildHeroes();
   }
 
   final HygStars stars;
+
+  /// Additional (fictional) galaxies placed elsewhere in the sky. Treated just
+  /// like the real catalogue for rendering, planet generation and lookups.
+  final List<HygStars> extraGalaxies;
 
   // heroId -> authored content; hygId -> hero; heroId -> host hygId.
   final Map<String, Planet> _heroById = <String, Planet>{};
@@ -129,9 +133,21 @@ class Universe {
     final hygId = int.tryParse(parts[1]);
     final k = int.tryParse(parts[2]);
     if (hygId == null || k == null) return null;
-    final starPos = stars.positionOfId(hygId);
+    final starPos = _posById(hygId);
     if (starPos == null) return null;
     return _genPlanet(hygId, starPos, k);
+  }
+
+  /// Resolves a star's position by its stable id across the real catalogue and
+  /// any extra galaxies.
+  Vec3? _posById(int id) {
+    final p = stars.positionOfId(id);
+    if (p != null) return p;
+    for (final g in extraGalaxies) {
+      final q = g.positionOfId(id);
+      if (q != null) return q;
+    }
+    return null;
   }
 
   /// The planets within [radiusLy] of [posLy], nearest first, capped at [cap].
@@ -140,12 +156,20 @@ class Universe {
   List<Planet> planetsNear(Vec3 posLy, double radiusLy, {int cap = 80}) {
     final r2 = radiusLy * radiusLy;
     final found = <Planet>[];
-    for (var i = 0; i < stars.count; i++) {
-      final sx = stars.xyz[i * 3] - posLy.x;
-      final sy = stars.xyz[i * 3 + 1] - posLy.y;
-      final sz = stars.xyz[i * 3 + 2] - posLy.z;
-      if (sx * sx + sy * sy + sz * sz > r2) continue;
-      found.addAll(planetsForStarIndex(i));
+    void scan(HygStars set) {
+      for (var i = 0; i < set.count; i++) {
+        final sx = set.xyz[i * 3] - posLy.x;
+        final sy = set.xyz[i * 3 + 1] - posLy.y;
+        final sz = set.xyz[i * 3 + 2] - posLy.z;
+        if (sx * sx + sy * sy + sz * sz > r2) continue;
+        found.addAll(_planetsForStar(
+            set.starId[i], set.positionOfIndex(i)));
+      }
+    }
+
+    scan(stars);
+    for (final g in extraGalaxies) {
+      scan(g);
     }
     found.sort((a, b) =>
         (a.pos - posLy).length.compareTo((b.pos - posLy).length));
