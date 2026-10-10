@@ -76,6 +76,25 @@ class Universe {
     return _planetsForStar(hygId, starPos);
   }
 
+  /// All planets of a star identified by its stable id, across the real
+  /// catalogue and extra galaxies. Empty if the star isn't found.
+  List<Planet> planetsAtStar(int hygId) {
+    final pos = _posById(hygId);
+    if (pos == null) return const <Planet>[];
+    return _planetsForStar(hygId, pos);
+  }
+
+  /// A human label for a star by id — its proper name if it has one, else a
+  /// catalogue designation.
+  String starLabel(int hygId) {
+    for (final s in <HygStars>[stars, ...extraGalaxies]) {
+      for (final n in s.named.values) {
+        if (n.id == hygId) return n.name;
+      }
+    }
+    return '恒星系 SW-$hygId';
+  }
+
   List<Planet> _planetsForStar(int hygId, Vec3 starPos) {
     final out = <Planet>[];
     final hero = _heroByStar[hygId];
@@ -177,19 +196,32 @@ class Universe {
     return found;
   }
 
-  /// A random drift coordinate near a random real star that *has* at least one
-  /// planet, so a new player always wakes up with somewhere to go nearby.
-  Vec3 randomSpawn(math.Random rng) {
+  /// A random drift coordinate near a random real star (in the Milky Way) that
+  /// *has* at least one planet, so a new player always wakes up with somewhere
+  /// to go nearby.
+  Vec3 randomSpawn(math.Random rng) => _spawnNearStarIn(stars, rng);
+
+  /// Picks one galaxy at random (the real Milky Way or any extra galaxy), then
+  /// a random position within it near a planet-hosting star.
+  Vec3 spawnInRandomGalaxy(math.Random rng) {
+    final sets = <HygStars>[stars, ...extraGalaxies];
+    final set = sets[rng.nextInt(sets.length)];
+    return _spawnNearStarIn(set, rng);
+  }
+
+  /// Shared helper: a drift point just off a random planet-hosting star within
+  /// [set].
+  Vec3 _spawnNearStarIn(HygStars set, math.Random rng) {
     for (var attempt = 0; attempt < 64; attempt++) {
-      final i = rng.nextInt(stars.count);
-      final hygId = stars.starId[i];
+      final i = rng.nextInt(set.count);
+      final hygId = set.starId[i];
       if (planetCountForStar(hygId) == 0 && !_heroByStar.containsKey(hygId)) {
         continue;
       }
-      return stars.positionOfIndex(i) + _spherePoint(rng, 1.5, 3.0);
+      return set.positionOfIndex(i) + _spherePoint(rng, 1.5, 3.0);
     }
-    // Extremely unlikely fallback: just offset from the Sun.
-    return _spherePoint(rng, 2, 6);
+    // Extremely unlikely fallback: just offset from the set's first star.
+    return set.positionOfIndex(0) + _spherePoint(rng, 2, 6);
   }
 
   /// A drift coordinate confined to the Solar System — just off the Sun, within
@@ -326,17 +358,20 @@ typedef SpawnStrategy = Vec3 Function(Universe universe, math.Random rng);
 
 /// The available landing policies.
 enum SpawnMode {
-  /// Anywhere in the universe, near a random real star that has planets.
+  /// Anywhere in the Milky Way, near a random real star that has planets.
   randomUniverse,
 
   /// Confined to the Solar System (just off the Sun).
   solarSystem,
+
+  /// Inside one randomly chosen galaxy (Milky Way or an extra galaxy).
+  randomGalaxy,
 }
 
 /// Flip this one line (or inject a strategy into [GameController]) to change
 /// where new players start — kept in a single place for easy back-and-forth
 /// switching.
-const SpawnMode kDefaultSpawnMode = SpawnMode.randomUniverse;
+const SpawnMode kDefaultSpawnMode = SpawnMode.solarSystem;
 
 /// Registry mapping a [SpawnMode] to its concrete [SpawnStrategy].
 class SpawnStrategies {
@@ -348,13 +383,19 @@ class SpawnStrategies {
         return randomUniverse;
       case SpawnMode.solarSystem:
         return solarSystem;
+      case SpawnMode.randomGalaxy:
+        return randomGalaxy;
     }
   }
 
-  /// Current behaviour: near a random real star anywhere in the universe.
+  /// Near a random real star in the Milky Way.
   static Vec3 randomUniverse(Universe u, math.Random rng) => u.randomSpawn(rng);
 
   /// Restrict the landing to within the Solar System.
   static Vec3 solarSystem(Universe u, math.Random rng) =>
       u.spawnInSolarSystem(rng);
+
+  /// Inside one randomly chosen galaxy, at a random position.
+  static Vec3 randomGalaxy(Universe u, math.Random rng) =>
+      u.spawnInRandomGalaxy(rng);
 }

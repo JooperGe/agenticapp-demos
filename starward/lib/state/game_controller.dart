@@ -80,7 +80,7 @@ class GameController extends ChangeNotifier {
   Future<void> init() async {
     // Build the universe first — spawn and planet lookups depend on it.
     final hyg = await HygCatalog.load() ?? HygCatalog.curatedFallback();
-    _universe = Universe(hyg, extraGalaxies: <HygStars>[SyntheticGalaxy.build()]);
+    _universe = Universe(hyg, extraGalaxies: SyntheticGalaxy.all());
 
     final save = await _repository.load();
     if (save == null) {

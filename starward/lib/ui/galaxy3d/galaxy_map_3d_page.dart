@@ -12,6 +12,7 @@ import '../widgets/common.dart';
 import 'camera3d.dart';
 import 'galaxy3d_painter.dart';
 import 'galaxy3d_scene.dart';
+import 'star_system_sheet.dart';
 
 /// Page 1 (3D) — the galaxy as a real, rotatable, zoomable volume rendered by
 /// projecting a 3D scene onto a 2D canvas. Drag to orbit, pinch to zoom, toggle
@@ -110,7 +111,8 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
   void _onTapUp(TapUpDetails d, Size size) {
     final scene = _scene;
     if (scene == null) return;
-    final id = pickPlanet(
+    // In-system planet disc first (the only planets drawn)…
+    final pid = pickPlanet(
       scene: scene,
       camera: _camera,
       size: size,
@@ -118,11 +120,52 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
       shipPosition: _shipPos,
       sensorRange: _sensorRange,
     );
-    if (id == null) return;
-    final planet = _c.planetById(id);
-    if (planet == null) return;
-    setState(() => _selectedId = id);
-    _openDetails(planet);
+    if (pid != null) {
+      final planet = _c.planetById(pid);
+      if (planet != null) {
+        setState(() => _selectedId = pid);
+        _openDetails(planet);
+        return;
+      }
+    }
+    // …otherwise a star: open its system view.
+    final starId = pickStarId(
+      scene: scene,
+      camera: _camera,
+      size: size,
+      tap: d.localPosition,
+      shipPosition: _shipPos,
+      sensorRange: _sensorRange,
+    );
+    if (starId != null) _openSystem(starId);
+  }
+
+  void _openSystem(int hygId) {
+    final shell = ShellScope.maybeOf(context);
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) {
+        Widget child = GameScope(
+          controller: _c,
+          child: StarSystemSheet(
+            hygId: hygId,
+            onSelectPlanet: (planetId) {
+              final planet = _c.planetById(planetId);
+              if (planet != null) {
+                setState(() => _selectedId = planetId);
+                _openDetails(planet);
+              }
+            },
+          ),
+        );
+        if (shell != null) {
+          child = ShellScope(goToTab: shell.goToTab, child: child);
+        }
+        return child;
+      },
+    );
   }
 
   void _openDetails(Planet planet) {
@@ -206,6 +249,7 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
                         selectedId: _selectedId,
                         shipPosition: _shipPos,
                         sensorRange: _sensorRange,
+                        parkedPlanetId: _c.currentPlanetId,
                         journey: _c.activeJourney,
                         journeyProgress:
                             _c.activeJourney?.progressAt(_c.now) ?? 0,
@@ -392,8 +436,8 @@ class _BottomControls extends StatelessWidget {
                 ),
                 Text(
                   mode == CameraMode.orbit
-                      ? '拖动旋转 · 双指缩放 · 点击星球查看详情'
-                      : '拖动环视四周 · 双指调整视场 · 点击星球查看详情',
+                      ? '拖动旋转 · 双指缩放 · 点击恒星进入星系'
+                      : '拖动环视四周 · 双指调整视场 · 点击恒星进入星系',
                   style:
                       const TextStyle(color: StarColors.faint, fontSize: 10.5),
                 ),

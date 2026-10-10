@@ -48,4 +48,30 @@ void main() {
     expect(again!.id, p.id);
     expect(again.pos.x, closeTo(p.pos.x, 1e-6));
   });
+
+  test('multiple galaxies exist in different directions with disjoint ids', () {
+    final gs = SyntheticGalaxy.all();
+    expect(gs.length, greaterThanOrEqualTo(2));
+
+    // No star-id overlap between galaxies.
+    final ids = <int>{};
+    for (final g in gs) {
+      for (var i = 0; i < g.count; i++) {
+        expect(ids.add(g.starId[i]), isTrue, reason: 'duplicate star id');
+      }
+    }
+
+    Vec3 dir(g) {
+      var x = 0.0, y = 0.0, z = 0.0;
+      for (var i = 0; i < g.count; i++) {
+        x += g.xyz[i * 3];
+        y += g.xyz[i * 3 + 1];
+        z += g.xyz[i * 3 + 2];
+      }
+      return Vec3(x / g.count, y / g.count, z / g.count).normalized;
+    }
+
+    // Their centres point in clearly different directions (> 60° apart).
+    expect(dir(gs[0]).dot(dir(gs[1])), lessThan(0.5));
+  });
 }

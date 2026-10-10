@@ -84,4 +84,23 @@ void main() {
     final distFromSun = p.length;
     expect(distFromSun, lessThan(1.5));
   });
+
+  test('the random-galaxy strategy can land in a far galaxy, always playable',
+      () async {
+    var sawFar = false;
+    for (var seed = 0; seed < 16; seed++) {
+      final c = GameController(
+        repository: GameRepository(MemoryStorage()),
+        clock: FakeClock(DateTime(2026)).call,
+        random: math.Random(seed),
+        spawn: SpawnStrategies.randomGalaxy,
+      );
+      await c.init();
+      final d = c.deepSpaceOrigin3D!.length;
+      if (d > 2000) sawFar = true; // landed in SG-1/SG-2, not the Milky Way
+      // Wherever it lands, there must be somewhere to go nearby.
+      expect(c.planets, isNotEmpty, reason: 'spawn should have planets nearby');
+    }
+    expect(sawFar, isTrue, reason: 'some spawns should be in an extra galaxy');
+  });
 }

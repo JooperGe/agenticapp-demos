@@ -69,7 +69,10 @@ class GameRepository {
 
   final StorageBackend _storage;
 
-  static const String _saveKey = 'starward.save.v1';
+  // Bump when the save schema or spawn/universe logic changes in a way that
+  // should abandon old saves (so the change actually takes effect on existing
+  // installs without a manual data-clear).
+  static const String _saveKey = 'starward.save.v2';
 
   Future<GameSave?> load() async {
     final raw = await _storage.read(_saveKey);
