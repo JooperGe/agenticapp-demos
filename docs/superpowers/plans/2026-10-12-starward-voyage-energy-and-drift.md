@@ -5036,6 +5036,8 @@ EOF
 
 **错了会怎样**：玩家在长时间滑行中反复打开 App，每次都会看到播报、且窗口每次更长。若这被证明烦人，那是一次 UX 改动（持久化一个确认标记并移动窗口起点），不是正确性修复。
 
+**后续（`Ruling 60`）**：最终整支审阅把这个问题重新提了出来——它指出 §6.3 的窗口表里两行 `drift` 的窗口**故意不同**（在线 `[上次播报, now]`、离线 `[driftStartedAt, now]`），据此主张在线播报应当是增量的。controller 一度据此写下"改为增量"的裁决（`Ruling 54`），**读代码后又撤回**：§6.2 的标题就是"在线播报"、§6.3 第 3 行叫"在线滚动播报"，而 §6.2 正文规定的正是"ticker 继续跑 + 滑行页实时刷新 + 五个读数"，也就是第 3 行的实现；且第 3 行的"生成时机"写的是 ticker，**播报按钮根本不在那张表里**，所以它的累计窗口并不与表格冲突。改为增量还会引入 §6.4 反对的新状态，并让按钮在零长度窗口下**变成死键**。因此本条结论不变，只是理由更硬了：第 3 行由实时读数兑现，而它的测试由 `Ruling 52` 补上（已在修复波落地）。
+
 ### 3.4 一条断言在计划自己的实现下不可能通过（`Ruling 31`）
 
 Task 13 的 `measures the window the player could not watch` 断言 `pendingDriftReport` 为 null，理由是"还没过时间"。但 brief 自己的 `buildDriftReport` 只有 `if (path == null) return null;` 一道门，而该门按注释只针对**停泊**的船；`_drifting` 给的是非零速度，所以会排出一份零长度播报。
@@ -5044,17 +5046,19 @@ Task 13 的 `measures the window the player could not watch` 断言 `pendingDrif
 
 **错了会怎样**：玩家在开始滑行的同一秒内重启，那一刻不会收到播报——这正是期望行为。反过来若删掉断言，则每次滑行中启动都会凭空造一份播报。
 
-### 3.5 迁移守卫的 `status == inProgress` 分支没有回归测试（遗留）
+### 3.5 迁移守卫的 `status == inProgress` 分支没有回归测试（已在 `cd49eb7` 补上）
 
 **不是**计划文本缺陷，是覆盖缺口，但同类：该分支可达且承重（已完成的航程以 `activeJourney` + `status: arrived` 持久化，守卫写错会**退款**），而 brief 的三个测试只覆盖 `inProgress` 与"无航程"。
 
-**处置**：留给最终整支审阅判断是否值得在唯一一次修复波里补上。这是所有遗留小项中唯一保护玩家可见数字的一条。
+**处置**：最终整支审阅判定值得进唯一一次修复波——这是所有遗留小项中唯一保护玩家可见数字的一条。已补一条**双向**测试（`test/real_time_energy_test.dart` 的 `v2 save migration` 组内），并演示了 revert-to-RED：删掉该分支后 `arrived` 存档被错误退款 293→300。
 
 ---
 
-## 四、标识符 / import / 文件清单缺陷（共六处）
+## 四、标识符 / import / 文件清单缺陷（共七处）
 
-**同一类缺陷，六次**：计划点名了一个不存在于它所声称位置的成员、import 或文件。**全部**是编译失败，没有一处会静默出错。但六次意味着这不是偶发——根因是计划作者在**纯文本**层面推理，而 import 传递性、成员归属文件这类事实只有对着代码才看得见。因此 Task 12-14 的预检被重跑了一遍，且第二遍是对着**已生成的 brief** 而不是计划原文（Task 12/13 的四处编译错误全都来自"成员不存在于它被点名的位置"）。
+**同一类缺陷，七次**：计划点名了一个不存在于它所声称位置的成员或 import，或者反过来漏掉了一个它实际会碰的文件。前五次（#18、#25、#26、#28、#43）**全部**是编译失败，没有一处会静默出错；后两次（#27、#49）是**遗漏**而非错指位置——它们不会编译失败，只会让提交少带一个文件，靠 `git status` 就能发现，所以是良性的。但七次意味着这不是偶发——根因是计划作者在**纯文本**层面推理，而 import 传递性、成员归属文件这类事实只有对着代码才看得见。因此 Task 12-14 的预检被重跑了一遍，且第二遍是对着**已生成的 brief** 而不是计划原文（Task 12/13 的四处编译错误全都来自"成员不存在于它被点名的位置"）。
+
+**这一节自身的教训在执行期又重演了一次**：派发最终修复波时，controller 把 `test/ship_test.dart:47` 当作 `energyModel` 缺失存档的 fixture 位置写进了 dispatch，而那里其实是 `_saveWith` 辅助函数——真正的 fixture 在 `test/real_time_energy_test.dart` 的 `v2 save migration` 组里。这一次没有代价，只因为那句话写的是"找到已有的那个 fixture"而不是"改 `ship_test.dart:47`"。**同一类错误、同一个根因，第八次。**
 
 | # | Task | 缺陷 | 修正 |
 |---|---|---|---|
@@ -5064,6 +5068,7 @@ Task 13 的 `measures the window the player could not watch` 断言 `pendingDrif
 | 27 | 13 | `GameSave.pendingDriftReport` 设为**必填**（正确），但会打断 `test/ship_test.dart:47` 的 `_saveWith`——第四个 `GameSave(` 构造点，brief 从未列出 | 把 `test/ship_test.dart` 加入文件清单，传 `pendingDriftReport: null` |
 | 28 | 14 | 与 #18 逐字节相同：`drift_report_sheet.dart` 的 import 块缺 `common.dart`，而 Interfaces 行声称 `StarPanel` 在 `core/theme.dart` | 加 `import '../widgets/common.dart';` |
 | 43 | 14 | 同上，对**已生成的 brief** 再确认一次（task-14-brief.md:134-138） | 同上 |
+| 49 | 14 | Step 5 的 `git add` 只列了 4 个文件（plan 4935），而 Task 14 实际改了 **6** 个：漏掉 `lib/data/universe.dart`（`Ruling 49` 追加的注释修正）与 `test/flight_panel_test.dart`（让星空测试避开播报弹层的让步，见 `Ruling 52`） | 提交前用 `git status` 核对，不要照抄文件清单 |
 
 **为什么 25 那条不只是编译修复**：Task 13 的两条半径断言写的是 `closeTo(c.universeRadius, 1.0)` 与 `closeTo(c.universeRadius - 3000, 1.0)`——读**活值**而非硬编码 3066。所以把它改成 `c.universe.universeRadius` 恰恰是让这两条断言保持**与星表无关**的原因。见第五节的 `Ruling 34`。
 
@@ -5227,13 +5232,17 @@ File Structure 表写"`starward/README.md` / `starward/CLAUDE.md`——阶段 1 
 
 ---
 
-## 六、未在本附录中修正的：遗留小项
+## 六、遗留小项的处置
 
-各 task 审阅发现的 minor 一律**不进修复循环**，而是留在账本里（`progress.md`），并汇总给最终整支审阅判断是否值得进唯一一次修复波。最值得看的三条：
+各 task 审阅发现的 minor 一律**不进修复循环**，而是留在账本里（`progress.md`），并汇总给最终整支审阅判断是否值得进唯一一次修复波。最终审阅从三十余条里挑出最值得看的三条，**三条全部进了修复波并在 `cd49eb7` 修掉**（该提交只动注释与测试，零行为变更）：
 
-1. **`completeExploration` 清 `_activeJourney` 而不结算**（`game_controller.dart:627-630`）——安全仅仅因为抵达已经先结算过。它是第五个清 `_activeJourney` 的地方，也是唯一不结算的那个。
-2. **迁移守卫的 `status == inProgress` 分支没有回归测试**（见 3.5）——唯一保护玩家可见数字的遗留项。
-3. **`_settleBurn` 的文档注释夸大了自己的机理**（`game_controller.dart:695-697`）——它声称"先结算后翻转"的顺序防止了重复记账；真正的机理是每条终结路径只结算一次，因为 `burnedAt` 从不读 `status`。
+1. **`completeExploration` 清 `_activeJourney` 而不结算**（`game_controller.dart:944-948`；本节初稿误记为 `:627-630`）——已加注释说明它**靠构造安全**而非靠运气：`destinationPlanetId == planet.id` 这个守卫只可能匹配到状态为 `arrived` 的航程，而抵达已经结算过；同时写明若将来放宽这个守卫就必须先结算。
+2. **迁移守卫的 `status == inProgress` 分支没有回归测试**（`game_repository.dart:73-79`）——已补一条**双向**回归测试（`arrived` 存档不得退油、`inProgress` 存档必须退油），并演示了 revert-to-RED：删掉该分支后 `arrived` 存档被错误退款 293→300。
+3. **`_settleBurn` 的文档注释夸大了自己的机理**（`game_controller.dart:1025-1030`；本节初稿误记为 `:695-697`）——注释已改写为真正的机理：**每条终结路径只结算一次**，因为 `burnedAt` 从不读 `status`，所以"先结算后翻转"的顺序并不防止重复记账。
+
+同波还修了 `universe.dart:256` 的星表规模数字（"109,401" → 约 120,601，与同一段注释下方已有的"120k"对齐，也就是 `Ruling 49` 只兑现了一半的那件事），并为 `journey_page.dart` 的自动弹层路径与滑行读数补了测试（`Ruling 52`，规格 §6.2/§6.3 第 3 行的兑现）。
+
+**其余遗留项一律保持不动**，最终审阅逐条判过：合起来也不构成承重问题——它们要么是冗余断言，要么是不可达分支，要么是文档 nit。
 
 完整清单（含测试覆盖观察、注释不准确、结构性/性能取舍、以及已被后续 task 关闭的条目）见 `.superpowers/sdd/2026-10-12-starward-voyage-energy-and-drift/final-review-notes.md` 第三节。
 
@@ -5241,4 +5250,13 @@ File Structure 表写"`starward/README.md` / `starward/CLAUDE.md`——阶段 1 
 
 ## 七、本计划确立的证明标准
 
-跨整支建立、并适用于上面每一条：**一条测试在被观察到"没有它就会失败"之前，不算承重。** 本计划要求并执行了三次 revert-to-RED 演示——Task 11 的星空（`Ruling 37`）、Task 13 的 `_applyFuelOut` 语句顺序（`Ruling 42`）、Task 13 的 kind-aware 还原（`Ruling 47`，通过证明**朴素替代方案**让第一条测试保持绿、第二条失败）。所以"一条测试不可能失败"在本计划里是**严重**问题，而"一条测试只是偏弱"是 nit。
+跨整支建立、并适用于上面每一条：**一条测试在被观察到"没有它就会失败"之前，不算承重。** 本计划要求并执行了**六次** revert-to-RED 演示：
+
+- Task 11 的星空（`Ruling 37`）——删掉修复后测试转红，证明"星空冻结"那个 bug 现在被钉住了；
+- Task 13 的 `_applyFuelOut` 语句顺序（`Ruling 42`）——回退该块到 RED，在 `-0.1307705142964797` 处失败；
+- Task 13 的 kind-aware 还原（`Ruling 47`）——通过证明**朴素替代方案**让第一条测试保持绿、第二条失败（最终整支审阅后来**独立重跑**了这一次，得到同样结果）；
+- 修复波的迁移守卫分支——删掉 `status == inProgress` 后 `arrived` 存档被错误退款 293→300；
+- 修复波的 `_maybeShowReport` 调用——删掉后播报弹层找不到；
+- 修复波的 `途经恒星系` 读数——删掉后读数找不到。
+
+所以"一条测试不可能失败"在本计划里是**严重**问题，而"一条测试只是偏弱"是 nit。
