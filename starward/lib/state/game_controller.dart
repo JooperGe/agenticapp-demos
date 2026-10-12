@@ -221,11 +221,9 @@ class GameController extends ChangeNotifier {
       velocity: _player.driftVelocity,
       elapsedSeconds:
           _now().difference(_player.driftStartedAt).inMilliseconds / 1000,
-      // No shell yet: `universeRadius` arrives in Task 6. With velocity still
-      // pinned to zero until Task 9, the bound is unreachable either way, so
-      // this is bit-identical to today's static deep space. Task 6 swaps this
-      // line for `math.max(_universe.universeRadius, start.length)`.
-      bound: start.length,
+      // Never tighter than the ship's own radius: a player who spawned outside
+      // the shell keeps their distance instead of being snapped inward.
+      bound: math.max(_universe.universeRadius, start.length),
     );
   }
 

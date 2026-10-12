@@ -3,8 +3,11 @@ import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:starward/core/vec3.dart';
 import 'package:starward/data/game_repository.dart';
+import 'package:starward/data/hyg_catalog.dart';
 import 'package:starward/data/models/player_state.dart';
 import 'package:starward/data/storage/storage_backend.dart';
+import 'package:starward/data/synthetic_galaxy.dart';
+import 'package:starward/data/universe.dart';
 import 'package:starward/state/game_controller.dart';
 
 class FakeClock {
@@ -120,6 +123,54 @@ void main() {
       expect((secondPark - parked).length, greaterThan(0.001),
           reason: 'the second abort parks somewhere new');
       expect(c.deepSpaceOrigin3D!.x, closeTo(secondPark.x, 0.001));
+    });
+  });
+
+  group('Universe.universeRadius', () {
+    // The real catalogue is a bundled asset; loading it needs the binding.
+    setUpAll(TestWidgetsFlutterBinding.ensureInitialized);
+
+    test('pins the measured 95th-percentile radius', () async {
+      final hyg = await HygCatalog.load();
+      expect(hyg, isNotNull);
+      final u = Universe(hyg!, extraGalaxies: SyntheticGalaxy.all());
+      // Measured 2026-10-12 over 120,601 stars (HYG + SG-1 + SG-2).
+      // If this drifts, the star catalogue or the galaxy generator changed —
+      // and the shell is no longer where the density study put it.
+      expect(u.universeRadius, closeTo(3066, 30));
+    });
+
+    test('the shell is somewhere with stars to reach', () async {
+      final hyg = await HygCatalog.load();
+      final u = Universe(hyg!, extraGalaxies: SyntheticGalaxy.all());
+      final r = u.universeRadius;
+      // A point on the shell must still see a healthy neighbourhood: the
+      // nearby search reaches 960 ly, and its target is 10 planets.
+      final onShell = Vec3(r, 0, 0);
+      expect(u.planetsNear(onShell, 960).length, greaterThanOrEqualTo(10));
+    });
+
+    test('nearestPlanets finds somewhere to go from the middle of nowhere',
+        () async {
+      final hyg = await HygCatalog.load();
+      final u = Universe(hyg!, extraGalaxies: SyntheticGalaxy.all());
+      final nowhere = Vec3(50000, 0, 0);
+      final found = u.nearestPlanets(nowhere);
+      expect(found, isNotEmpty,
+          reason: 'a ship stranded outside the shell must still have a target');
+      expect(found.length, greaterThanOrEqualTo(10));
+      // Pinned against the real catalogue: the star nearest to (50000,0,0) sits
+      // at (3187.739, 119.741, -220.695), 46812.935 ly away — but it hosts no
+      // planets (`planetCountForStar(116717) == 0`), so the nearest planet
+      // orbits the nearest planet-hosting star, SW-115954 at
+      // (3000.653, -22.332, -340.268), 47000.584 ly away. A generated planet
+      // orbits within 2.6 ly of its star (`_spherePoint(rng, 0.6, 2.6)`),
+      // landing 47002.796 ly from the probe. So a nearest-first full-catalogue
+      // scan must land in this window. If the fallback only looked at the shell
+      // or the curated list, it would miss.
+      expect((found.first.pos - nowhere).length, closeTo(47002.8, 5));
+      expect(found.first.pos.length, closeTo(3017.7, 5),
+          reason: 'the nearest planet orbits a star near the outer shell');
     });
   });
 }

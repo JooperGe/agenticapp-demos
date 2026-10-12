@@ -180,6 +180,48 @@ class Universe {
     return pos + _spherePoint(_rngFor(hygId, 555), 1.2, 2.0);
   }
 
+  double? _universeRadius;
+
+  /// The radius of the bounded-but-edgeless universe: the smallest sphere that
+  /// holds 95% of every star we know about, in light-years.
+  ///
+  /// Derived from the catalogue rather than hard-coded, so dropping in another
+  /// galaxy widens the shell on its own and nobody has to remember a magic
+  /// number. The *fraction* is the interesting choice: a coasting ship is
+  /// confined to this shell, so the shell has to sit where the stars are.
+  /// Measured 2026-10-12 over 120,601 stars: 3066 ly. Every point sampled on
+  /// that shell has at least 35 stars within the 960 ly the nearby search
+  /// reaches; putting the shell at the catalogue's true edge (3948 ly) instead
+  /// leaves it in vacuum — the exact dead end the shell exists to prevent.
+  /// See docs/superpowers/specs/2026-10-12-starward-voyage-energy-and-drift-design.md §5.
+  ///
+  /// Computed once on first use and cached; the scan is ~120k square roots.
+  double get universeRadius {
+    final cached = _universeRadius;
+    if (cached != null) return cached;
+
+    final distances = <double>[];
+    void collect(HygStars set) {
+      for (var i = 0; i < set.count; i++) {
+        final x = set.xyz[i * 3];
+        final y = set.xyz[i * 3 + 1];
+        final z = set.xyz[i * 3 + 2];
+        distances.add(math.sqrt(x * x + y * y + z * z));
+      }
+    }
+
+    collect(stars);
+    for (final g in extraGalaxies) {
+      collect(g);
+    }
+    if (distances.isEmpty) return 0;
+
+    distances.sort();
+    final r = distances[((distances.length - 1) * 0.95).round()];
+    _universeRadius = r;
+    return r;
+  }
+
   /// The planets within [radiusLy] of [posLy], nearest first, capped at [cap].
   /// Used to populate the map / selection around the player without ever
   /// materialising the whole universe.
@@ -205,6 +247,53 @@ class Universe {
         (a.pos - posLy).length.compareTo((b.pos - posLy).length));
     if (found.length > cap) return found.sublist(0, cap);
     return found;
+  }
+
+  /// The planets around the [starCount] nearest stars to [posLy], nearest
+  /// first, capped at [cap].
+  ///
+  /// Unlike [planetsNear] this ignores radius entirely, so it is the last-resort
+  /// answer to "the ship is somewhere with nothing within reach". Never empty
+  /// while the catalogue is: a stranded ship always has somewhere to fly, even
+  /// if the trip is expensive. Keeps the best [starCount] stars in a small
+  /// insertion-sorted array rather than sorting all ~120k distances.
+  List<Planet> nearestPlanets(Vec3 posLy, {int starCount = 40, int cap = 90}) {
+    final sets = <HygStars>[stars, ...extraGalaxies];
+    final bestD2 = List<double>.filled(starCount, double.infinity);
+    final bestSet = List<int>.filled(starCount, 0);
+    final bestIdx = List<int>.filled(starCount, 0);
+    var filled = 0;
+
+    for (var si = 0; si < sets.length; si++) {
+      final set = sets[si];
+      for (var i = 0; i < set.count; i++) {
+        final dx = set.xyz[i * 3] - posLy.x;
+        final dy = set.xyz[i * 3 + 1] - posLy.y;
+        final dz = set.xyz[i * 3 + 2] - posLy.z;
+        final d2 = dx * dx + dy * dy + dz * dz;
+        // Most candidates fail here, which is what keeps this O(n).
+        if (filled == starCount && d2 >= bestD2[starCount - 1]) continue;
+        var j = filled < starCount ? filled++ : starCount - 1;
+        while (j > 0 && bestD2[j - 1] > d2) {
+          bestD2[j] = bestD2[j - 1];
+          bestSet[j] = bestSet[j - 1];
+          bestIdx[j] = bestIdx[j - 1];
+          j--;
+        }
+        bestD2[j] = d2;
+        bestSet[j] = si;
+        bestIdx[j] = i;
+      }
+    }
+
+    final out = <Planet>[];
+    for (var k = 0; k < filled; k++) {
+      final set = sets[bestSet[k]];
+      final i = bestIdx[k];
+      out.addAll(_planetsForStar(set.starId[i], set.positionOfIndex(i)));
+    }
+    out.sort((a, b) => (a.pos - posLy).length.compareTo((b.pos - posLy).length));
+    return out.length > cap ? out.sublist(0, cap) : out;
   }
 
   /// A random drift coordinate near a random real star (in the Milky Way) that
