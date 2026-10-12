@@ -460,7 +460,11 @@ Expected: FAIL — `launch burns nothing` 在 `expect(c.energy, before)` 处失�
 
 并把该方法末尾的 `_spendEnergy(cost, EnergyTxType.travelCost, ret.id);` 删掉——返程段是一条普通 `Journey`，抵达时由 `_applyArrival` 结账。
 
-**3g.** 改写 `starward/test/energy_test.dart` 的两条测试：
+**3g.** 删掉 `_spendEnergy` 整个方法（`// --- Energy helpers ---` 段，约 :663）。
+
+它原来只有三个调用点（`launchJourney` :398、`launchToStar` :438、`returnToOrigin` :556），全在 3d 和 3f 里删掉了。`_settleBurn` 自己写余额和账目，不复用它。留着会触发 `unused_element`，`flutter analyze` 就不再是 `No issues found`。
+
+**3h.** 改写 `starward/test/energy_test.dart` 的两条测试：
 
 第 33 行那条整体替换为：
 
@@ -506,7 +510,7 @@ Expected: FAIL — `launch burns nothing` 在 `expect(c.energy, before)` 处失�
 
 （这条需要 `import 'package:starward/data/models/energy_transaction.dart';`，加到 `energy_test.dart` 顶部。）
 
-**3h.** 改写 `starward/test/ship_test.dart` 的 `the launch actually deducts the refitted cost`：
+**3i.** 改写 `starward/test/ship_test.dart` 的 `the launch actually deducts the refitted cost`：
 
 ```dart
     test('the voyage bills the refitted cost, settled on arrival', () async {
@@ -1220,9 +1224,11 @@ Expected: FAIL — `The getter 'driftVelocity' isn't defined for the type 'Playe
       velocity: _player.driftVelocity,
       elapsedSeconds:
           _now().difference(_player.driftStartedAt).inMilliseconds / 1000,
-      // Never tighter than the ship's own radius: a player who spawned outside
-      // the shell keeps their distance instead of being snapped inward.
-      bound: math.max(_universe.universeRadius, start.length),
+      // No shell yet: `universeRadius` arrives in Task 6. With velocity still
+      // pinned to zero until Task 9, the bound is unreachable either way, so
+      // this is bit-identical to today's static deep space. Task 6 swaps this
+      // line for `math.max(_universe.universeRadius, start.length)`.
+      bound: start.length,
     );
   }
 ```
@@ -1457,15 +1463,27 @@ Expected: FAIL — `The getter 'universeRadius' isn't defined for the type 'Univ
   }
 ```
 
-- [ ] **Step 4: 跑测试确认通过**
+- [ ] **Step 4: 把边界接进 `playerPosition3D`**
 
-Run: `cd starward && flutter test test/coast_test.dart`
-Expected: PASS。若 `universeRadius` 断言失败，把实测值记下来并**先确认星表与 `SyntheticGalaxy.all()` 没变**；只有确认它们是新的基线之后才更新那个数字，并在注释里写清新日期。
+Task 5 留下的那一行现在是 `bound: start.length`。换成：
 
-- [ ] **Step 5: 提交**
+```dart
+      // Never tighter than the ship's own radius: a player who spawned outside
+      // the shell keeps their distance instead of being snapped inward.
+      bound: math.max(_universe.universeRadius, start.length),
+```
+
+`game_controller.dart` 里 `math` 已经导入。这一步没有任何新测试——Task 5 的 `coast_test.dart` 里"停着的船不动"那组断言在换行前后都必须通过，它们就是这次改动的回归网。
+
+- [ ] **Step 5: 跑测试确认通过**
+
+Run: `cd starward && flutter analyze && flutter test test/coast_test.dart test/universe_test.dart`
+Expected: `No issues found`；PASS。若 `universeRadius` 断言失败，把实测值记下来并**先确认星表与 `SyntheticGalaxy.all()` 没变**；只有确认它们是新的基线之后才更新那个数字，并在注释里写清新日期。
+
+- [ ] **Step 6: 提交**
 
 ```bash
-cd starward && git add lib/data/universe.dart test/coast_test.dart
+cd starward && git add lib/data/universe.dart lib/state/game_controller.dart test/coast_test.dart
 git commit -m "$(cat <<'EOF'
 feat(starward): derive the universe shell from star density
 
@@ -1475,7 +1493,8 @@ widens the shell by itself, and 95% rather than the true edge because
 the outermost stars are exactly where a coasting ship would starve.
 
 nearestPlanets is the no-radius fallback that guarantees a stranded
-ship still has somewhere to fly.
+ship still has somewhere to fly, and playerPosition3D now clamps drift
+to the shell.
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>
 EOF
@@ -3835,7 +3854,7 @@ EOF
 - Test: `starward/test/drift_report_test.dart`（新建）
 
 **Interfaces:**
-- Consumes: `DriftPath` / `PassedSystem` / `PassedSystems` / `Universe.passedSystemsAlong`（Task 12）、`GameController.isCoasting` / `driftElapsed` / `playerPosition3D` / `_universe`（Task 5/6）、`_applyFuelOut`（Task 9）、`_originPosOf` / `_destPosOf`（既有）。
+- Consumes: `DriftPath` / `PassedSystem` / `PassedSystems` / `Universe.passedSystemsAlong`（Task 12）、`GameController.isCoasting` / `driftElapsed` / `playerPosition3D` / `_universe`（Task 5/6）、`_applyFuelOut` / `_cruiseVelocityOf`（Task 9）、`_originPosOf` / `_destPosOf`（既有）。
 - Produces:
   - `enum DriftReportKind { fuelOut, drift }`
   - `class DriftReport { const DriftReport({required DriftReportKind kind, required DateTime from, required DateTime to, required Duration elapsed, required double distanceLy, required Vec3 fromPos, required Vec3 toPos, required int passedCount, required List<PassedSystem> nearest, required bool hitBoundary}); }` + `toJson` / `fromJson`
@@ -4344,14 +4363,13 @@ class DriftReport {
 ```dart
     // Report the powered leg: that is the part that just happened, and the part
     // the player wants named. A powered leg is a straight line at constant
-    // speed, which is exactly a DriftPath with the shell far out of reach.
+    // speed — the same velocity `_cruiseVelocityOf` already derives — with the
+    // shell far enough out that it can never be reached.
     final legSeconds =
         exhaustAt.difference(journey.departure).inMilliseconds / 1000;
     final leg = DriftPath(
       start: _originPosOf(journey),
-      velocity: legSeconds > 0
-          ? (pos - _originPosOf(journey)) * (1 / legSeconds)
-          : const Vec3(0, 0, 0),
+      velocity: _cruiseVelocityOf(journey),
       bound: 1e12,
     );
     final passed = _universe.passedSystemsAlong(
