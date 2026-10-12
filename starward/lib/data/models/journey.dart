@@ -49,6 +49,15 @@ class Journey {
     return remaining.isNegative ? Duration.zero : remaining;
   }
 
+  /// Energy burned by [now], in EN — proportional to the distance covered.
+  ///
+  /// This is the whole of "real-time consumption": nothing is deducted at
+  /// launch, the burn is re-derived from the timestamps every time it is asked
+  /// for, so it survives the app being backgrounded or killed exactly like
+  /// [progressAt] does. `progressAt` is clamped to [0, 1], so the result is
+  /// always within `[0, energyCost]`.
+  int burnedAt(DateTime now) => (energyCost * progressAt(now)).round();
+
   /// Whether the ship has physically reached the destination by [now],
   /// regardless of whether [status] has been reconciled yet.
   bool hasArrivedBy(DateTime now) => !now.isBefore(arrival);
