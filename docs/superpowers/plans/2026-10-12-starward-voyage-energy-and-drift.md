@@ -179,11 +179,12 @@ EOF
   - `_settleBurn`：在 `// --- Energy helpers ---` 段（约 :661）新增
   - `_applyArrival`（:297）：顶部加一行结账
   - `abortJourney`（:492）：加一行结账
-  - `returnToOrigin`（:519）：结账后再为返程段报价
+  - `returnToOrigin`（:519）：报价的付款判定改用结账后的余额，付得起才结账
   - `launchJourney`（:379）：删掉 `_spendEnergy(cost, ...)`
   - `launchToStar`（:416）：删掉 `_spendEnergy(cost, ...)`
 - Modify: `starward/test/energy_test.dart`（改写 :33 与 :96 两条）
 - Modify: `starward/test/ship_test.dart`（改写 :150 `the launch actually deducts the refitted cost`）
+- Modify: `starward/test/return_to_origin_test.dart`（追加 3f-ii 的回归测试）
 - Test: `starward/test/real_time_energy_test.dart`（追加）
 
 **Interfaces:**
@@ -450,15 +451,71 @@ Expected: FAIL — `launch burns nothing` 在 `expect(c.energy, before)` 处失�
     final now = _now();
     final currentPos = _positionAlong(journey, now);
     final originPos = _originPosOf(journey);
-    // Settle the outbound leg first: the return quote has to be checked against
-    // the balance the player actually has left.
-    _settleBurn(journey, now);
     final dist = (originPos - currentPos).length;
     final cost = _ship.engine.energyCostFor(dist);
-    if (_player.energyBalance < cost) return LaunchResult.insufficientEnergy;
+    // The return quote is checked against the balance the player actually has
+    // left, i.e. after the outbound burn — but check it *before* settling.
+    // Settling and then bailing out would leave this voyage still in flight,
+    // and its arrival would book the same fuel a second time.
+    if (_player.energyBalance - journey.burnedAt(now) < cost) {
+      return LaunchResult.insufficientEnergy;
+    }
+    _settleBurn(journey, now);
 ```
 
+（`_settleBurn` 把余额夹在 `>= 0`，而 `cost >= minEnergyCost >= 1`，所以余额被烧穿时 `balance - burned < cost` 与 `max(0, balance - burned) < cost` 同真——这条守卫的行为与"先结账再判断"逐位相同，只是付不起时不再留下那笔孤儿账目。）
+
 并把该方法末尾的 `_spendEnergy(cost, EnergyTxType.travelCost, ret.id);` 删掉——返程段是一条普通 `Journey`，抵达时由 `_applyArrival` 结账。
+
+**3f-ii.** 给这条守卫钉一条回归测试。这个 bug 之所以能溜过去，正是因为既有测试里余额总是远大于报价；追加到 `starward/test/return_to_origin_test.dart` 末尾（并在文件顶部补 `import 'package:starward/data/models/engine.dart';`——测试体里的 `Engine(...)` 需要它；**不要**加 `energy_transaction.dart`，测试体只读 `EnergyTransaction` 的字段、从不写出类型名，加了就是 `unused_import`）：
+
+```dart
+  group('返航付不起时', () {
+    test('does not book the outbound burn, and never books it twice', () async {
+      final clock = FakeClock(DateTime(2026, 1, 1, 12));
+      final c = await _boot(clock);
+      final origin = await _dockAtPlanet(c, clock);
+
+      final target = _farthestPlanet(c, origin.id);
+      expect(await c.launchJourney(target), LaunchResult.success);
+      final voyage = c.activeJourney!;
+      final outbound = voyage.energyCost;
+
+      clock.advance(voyage.totalDuration ~/ 2);
+
+      // A greedy refit prices the way home far beyond the remaining balance.
+      await c.installEngine(const Engine(
+        id: 'test.greedy',
+        name: '测试引擎',
+        energyPerLy: 1000,
+        travelSecondsPerLy: 37.5,
+        minEnergyCost: 1,
+        minTravelSeconds: 15,
+      ));
+
+      expect(await c.returnToOrigin(), LaunchResult.insufficientEnergy);
+
+      // The refusal must leave the voyage exactly as it was.
+      expect(c.activeJourney!.id, voyage.id, reason: 'still the outbound voyage');
+      expect(c.activeJourney!.status, JourneyStatus.inProgress);
+      expect(
+        c.energyLedger.where((t) => t.relatedObjectId == voyage.id),
+        isEmpty,
+        reason: 'a refused return must not settle the outbound leg',
+      );
+
+      // …and flying it out books that leg once, not twice.
+      clock.advance(voyage.totalDuration);
+      c.tick();
+      expect(c.currentPlanetId, target.id);
+      final booked = c.energyLedger
+          .where((t) => t.relatedObjectId == voyage.id)
+          .toList();
+      expect(booked.length, 1, reason: 'booked exactly once');
+      expect(booked.single.amount, -outbound);
+    });
+  });
+```
 
 **3g.** 删掉 `_spendEnergy` 整个方法（`// --- Energy helpers ---` 段，约 :663）。
 
@@ -553,7 +610,7 @@ Expected: `No issues found`；全部测试通过。特别确认 `test/flight_pan
 - [ ] **Step 6: 提交**
 
 ```bash
-cd starward && git add lib/state/game_controller.dart test/energy_test.dart test/ship_test.dart test/real_time_energy_test.dart README.md
+cd starward && git add lib/state/game_controller.dart test/energy_test.dart test/ship_test.dart test/return_to_origin_test.dart test/real_time_energy_test.dart README.md
 git commit -m "$(cat <<'EOF'
 feat(starward): burn voyage fuel in real time, settle on termination
 
@@ -602,6 +659,7 @@ v2 存档里正在进行的航程在出发时已经扣过 `energyCost`。新模�
       await c.launchJourney(target);
       clock.advance(Duration(milliseconds: total.inMilliseconds ~/ 2));
       final live = c.energy;
+      final balanceBefore = c.player.energyBalance;
 
       // Rewrite the save the way v2 wrote it: the whole quote already
       // deducted, and no energyModel marker.
@@ -616,7 +674,8 @@ v2 存档里正在进行的航程在出发时已经扣过 `energyCost`。新模�
       // exactly what it was before the round trip.
       final c2 = await _boot(clock, storage: storage);
       expect(c2.energy, live);
-      expect(c2.energy, c2.energyCostTo(target) - (cost * 0.5).round());
+      expect(c2.player.energyBalance, balanceBefore,
+          reason: 'the migration hands back exactly the quote v2 had taken');
     });
 
     test('a save with no voyage in flight is left alone', () async {
@@ -3259,10 +3318,33 @@ class _CoastStat extends StatelessWidget {
 Run: `cd starward && flutter analyze && flutter test`
 Expected: `No issues found`；全部通过。手动 `flutter run` 检查两件事：一次 `coast` 航程烧干后，航行页应当自动切到「滑行中」，星场开始流动，坐标与距离每秒递增；一次用 `installEngine` 之外的普通引擎飞一段"付不起"的航程（选「耗尽后滑行」），航行中面板应当出现橙红色「燃料将于 … 后耗尽」，进度条在 `p_exhaust` 处有一道竖线标记。
 
+- [ ] **Step 4b: 给 README 补一段漂流模型说明**
+
+阶段 3 结束时玩家已经能看见滑行了，模型值得写进 README。在 `starward/README.md` 的「航行状态逻辑」一节末尾追加：
+
+```markdown
+## 漂流（drift）
+
+燃料烧完的飞船不再消失，也不再静止：`PlayerState` 存 `driftVelocity` 与
+`driftStartedAt`，当前位置由 `lib/core/drift.dart` 的 `driftPositionAt` 从时间戳
+闭式算出——先沿直线飞，撞上宇宙边界后贴着球面沿大圆滑行。所以离线一周回来，
+位置依然只是 `(start, velocity, driftStartedAt, now)` 的函数，不需要常驻计时器，
+也不需要任何"上次锚点"之类的额外存档状态。
+
+`Universe.universeRadius` 取恒星距离的 p95（实测 3066 ly），而不是最外层恒星——
+边界要落在恒星密度还够用的地方，否则漂到壳上的船会掉进空无一物的虚空。
+边界只约束**漂流**，不约束动力航行：壳外那 5% 的恒星照样是合法目的地。
+
+零速度时 `driftPositionAt` 原样返回 `start`，所以出生、停止航行、抵达恒星、
+抵达坐标这四条既有的深空路径行为逐位不变。
+```
+
+（这一段是文档，不产生测试。写完直接进 Step 5 提交。）
+
 - [ ] **Step 5: 提交**
 
 ```bash
-cd starward && git add lib/state/game_controller.dart lib/ui/journey/journey_page.dart test/coast_test.dart test/flight_panel_test.dart
+cd starward && git add lib/state/game_controller.dart lib/ui/journey/journey_page.dart test/coast_test.dart test/flight_panel_test.dart README.md
 git commit -m "$(cat <<'EOF'
 feat(starward): give coasting its own standby screen
 
