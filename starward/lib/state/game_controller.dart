@@ -389,16 +389,72 @@ class GameController extends ChangeNotifier {
 
   // --- Journey rules -------------------------------------------------------
 
-  /// Flips an in-progress journey to [JourneyStatus.arrived] once its arrival
-  /// timestamp has passed, applying arrival effects exactly once. Safe to call
-  /// repeatedly (on launch, on resume, on tick).
+  /// Whether voyage [j] resolves by [now] — it either arrives, or its tank runs
+  /// dry first, whichever comes sooner.
+  bool _voyageResolvesBy(Journey j, DateTime now) =>
+      _exhaustedBy(j, now) || j.hasArrivedBy(now);
+
+  /// Whether voyage [j] has burned its last drop by [now].
+  ///
+  /// A voyage that can afford the whole trip never exhausts, so a mid-flight
+  /// top-up genuinely pulls a doomed trip back onto the board rather than
+  /// merely postponing the reckoning.
+  bool _exhaustedBy(Journey j, DateTime now) {
+    if (j.fuelPolicy == FuelPolicy.refuse) return false;
+    if (fuelExhaustProgressFor(j) >= 1) return false;
+    return !now.isBefore(fuelExhaustTime(j));
+  }
+
   void _reconcileJourney() {
     final journey = _activeJourney;
     if (journey == null) return;
-    if (journey.status == JourneyStatus.inProgress &&
-        journey.hasArrivedBy(_now())) {
+    if (journey.status != JourneyStatus.inProgress) return;
+    final now = _now();
+    // Fuel can run out before the destination on an under-funded voyage.
+    // Resolve that first: `hasArrivedBy` is still false at the exhaust point,
+    // so a halting ship would otherwise keep "flying" on an empty tank.
+    if (_exhaustedBy(journey, now)) {
+      _applyFuelOut(journey, now);
+      return;
+    }
+    if (journey.hasArrivedBy(now)) {
       _applyArrival(journey);
     }
+  }
+
+  /// Resolves a voyage whose tank ran dry: bills the whole tank, then either
+  /// parks the ship where it stopped ([FuelPolicy.halt]) or sets it coasting
+  /// ([FuelPolicy.coast]). The voyage ends either way — what differs is the
+  /// velocity the ship is left with.
+  void _applyFuelOut(Journey journey, DateTime now) {
+    final exhaustAt = fuelExhaustTime(journey);
+    final pos = _positionAlong(journey, exhaustAt);
+    _settleTank(journey, now);
+    _activeJourney = null;
+    _player = _player.copyWith(
+      toDeepSpace: true,
+      startX: pos.x,
+      startY: pos.y,
+      startZ: pos.z,
+      clearActiveJourney: true,
+      driftVelocity: journey.fuelPolicy == FuelPolicy.coast
+          ? _cruiseVelocityOf(journey)
+          : const Vec3(0, 0, 0),
+      // The drift began when the tank emptied, not when the game noticed. A
+      // player who was away for the whole coast gets the distance they missed.
+      driftStartedAt: exhaustAt,
+    );
+    _rebuildNearby();
+  }
+
+  /// Cruise speed along a voyage's route, in ly/s. Constant — a coasting ship
+  /// neither accelerates nor slows down.
+  Vec3 _cruiseVelocityOf(Journey j) {
+    final from = _originPosOf(j);
+    final to = _destPosOf(j) ?? from;
+    final seconds = j.totalDuration.inMilliseconds / 1000;
+    if (seconds <= 0) return const Vec3(0, 0, 0);
+    return (to - from) * (1 / seconds);
   }
 
   void _applyArrival(Journey journey) {
@@ -472,8 +528,10 @@ class GameController extends ChangeNotifier {
   /// Call periodically (e.g. once per second from a visible journey view) to
   /// surface the arrival transition without any always-on timer.
   void tick() {
-    if (_activeJourney?.status == JourneyStatus.inProgress &&
-        _activeJourney!.hasArrivedBy(_now())) {
+    final journey = _activeJourney;
+    if (journey != null &&
+        journey.status == JourneyStatus.inProgress &&
+        _voyageResolvesBy(journey, _now())) {
       _reconcileJourney();
       _persist();
       notifyListeners();
@@ -831,6 +889,24 @@ class GameController extends ChangeNotifier {
       relatedObjectId: j.id,
     ));
     return burned;
+  }
+
+  /// Bills the entire tank.
+  ///
+  /// Used when fuel runs out, where "what is left" and "what burned" are the
+  /// same number by definition — so this is exact, unlike re-deriving the burn
+  /// from a rounded progress fraction.
+  void _settleTank(Journey journey, DateTime now) {
+    final drained = _player.energyBalance;
+    if (drained <= 0) return;
+    _player = _player.copyWith(energyBalance: 0);
+    _energyLedger.add(EnergyTransaction(
+      id: _newId('en'),
+      type: EnergyTxType.travelCost,
+      amount: -drained,
+      createdAt: now,
+      relatedObjectId: journey.id,
+    ));
   }
 
   void _addEnergy(int amount, EnergyTxType type, String relatedId) {

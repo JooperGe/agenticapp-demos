@@ -50,6 +50,45 @@ Planet _farthest(GameController c) => c.planets
     .where((p) => p.id != c.currentPlanetId)
     .reduce((a, b) => c.distanceTo(a) > c.distanceTo(b) ? a : b);
 
+/// The nearest reachable target — cheap enough to fly on a full tank.
+Planet _nearest(GameController c) => c.planets
+    .where((p) => p.id != c.currentPlanetId)
+    .reduce((a, b) => c.distanceTo(a) <= c.distanceTo(b) ? a : b);
+
+/// Docks at the nearest planet, leaves a single drop in the tank, and launches
+/// a voyage it cannot afford under [policy]. Returns the controller and target.
+///
+/// Docking is not decoration: the coast test reads the origin planet's
+/// position, and a voyage launched from open space carries `kDeepSpaceId` as
+/// its origin, for which `planetById` returns `null`.
+Future<(GameController, Planet)> _doomed(
+  FakeClock clock,
+  FuelPolicy policy,
+) async {
+  final storage = MemoryStorage();
+  final c = await _boot(clock, storage: storage);
+  final near = _nearest(c);
+  expect(await c.launchJourney(near), LaunchResult.success,
+      reason: 'precondition: the nearest planet is affordable from a full tank');
+  clock.advance(const Duration(hours: 12));
+  c.tick();
+  await c.acknowledgeArrival();
+  expect(c.currentPlanetId, near.id, reason: 'precondition: docked');
+
+  // One drop of fuel: `cost >= minEnergyCost == 1`, so this is the one balance
+  // guaranteed to be strictly below the quote for any destination.
+  await _setEnergy(storage, 1);
+  final docked = await _boot(clock, storage: storage);
+  expect(docked.currentPlanetId, near.id, reason: 'precondition: still docked');
+
+  final far = _farthest(docked);
+  expect(docked.energyCostTo(far), greaterThan(docked.energy),
+      reason: 'precondition: this hop is out of reach');
+  expect(await docked.launchJourney(far, onEmpty: policy),
+      LaunchResult.success);
+  return (docked, far);
+}
+
 void main() {
   group('FuelPolicy on a voyage', () {
     test('round-trips through JSON and defaults to halt', () {
@@ -189,6 +228,126 @@ void main() {
       expect(c.fuelExhaustTime(c.activeJourney!),
           c.activeJourney!.arrival,
           reason: 'nothing to run out of before the destination');
+    });
+  });
+
+  group('halt', () {
+    test('stops at the exhaust point with an empty tank', () async {
+      final clock = FakeClock(DateTime(2026));
+      final (c, far) = await _doomed(clock, FuelPolicy.halt);
+      final journey = c.activeJourney!;
+      final origin = c.planetById(journey.originPlanetId)!.pos;
+      final p = c.fuelExhaustProgress!;
+      final balance = c.energy;
+      final entriesBefore = c.energyLedger.length;
+
+      // One second past the moment the tank runs dry.
+      clock.advance(c.fuelExhaustTime(journey).difference(clock()) +
+          const Duration(seconds: 1));
+      c.tick();
+
+      expect(c.activeJourney, isNull, reason: 'the voyage is over');
+      expect(c.inDeepSpace, isTrue);
+      expect(c.energy, 0, reason: 'the whole tank is gone');
+      expect(c.driftVelocity.length, 0, reason: 'halt parks the ship');
+      expect(c.energyLedger.length, entriesBefore + 1);
+      expect(c.energyLedger.first.amount, -balance);
+
+      // The exhaust point is `origin + (dest - origin) * p`; `fuelExhaustTime`
+      // rounds to whole milliseconds, so the real point can sit up to half a
+      // millisecond of travel away — 0.5 / (37.5 * 1000) ly for the standard
+      // engine, since the leg length cancels out of `dist * 0.5 / totalMs`.
+      final expected = origin + (far.pos - origin) * p;
+      expect((c.playerPosition3D - expected).length, lessThan(0.001));
+    });
+
+    test('the ship does not creep forward afterwards', () async {
+      final clock = FakeClock(DateTime(2026));
+      final (c, _) = await _doomed(clock, FuelPolicy.halt);
+      clock.advance(c.fuelExhaustTime(c.activeJourney!).difference(clock()) +
+          const Duration(seconds: 1));
+      c.tick();
+      final parked = c.playerPosition3D;
+      clock.advance(const Duration(days: 30));
+      expect(c.playerPosition3D.x, parked.x);
+      expect(c.playerPosition3D.y, parked.y);
+      expect(c.playerPosition3D.z, parked.z);
+    });
+  });
+
+  group('coast', () {
+    test('keeps moving at cruise speed and burns nothing more', () async {
+      final clock = FakeClock(DateTime(2026));
+      final (c, far) = await _doomed(clock, FuelPolicy.coast);
+      final journey = c.activeJourney!;
+      final origin = c.planetById(journey.originPlanetId)!.pos;
+      final distance = (far.pos - origin).length;
+      final seconds = journey.totalDuration.inMilliseconds / 1000;
+
+      clock.advance(c.fuelExhaustTime(journey).difference(clock()) +
+          const Duration(seconds: 1));
+      c.tick();
+
+      expect(c.activeJourney, isNull);
+      expect(c.inDeepSpace, isTrue);
+      expect(c.energy, 0);
+      final v = c.driftVelocity;
+      expect(v.length, greaterThan(0));
+      // Cruise speed is distance over duration — the same number the engine
+      // would have flown at, so a coasting ship does not slow down.
+      expect(v.length, closeTo(distance / seconds, 1e-6));
+
+      final entries = c.energyLedger.length;
+      final atStart = c.playerPosition3D;
+      clock.advance(const Duration(seconds: 100));
+      final later = c.playerPosition3D;
+      expect((later - atStart).length, closeTo(v.length * 100, 0.01),
+          reason: 'constant speed, no acceleration');
+
+      clock.advance(const Duration(days: 3));
+      c.tick();
+      expect(c.energyLedger.length, entries,
+          reason: 'coasting costs nothing to run');
+    });
+
+    test('a coasting ship ends up on the shell, never in a void', () async {
+      final clock = FakeClock(DateTime(2026));
+      final (c, _) = await _doomed(clock, FuelPolicy.coast);
+      clock.advance(c.fuelExhaustTime(c.activeJourney!).difference(clock()) +
+          const Duration(seconds: 1));
+      c.tick();
+
+      // Fly the drift out to (and well past) the boundary. The ship exhausts
+      // near the origin planet, well inside the shell, and cruise speed is
+      // 1/37.5 ly/s — 60 days covers 138,240 ly, so it is pinned to the shell
+      // long before this.
+      clock.advance(const Duration(days: 60));
+      final r = c.playerPosition3D.length;
+      // Mirrors `playerPosition3D`'s own bound: never tighter than the ship's
+      // own radius, so a ship that started outside the shell keeps its distance.
+      final bound = math.max(c.universe.universeRadius, r);
+      expect(r, closeTo(bound, 1.0));
+      expect(c.planets, isNotEmpty,
+          reason: 'wherever it ends up, there is somewhere to go');
+    });
+  });
+
+  group('refuse', () {
+    test('an affordable voyage is untouched by any of this', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      // `planetsNear` sorts nearest-first, so this is the nearest planet and
+      // its quote is well inside `Balance.initialEnergy`.
+      final target = c.planets.firstWhere((p) => p.id != c.currentPlanetId);
+      await c.launchJourney(target);
+      final journey = c.activeJourney!;
+      expect(journey.fuelPolicy, FuelPolicy.refuse);
+      expect(c.fuelExhaustProgress, 1.0);
+
+      clock.advance(journey.totalDuration + const Duration(seconds: 1));
+      c.tick();
+      expect(c.currentPlanetId, target.id, reason: 'it simply arrives');
+      expect(c.driftVelocity.length, 0);
     });
   });
 }
