@@ -1406,13 +1406,17 @@ EOF
           reason: 'a ship stranded outside the shell must still have a target');
       expect(found.length, greaterThanOrEqualTo(10));
       // Pinned against the real catalogue: the star nearest to (50000,0,0) sits
-      // at (3187.739, 119.741, -220.695), 46812.9348 ly away, and a generated
-      // planet orbits within 2.6 ly of its star (`_spherePoint(rng, 0.6, 2.6)`).
+      // at (3187.739, 119.741, -220.695), 46812.9348 ly away — but it hosts no
+      // planets (`planetCountForStar(116717) == 0`), so the nearest planet
+      // orbits the nearest planet-hosting star instead: rank 4 by distance,
+      // id 115954 at (3000.653, -22.332, -340.268), 47000.584 ly away. A
+      // generated planet orbits within 2.6 ly of its star
+      // (`_spherePoint(rng, 0.6, 2.6)`), landing 47002.796 ly from the probe.
       // So a nearest-first full-catalogue scan must land in this window. If the
       // fallback only looked at the shell or the curated list, it would miss.
-      expect((found.first.pos - nowhere).length, closeTo(46812.9, 5));
-      expect(found.first.pos.length, closeTo(3197.6, 5),
-          reason: 'the nearest planet is an outermost real star');
+      expect((found.first.pos - nowhere).length, closeTo(47002.8, 5));
+      expect(found.first.pos.length, closeTo(3017.7, 5),
+          reason: 'the nearest planet orbits a star near the outer shell');
     });
   });
 ```
