@@ -10,6 +10,9 @@ import '../widgets/planet_disc.dart';
 import 'camera3d.dart';
 import 'galaxy3d_scene.dart';
 
+/// 1 / ln(10) — converts natural logs to base-10 for the magnitude rescale.
+const double _invLn10 = 0.4342944819032518;
+
 /// Renders the 3D galaxy to a 2D canvas via perspective projection + painter's
 /// algorithm. This is the core of the "2D-faked 3D": depth-sorted draw order,
 /// perspective sizing and brightness falloff are what read as real volume.
@@ -176,7 +179,13 @@ class Galaxy3DPainter extends CustomPainter {
       if (sx < -8 || sx > size.width + 8 || sy < -8 || sy > size.height + 8) {
         continue;
       }
-      final m = mag[i];
+      // Apparent magnitude is distance-dependent (brightness ∝ 1/d²). The
+      // catalogue value is as seen from Sol; rescale it to the viewer's actual
+      // distance so moving through space changes which stars dominate the sky.
+      final distEye2 = relx * relx + rely * rely + relz * relz;
+      final distSol2 = wx * wx + wy * wy + wz * wz;
+      final m = mag[i] +
+          2.5 * _invLn10 * math.log((distEye2 + 1e-12) / (distSol2 + 1e-12));
       // Every star — including the system's sun — is a point at these
       // distances; the host just gets an extra glow pass (see _drawHostStar).
       final alpha = ((6.6 - m) / 8 + 0.12).clamp(0.05, 1.0);
@@ -234,9 +243,18 @@ class Galaxy3DPainter extends CustomPainter {
   void _drawFieldLabels(Canvas canvas, Size size, HygStars field) {
     final vp = Size2(size.width, size.height);
     final ws = scene.worldScale;
+    final eye = camera.eye;
     for (final n in field.named.values) {
-      if (n.magnitude > 1.6) continue;
-      final pr = camera.project(n.position * ws, vp);
+      // Gate labels on the magnitude as seen from here, not from Sol — so the
+      // bright landmarks change with the ship's position (see _drawStarField).
+      final posW = n.position * ws;
+      final rel = posW - eye;
+      final distEye2 = rel.dot(rel);
+      final distSol2 = posW.dot(posW);
+      final m = n.magnitude +
+          2.5 * _invLn10 * math.log((distEye2 + 1e-12) / (distSol2 + 1e-12));
+      if (m > 1.6) continue;
+      final pr = camera.project(posW, vp);
       if (!pr.visible) continue;
       _label(canvas, pr.screen + const Offset(6, -6), n.name,
           StarColors.muted.withValues(alpha: 0.8), 10);
