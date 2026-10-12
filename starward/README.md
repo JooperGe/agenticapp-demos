@@ -87,6 +87,21 @@ remaining = max(arrival - now, 0)
 
 测试用航行时长（见 `balance.dart`，非最终平衡数值）：短途 ~1.5 分、中途 7 分、长途 25 分。
 
+## 漂流（drift）
+
+燃料烧完的飞船不再消失，也不再静止：`PlayerState` 存 `driftVelocity` 与
+`driftStartedAt`，当前位置由 `lib/core/drift.dart` 的 `driftPositionAt` 从时间戳
+闭式算出——先沿直线飞，撞上宇宙边界后贴着球面沿大圆滑行。所以离线一周回来，
+位置依然只是 `(start, velocity, driftStartedAt, now)` 的函数，不需要常驻计时器，
+也不需要任何"上次锚点"之类的额外存档状态。
+
+`Universe.universeRadius` 取恒星距离的 p95（实测 3066 ly），而不是最外层恒星——
+边界要落在恒星密度还够用的地方，否则漂到壳上的船会掉进空无一物的虚空。
+边界只约束**漂流**，不约束动力航行：壳外那 5% 的恒星照样是合法目的地。
+
+零速度时 `driftPositionAt` 原样返回 `start`，所以出生、停止航行、抵达恒星、
+抵达坐标这四条既有的深空路径行为逐位不变。
+
 ## 3D 星图与真实星表（HYG）
 
 「星图」页为伪 3D 实现：天体带真实三维坐标，经透视相机投影到 2D 画布（`lib/ui/galaxy3d/`），支持拖动旋转、双指缩放、总览/座舱双视角、以及按飞行器"传感器范围"解析星球（千人千面的接口）。

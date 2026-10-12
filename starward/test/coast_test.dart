@@ -234,4 +234,25 @@ void main() {
       expect(c.planets.first.pos.length, lessThan(50000));
     });
   });
+
+  group('the coasting readout', () {
+    test('measures from the moment the tank emptied', () async {
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      final c = await _boot(clock, storage: storage);
+      expect(c.isCoasting, isFalse);
+      expect(c.driftElapsed, Duration.zero);
+      expect(c.driftDistanceLy, 0);
+
+      await _setDrift(storage, const Vec3(1, 0, 0), clock());
+      final c2 = await _boot(clock, storage: storage);
+      expect(c2.isCoasting, isTrue);
+      expect(c2.driftElapsed, Duration.zero);
+
+      clock.advance(const Duration(hours: 1));
+      expect(c2.driftElapsed, const Duration(hours: 1));
+      expect(c2.driftDistanceLy, closeTo(3600, 1e-9),
+          reason: '1 ly/s for an hour');
+    });
+  });
 }

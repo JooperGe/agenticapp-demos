@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:starward/data/game_repository.dart';
+import 'package:starward/data/models/engine.dart';
+import 'package:starward/data/models/journey.dart'; // FuelPolicy 在这里
 import 'package:starward/data/storage/storage_backend.dart';
 import 'package:starward/state/game_controller.dart';
 import 'package:starward/ui/game_scope.dart';
@@ -69,6 +71,67 @@ void main() {
         reason: 'the return voyage shows its real sub-light-year distance');
     expect(find.textContaining('航程 0 ly'), findsNothing);
   });
+
+  testWidgets('a doomed voyage warns on the flight panel', (tester) async {
+    final clock = _FakeClock(DateTime(2026));
+    final c = await _bootAt(clock);
+    await c.installEngine(_greedy);
+
+    // The greedy engine prices the nearest planet beyond a full tank, so the
+    // voyage is doomed the moment it departs — p_exhaust < 1. The precondition
+    // is asserted relationally rather than against a distance pin because a
+    // widget test loads the real HYG catalogue (nearest planet 1.608 ly out,
+    // quote 1608), not the curated fallback a plain test sees (2.5983 ly, 2598).
+    final target = c.planets
+        .where((p) => p.id != c.currentPlanetId)
+        .reduce((a, b) => c.distanceTo(a) < c.distanceTo(b) ? a : b);
+    final cost = c.energyCostTo(target);
+    expect(cost, greaterThan(c.energy));
+    expect(c.energy, 300);
+
+    await c.launchJourney(target, onEmpty: FuelPolicy.coast);
+    final journey = c.activeJourney!;
+
+    await tester.pumpWidget(
+      MaterialApp(home: GameScope(controller: c, child: const HomeShell())),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.text('航行').last);
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // The warning counts down to the moment the tank runs dry, not the ETA.
+    expect(find.textContaining('燃料将于'), findsOneWidget);
+    expect(
+      find.textContaining(
+          StarLabels.duration(c.fuelExhaustTime(journey).difference(clock()))),
+      findsOneWidget,
+    );
+
+    // And the bar carries a marker at p_exhaust.
+    expect(find.byKey(const ValueKey('fuel-marker')), findsOneWidget);
+  });
+
+  testWidgets('an affordable voyage shows no warning', (tester) async {
+    final clock = _FakeClock(DateTime(2026));
+    final c = await _bootAt(clock);
+    // Same target, standard engine: the nearest hop is a few EN out of 300, so
+    // the voyage is never doomed. Relational for the same catalogue reason.
+    final target = c.planets
+        .where((p) => p.id != c.currentPlanetId)
+        .reduce((a, b) => c.distanceTo(a) < c.distanceTo(b) ? a : b);
+    expect(c.energyCostTo(target), lessThan(c.energy));
+
+    await c.launchJourney(target);
+    await tester.pumpWidget(
+      MaterialApp(home: GameScope(controller: c, child: const HomeShell())),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.text('航行').last);
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.textContaining('燃料将于'), findsNothing);
+    expect(find.byKey(const ValueKey('fuel-marker')), findsNothing);
+  });
 }
 
 class _FakeClock {
@@ -76,4 +139,25 @@ class _FakeClock {
   DateTime _now;
   DateTime call() => _now;
   void advance(Duration d) => _now = _now.add(d);
+}
+
+/// A thousand energy per light-year makes any real hop unaffordable, which is
+/// the cheapest way to reach a doomed voyage without draining the tank first.
+const _greedy = Engine(
+  id: 'test.greedy',
+  name: '测试引擎',
+  energyPerLy: 1000,
+  travelSecondsPerLy: 37.5,
+  minEnergyCost: 1,
+  minTravelSeconds: 15,
+);
+
+Future<GameController> _bootAt(_FakeClock clock) async {
+  final c = GameController(
+    repository: GameRepository(MemoryStorage()),
+    clock: clock.call,
+    random: math.Random(3),
+  );
+  await c.init();
+  return c;
 }

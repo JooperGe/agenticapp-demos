@@ -61,13 +61,19 @@ class _JourneyPageState extends State<JourneyPage>
   /// instant a voyage launches elsewhere or flips to arrived.
   void _sync(GameController c) {
     final status = c.activeJourney?.status;
-    if (status == JourneyStatus.inProgress) {
+    // A coasting ship has no journey to resolve, but its marker still moves
+    // and the drift readout still ticks — so the timer runs for both.
+    final needsTimer = status == JourneyStatus.inProgress || c.isCoasting;
+    if (needsTimer) {
       _tickTimer ??=
           Timer.periodic(const Duration(seconds: 1), (_) => c.tick());
-      if (!_flightTicker.isActive) _flightTicker.start();
     } else {
       _tickTimer?.cancel();
       _tickTimer = null;
+    }
+    if (needsTimer) {
+      if (!_flightTicker.isActive) _flightTicker.start();
+    } else {
       if (_flightTicker.isActive) _flightTicker.stop();
     }
     if (status == JourneyStatus.arrived &&
@@ -221,14 +227,19 @@ class _JourneyPageState extends State<JourneyPage>
 
   Widget _buildStandby(GameController c) {
     final current = c.currentPlanet;
+    final coasting = c.isCoasting;
     final drifting = current == null;
     final rec = _recommendDestination(c);
     return Stack(
       fit: StackFit.expand,
       children: <Widget>[
-        // No motion while idle — a calm, static deep-space field.
-        const Positioned.fill(
-          child: StarfieldBackground(seed: 7, starCount: 150),
+        // Coasting keeps the star-stream moving; parked stays calm and static.
+        Positioned.fill(
+          child: StarfieldBackground(
+            seed: 7,
+            starCount: 150,
+            scrollSpeed: coasting ? 0.35 : 0.0,
+          ),
         ),
         SafeArea(
           child: SingleChildScrollView(
@@ -241,7 +252,9 @@ class _JourneyPageState extends State<JourneyPage>
                     size: 44, color: StarColors.cyanDim),
                 const SizedBox(height: 16),
                 Text(
-                  drifting ? '漂浮于深空' : '没有进行中的航行',
+                  coasting
+                      ? '滑行中'
+                      : (drifting ? '漂浮于深空' : '没有进行中的航行'),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: StarColors.offWhite,
@@ -251,9 +264,11 @@ class _JourneyPageState extends State<JourneyPage>
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  drifting
-                      ? '你的飞船正静静悬停在星海之中，等待你选择第一个目的地。'
-                      : '飞船正在 ${current.name} 停泊待命，等待下一段旅程。',
+                  coasting
+                      ? '燃料已尽，飞船以巡航速度继续滑行。它不会减速，也不会再消耗能量。'
+                      : (drifting
+                          ? '你的飞船正静静悬停在星海之中，等待你选择第一个目的地。'
+                          : '飞船正在 ${current.name} 停泊待命，等待下一段旅程。'),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: StarColors.muted,
@@ -262,7 +277,9 @@ class _JourneyPageState extends State<JourneyPage>
                   ),
                 ),
                 const SizedBox(height: 26),
-                if (drifting)
+                if (coasting)
+                  _CoastDock(controller: c)
+                else if (drifting)
                   _DriftDock(controller: c)
                 else
                   _CurrentDock(planet: current),
@@ -288,7 +305,8 @@ class _JourneyPageState extends State<JourneyPage>
           top: 0,
           left: 0,
           right: 0,
-          child: _TopBar(energy: c.energy, subtitle: drifting ? '深空待命' : '待命'),
+          child: _TopBar(
+              energy: c.energy, subtitle: coasting ? '滑行中' : (drifting ? '深空待命' : '待命')),
         ),
       ],
     );
@@ -599,6 +617,104 @@ class _DriftDock extends StatelessWidget {
     );
   }
 }
+/// Shown in the standby state while the ship is coasting: where it is, how
+/// fast it is going, and how far it has come since the tank emptied.
+class _CoastDock extends StatelessWidget {
+  const _CoastDock({required this.controller});
+
+  final GameController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = controller.playerPosition3D;
+    final v = controller.driftVelocity;
+    final elapsed = controller.driftElapsed;
+    final hours = elapsed.inHours;
+    final duration = hours >= 24
+        ? '${(hours / 24).toStringAsFixed(1)} 天'
+        : (hours >= 1
+            ? '$hours 小时'
+            : '${elapsed.inMinutes} 分钟');
+    return StarPanel(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Column(
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Container(
+                width: 40,
+                height: 40,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: StarColors.panelLight,
+                ),
+                child: const Icon(Icons.explore_rounded,
+                    color: StarColors.cyan, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    const Text('滑行中 · 巡航速度',
+                        style:
+                            TextStyle(color: StarColors.faint, fontSize: 11)),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${v.length.toStringAsFixed(4)} ly/s',
+                      style: const TextStyle(
+                        color: StarColors.offWhite,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _CoastStat(label: '已滑行', value: duration),
+          _CoastStat(
+              label: '累计距离',
+              value: '${controller.driftDistanceLy.toStringAsFixed(1)} ly'),
+          _CoastStat(
+              label: '当前坐标',
+              value:
+                  'X ${p.x.toStringAsFixed(1)}  Y ${p.y.toStringAsFixed(1)}  Z ${p.z.toStringAsFixed(1)}'),
+        ],
+      ),
+    );
+  }
+}
+
+class _CoastStat extends StatelessWidget {
+  const _CoastStat({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: <Widget>[
+          Text(label,
+              style: const TextStyle(color: StarColors.faint, fontSize: 11)),
+          const Spacer(),
+          Text(value,
+              style: const TextStyle(
+                color: StarColors.offWhite,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              )),
+        ],
+      ),
+    );
+  }
+}
+
 /// Suggested next destination with a shortcut to the star map.
 class _RecommendCard extends StatelessWidget {
   const _RecommendCard({required this.controller, required this.planet});
@@ -730,6 +846,12 @@ class _FlightPanel extends StatelessWidget {
     final distance = StarLabels.distance(controller.journeyDistance(journey));
     final remaining = journey.remainingAt(now);
     final percent = (progress * 100).round();
+    // `fuelExhaustProgressFor` is capped at 1, so anything below 1 means the
+    // tank runs dry before arrival. Task 8 owns that number; the panel only
+    // renders it — a warning line and a tick on the bar at the exhaust point.
+    final exhaust = controller.fuelExhaustProgressFor(journey);
+    final doomed = exhaust < 1;
+    final exhaustAt = controller.fuelExhaustTime(journey);
     return StarPanel(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       child: Column(
@@ -782,15 +904,38 @@ class _FlightPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(99),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 6,
-              backgroundColor: StarColors.panelLight,
-              valueColor:
-                  const AlwaysStoppedAnimation<Color>(StarColors.cyan),
-            ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final track = constraints.maxWidth;
+              return Stack(
+                fit: StackFit.passthrough,
+                clipBehavior: Clip.none,
+                children: <Widget>[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(99),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 6,
+                      backgroundColor: StarColors.panelLight,
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                          StarColors.cyan),
+                    ),
+                  ),
+                  if (doomed)
+                    Positioned(
+                      left: (track * exhaust)
+                          .clamp(0.0, math.max(track - 2, 0.0)),
+                      top: -2,
+                      bottom: -2,
+                      child: Container(
+                        key: const ValueKey('fuel-marker'),
+                        width: 2,
+                        color: StarColors.danger,
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 10),
           Row(
@@ -804,6 +949,21 @@ class _FlightPanel extends StatelessWidget {
                       const TextStyle(color: StarColors.muted, fontSize: 12)),
             ],
           ),
+          if (doomed) ...<Widget>[
+            const SizedBox(height: 8),
+            Row(
+              children: <Widget>[
+                const Icon(Icons.warning_amber_rounded,
+                    color: StarColors.danger, size: 13),
+                const SizedBox(width: 6),
+                Text(
+                  '燃料将于 ${StarLabels.duration(exhaustAt.difference(now))} 后耗尽',
+                  style: const TextStyle(
+                      color: StarColors.danger, fontSize: 12),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

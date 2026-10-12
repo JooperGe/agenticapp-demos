@@ -236,6 +236,21 @@ class GameController extends ChangeNotifier {
     );
   }
 
+  /// Whether the ship is coasting — moving without burning anything.
+  ///
+  /// Zero velocity means parked in deep space, which is a different state: a
+  /// parked ship has nowhere to be and nothing to report.
+  bool get isCoasting => _player.driftVelocity.length > 0;
+
+  /// How long the current drift has been running, or zero when parked.
+  Duration get driftElapsed => isCoasting
+      ? _now().difference(_player.driftStartedAt)
+      : Duration.zero;
+
+  /// How far the current drift has carried the ship, in light-years.
+  double get driftDistanceLy =>
+      isCoasting ? _player.driftVelocity.length * driftElapsed.inMilliseconds / 1000 : 0;
+
   /// Pins the deep-space anchor to where the ship actually is right now, and
   /// stops any drift — the engine is taking over the motion.
   ///
