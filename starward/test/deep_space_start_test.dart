@@ -103,4 +103,32 @@ void main() {
     }
     expect(sawFar, isTrue, reason: 'some spawns should be in an extra galaxy');
   });
+
+  test('can travel to a star that has no planets', () async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, seed: 3);
+    // Find a planetless star in the catalogue.
+    int? planetless;
+    for (var i = 0; i < c.stars.count; i++) {
+      final id = c.stars.starId[i];
+      if (c.universe.planetsAtStar(id).isEmpty) {
+        planetless = id;
+        break;
+      }
+    }
+    expect(planetless, isNotNull, reason: 'expected some planetless star');
+
+    final r = await c.launchToStar(planetless!);
+    expect(r, LaunchResult.success);
+    clock.advance(const Duration(hours: 2));
+    c.tick();
+
+    // Arrived drifting beside the star (deep space, not on a planet).
+    expect(c.inDeepSpace, isTrue);
+    final sp = c.universe.starArrivalPoint(planetless)!;
+    final p = c.deepSpaceOrigin3D!;
+    expect(p.x, closeTo(sp.x, 0.01));
+    expect(p.y, closeTo(sp.y, 0.01));
+    expect(p.z, closeTo(sp.z, 0.01));
+  });
 }

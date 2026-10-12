@@ -15,16 +15,20 @@ class StarSystemSheet extends StatelessWidget {
     super.key,
     required this.hygId,
     required this.onSelectPlanet,
+    required this.onGoToStar,
   });
 
   final int hygId;
   final void Function(String planetId) onSelectPlanet;
+  final void Function(int hygId) onGoToStar;
 
   @override
   Widget build(BuildContext context) {
     final c = GameScope.of(context);
     final name = c.universe.starLabel(hygId);
     final planets = c.universe.planetsAtStar(hygId);
+    final starCost = c.energyCostToStar(hygId);
+    final starDist = c.distanceToStar(hygId).round();
 
     return Container(
       decoration: const BoxDecoration(
@@ -71,14 +75,32 @@ class StarSystemSheet extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
+          // Travel to the star itself (works even with no planets) — you drift
+          // in beside it.
+          _GoToStarButton(
+            distanceLy: starDist,
+            cost: starCost,
+            onTap: () {
+              Navigator.of(context).pop();
+              onGoToStar(hygId);
+            },
+          ),
+          const SizedBox(height: 16),
           if (planets.isEmpty)
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: Text('该恒星周围没有探测到行星。',
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text('该恒星周围没有探测到行星，但你仍可航行至此。',
                   style: TextStyle(color: StarColors.muted, fontSize: 13)),
             )
-          else
+          else ...<Widget>[
+            const Text('行星',
+                style: TextStyle(
+                    color: StarColors.muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1)),
+            const SizedBox(height: 10),
             ...planets.map((p) => _PlanetRow(
                   controller: c,
                   planet: p,
@@ -87,7 +109,50 @@ class StarSystemSheet extends StatelessWidget {
                     onSelectPlanet(p.id);
                   },
                 )),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _GoToStarButton extends StatelessWidget {
+  const _GoToStarButton({
+    required this.distanceLy,
+    required this.cost,
+    required this.onTap,
+  });
+
+  final int distanceLy;
+  final int cost;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: StarColors.cyan,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              const Icon(Icons.rocket_launch_rounded,
+                  color: StarColors.abyss, size: 19),
+              const SizedBox(width: 9),
+              Text(
+                '航行至该恒星系 · $distanceLy ly · $cost EN',
+                style: const TextStyle(
+                    color: StarColors.abyss,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

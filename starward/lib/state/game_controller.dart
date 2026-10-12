@@ -192,9 +192,10 @@ class GameController extends ChangeNotifier {
       currentPlanet?.pos ??
       Vec3(_player.startX, _player.startY, _player.startZ);
 
-  /// Display name for a location id (planet name, or "深空" for the drift).
+  /// Display name for a location id (planet name, star name, or "深空").
   String locationLabel(String? planetId) {
     if (planetId == null || planetId == kDeepSpaceId) return '深空';
+    if (_isStarDest(planetId)) return _universe.starLabel(_starIdFromDest(planetId));
     return _universe.planetById(planetId)?.name ?? '深空';
   }
 
@@ -215,12 +216,14 @@ class GameController extends ChangeNotifier {
 
   /// Fixed length of a journey, honouring a deep-space origin, in light-years.
   double journeyDistance(Journey j) {
-    final to = _universe.planetById(j.destinationPlanetId);
-    if (to == null) return 0;
+    final Vec3? toPos = _isStarDest(j.destinationPlanetId)
+        ? _universe.starArrivalPoint(_starIdFromDest(j.destinationPlanetId))
+        : _universe.planetById(j.destinationPlanetId)?.pos;
+    if (toPos == null) return 0;
     final Vec3 from = j.originPlanetId == kDeepSpaceId
         ? Vec3(_player.startX, _player.startY, _player.startZ)
         : (_universe.planetById(j.originPlanetId)?.pos ?? playerPosition3D);
-    return (to.pos - from).length;
+    return (toPos - from).length;
   }
 
   TravelTier tierTo(Planet target) => tierForDistance(distanceTo(target));
@@ -271,23 +274,43 @@ class GameController extends ChangeNotifier {
   }
 
   void _applyArrival(Journey journey) {
+    final dest = journey.destinationPlanetId;
+    // Travelling to a star (not a planet): arrive drifting beside it.
+    if (_isStarDest(dest)) {
+      final target = _universe.starArrivalPoint(_starIdFromDest(dest));
+      _activeJourney = journey.copyWith(status: JourneyStatus.arrived);
+      if (target != null) {
+        _player = _player.copyWith(
+          toDeepSpace: true,
+          startX: target.x,
+          startY: target.y,
+          startZ: target.z,
+        );
+      }
+      _rebuildNearby();
+      return;
+    }
+
     _activeJourney = journey.copyWith(status: JourneyStatus.arrived);
-    _player = _player.copyWith(
-      currentPlanetId: journey.destinationPlanetId,
-    );
+    _player = _player.copyWith(currentPlanetId: dest);
     // Reaching a planet discovers it (if not already explored).
-    if (stateOf(journey.destinationPlanetId) == DiscoveryState.undiscovered) {
-      _planetStates[journey.destinationPlanetId] = DiscoveryState.discovered;
+    if (stateOf(dest) == DiscoveryState.undiscovered) {
+      _planetStates[dest] = DiscoveryState.discovered;
       _player = _player.copyWith(
-        discoveredPlanetIds: <String>{
-          ..._player.discoveredPlanetIds,
-          journey.destinationPlanetId,
-        },
+        discoveredPlanetIds: <String>{..._player.discoveredPlanetIds, dest},
       );
     }
     // The ship has moved — refresh the planets around the new location.
     _rebuildNearby();
   }
+
+  // Star destinations are encoded as 'star:<hygId>' in a journey.
+  static String _starDestId(int hygId) => 'star:$hygId';
+  static bool _isStarDest(String id) => id.startsWith('star:');
+  static int _starIdFromDest(String id) => int.parse(id.substring(5));
+
+  /// Whether a journey destination id refers to a star rather than a planet.
+  static bool isStarDestination(String id) => _isStarDest(id);
 
   /// Call periodically (e.g. once per second from a visible journey view) to
   /// surface the arrival transition without any always-on timer.
@@ -318,6 +341,47 @@ class GameController extends ChangeNotifier {
       // A new player departs from open space (sentinel) until the first arrival.
       originPlanetId: _player.currentPlanetId ?? kDeepSpaceId,
       destinationPlanetId: target.id,
+      departure: departure,
+      arrival: arrival,
+      energyCost: cost,
+      status: JourneyStatus.inProgress,
+    );
+    _activeJourney = journey;
+    _spendEnergy(cost, EnergyTxType.travelCost, journey.id);
+    await _persist();
+    notifyListeners();
+    return LaunchResult.success;
+  }
+
+  /// Distance (ly) from the ship to a star's arrival point.
+  double distanceToStar(int hygId) {
+    final target = _universe.starArrivalPoint(hygId);
+    if (target == null) return double.infinity;
+    return (playerPosition3D - target).length;
+  }
+
+  int energyCostToStar(int hygId) =>
+      energyCostForTier(tierForDistance(distanceToStar(hygId)));
+
+  /// Launches a journey to a *star* (used for stars with no planets — you drift
+  /// in beside it). Mirrors [launchJourney] but the destination is a star.
+  Future<LaunchResult> launchToStar(int hygId) async {
+    final target = _universe.starArrivalPoint(hygId);
+    if (target == null) return LaunchResult.noSelection;
+    if (isTraveling) return LaunchResult.alreadyTraveling;
+    final dist = (playerPosition3D - target).length;
+    if (dist < 0.5) return LaunchResult.alreadyHere;
+    final tier = tierForDistance(dist);
+    final cost = energyCostForTier(tier);
+    if (_player.energyBalance < cost) return LaunchResult.insufficientEnergy;
+
+    final departure = _now();
+    final arrival =
+        departure.add(Duration(seconds: travelSecondsForTier(tier)));
+    final journey = Journey(
+      id: _newId('jny'),
+      originPlanetId: _player.currentPlanetId ?? kDeepSpaceId,
+      destinationPlanetId: _starDestId(hygId),
       departure: departure,
       arrival: arrival,
       energyCost: cost,

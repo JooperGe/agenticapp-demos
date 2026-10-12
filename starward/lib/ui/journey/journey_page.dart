@@ -225,15 +225,14 @@ class _JourneyPageState extends State<JourneyPage>
   // --- State 2: flight -----------------------------------------------------
 
   Widget _buildFlight(GameController c, Journey journey) {
-    final dest = c.planetById(journey.destinationPlanetId)!;
+    final isStar = GameController.isStarDestination(journey.destinationPlanetId);
+    final destPlanet = c.planetById(journey.destinationPlanetId);
+    final destName = c.locationLabel(journey.destinationPlanetId);
     final now = c.now;
     final progress = journey.progressAt(now);
     return Stack(
       fit: StackFit.expand,
       children: <Widget>[
-        // Streaming starfield. scrollSpeed = tiny base * growing phase, so the
-        // field flows continuously downward; it ramps a little with progress so
-        // the sense of speed builds as the destination nears.
         Positioned.fill(
           child: ValueListenableBuilder<double>(
             valueListenable: _phase,
@@ -247,12 +246,13 @@ class _JourneyPageState extends State<JourneyPage>
             },
           ),
         ),
-        // Destination ahead/above — grows and brightens toward arrival.
+        // Destination ahead — a planet disc, or a bright star for star trips.
         Align(
           alignment: const Alignment(0, -0.4),
-          child: _FlightPlanet(planet: dest, progress: progress),
+          child: (isStar || destPlanet == null)
+              ? _FlightStar(progress: progress)
+              : _FlightPlanet(planet: destPlanet, progress: progress),
         ),
-        // Ship near centre-bottom with a pulsing engine glow.
         Align(
           alignment: const Alignment(0, 0.3),
           child: ValueListenableBuilder<double>(
@@ -271,8 +271,7 @@ class _JourneyPageState extends State<JourneyPage>
             child: _FlightPanel(
               controller: c,
               journey: journey,
-              originName: c.locationLabel(journey.originPlanetId),
-              dest: dest,
+              destName: destName,
               progress: progress,
               now: now,
             ),
@@ -290,7 +289,10 @@ class _JourneyPageState extends State<JourneyPage>
   // --- State 3: arrival ----------------------------------------------------
 
   Widget _buildArrival(GameController c, Journey journey) {
-    final dest = c.planetById(journey.destinationPlanetId)!;
+    final isStar = GameController.isStarDestination(journey.destinationPlanetId);
+    final dest = c.planetById(journey.destinationPlanetId);
+    final destName = c.locationLabel(journey.destinationPlanetId);
+    final canExplore = !isStar && dest != null && dest.pointsOfInterest.isNotEmpty;
     final reveal = CurvedAnimation(parent: _reveal, curve: Curves.easeOutCubic);
     return Stack(
       fit: StackFit.expand,
@@ -304,7 +306,6 @@ class _JourneyPageState extends State<JourneyPage>
             child: Column(
               children: <Widget>[
                 const Spacer(),
-                // Fade + scale the destination in as a small ceremony.
                 AnimatedBuilder(
                   animation: _reveal,
                   builder: (context, child) => Opacity(
@@ -314,7 +315,9 @@ class _JourneyPageState extends State<JourneyPage>
                       child: child,
                     ),
                   ),
-                  child: _GlowPlanet(planet: dest, intensity: 0.9, size: 180),
+                  child: (isStar || dest == null)
+                      ? const _ArrivalStar()
+                      : _GlowPlanet(planet: dest, intensity: 0.9, size: 180),
                 ),
                 const SizedBox(height: 28),
                 const Text(
@@ -327,7 +330,7 @@ class _JourneyPageState extends State<JourneyPage>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  dest.name,
+                  destName,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: StarColors.offWhite,
@@ -337,7 +340,9 @@ class _JourneyPageState extends State<JourneyPage>
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  '${dest.designation} · ${StarLabels.planetType(dest.type)}',
+                  isStar || dest == null
+                      ? '恒星系'
+                      : '${dest.designation} · ${StarLabels.planetType(dest.type)}',
                   style: const TextStyle(
                     color: StarColors.faint,
                     fontSize: 12,
@@ -345,17 +350,19 @@ class _JourneyPageState extends State<JourneyPage>
                   ),
                 ),
                 const Spacer(),
-                _ActionButton(
-                  label: '开始探索',
-                  icon: Icons.travel_explore_rounded,
-                  color: StarColors.gold,
-                  onPressed: () => _startExploration(c, dest),
-                ),
-                const SizedBox(height: 12),
+                if (canExplore) ...<Widget>[
+                  _ActionButton(
+                    label: '开始探索',
+                    icon: Icons.travel_explore_rounded,
+                    color: StarColors.gold,
+                    onPressed: () => _startExploration(c, dest),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 _ActionButton(
                   label: '返回星图',
                   icon: Icons.public_rounded,
-                  filled: false,
+                  filled: !canExplore,
                   onPressed: () => _returnToMap(c),
                 ),
               ],
@@ -614,120 +621,165 @@ class _FlightPlanet extends StatelessWidget {
     );
   }
 }
-/// Bottom readout for the flight state: destination/origin, distance, timings,
-/// energy and a live progress bar.
+/// Minimal "ship console" readout for the flight state: destination, a big
+/// ETA, a progress bar, and a compact distance/energy line. Pared down to the
+/// essentials so it reads like a cockpit display rather than a data dump.
 class _FlightPanel extends StatelessWidget {
   const _FlightPanel({
     required this.controller,
     required this.journey,
-    required this.originName,
-    required this.dest,
+    required this.destName,
     required this.progress,
     required this.now,
   });
 
   final GameController controller;
   final Journey journey;
-  final String originName;
-  final Planet dest;
+  final String destName;
   final double progress;
   final DateTime now;
 
   @override
   Widget build(BuildContext context) {
-    // Fixed voyage length, honouring a deep-space origin.
     final distance = controller.journeyDistance(journey).round();
-    final elapsed = now.difference(journey.departure);
     final remaining = journey.remainingAt(now);
     final percent = (progress * 100).round();
     return StarPanel(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Row(
-            children: const <Widget>[
-              Icon(Icons.rocket_launch_rounded,
-                  color: StarColors.cyan, size: 18),
-              SizedBox(width: 8),
-              Text('航行中',
-                  style: TextStyle(
-                    color: StarColors.offWhite,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
-                  )),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(children: <Widget>[
-            _Metric(label: '目的地', value: dest.name),
-            _Metric(label: '起点', value: originName),
-          ]),
-          const SizedBox(height: 14),
-          Row(children: <Widget>[
-            _Metric(label: '距离', value: '$distance ly'),
-            _Metric(label: '当前能量', value: '${controller.energy} EN'),
-          ]),
-          const SizedBox(height: 14),
-          Row(children: <Widget>[
-            _Metric(label: '已航行', value: StarLabels.duration(elapsed)),
-            _Metric(label: '剩余', value: StarLabels.duration(remaining)),
-          ]),
-          const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: <Widget>[
-              const Text('进度',
-                  style: TextStyle(color: StarColors.faint, fontSize: 11)),
+              const Icon(Icons.navigation_rounded,
+                  color: StarColors.cyan, size: 15),
+              const SizedBox(width: 6),
+              const Text('航向',
+                  style: TextStyle(
+                      color: StarColors.faint,
+                      fontSize: 11,
+                      letterSpacing: 2)),
+              const Spacer(),
               Text('$percent%',
                   style: const TextStyle(
-                    color: StarColors.cyan,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  )),
+                      color: StarColors.cyan,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800)),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
+          Text(
+            destName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                color: StarColors.offWhite,
+                fontSize: 22,
+                fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: <Widget>[
+              const Text('剩余  ',
+                  style: TextStyle(color: StarColors.faint, fontSize: 12)),
+              Text(
+                StarLabels.duration(remaining),
+                style: const TextStyle(
+                    color: StarColors.cyan,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(99),
             child: LinearProgressIndicator(
               value: progress,
-              minHeight: 8,
+              minHeight: 6,
               backgroundColor: StarColors.panelLight,
               valueColor:
                   const AlwaysStoppedAnimation<Color>(StarColors.cyan),
             ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+              Text('航程 $distance ly',
+                  style:
+                      const TextStyle(color: StarColors.muted, fontSize: 12)),
+              Text('能量 ${controller.energy} EN',
+                  style:
+                      const TextStyle(color: StarColors.muted, fontSize: 12)),
+            ],
           ),
         ],
       ),
     );
   }
 }
-/// A single labelled value, sized to share a row evenly with a sibling.
-class _Metric extends StatelessWidget {
-  const _Metric({required this.label, required this.value});
 
-  final String label;
-  final String value;
+/// The destination star during a star-bound flight: a bright, growing point of
+/// light with layered glow (a star is a point, not a disc).
+class _FlightStar extends StatelessWidget {
+  const _FlightStar({required this.progress});
+  final double progress;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(label,
-              style: const TextStyle(color: StarColors.faint, fontSize: 11)),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: StarColors.offWhite,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
+    final size = 40 + progress * 120;
+    return SizedBox(
+      width: size * 2,
+      height: size * 2,
+      child: Center(
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const RadialGradient(
+              colors: <Color>[Colors.white, StarColors.cyan, Color(0x00000000)],
+              stops: <double>[0.0, 0.35, 1.0],
             ),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: StarColors.cyan.withValues(alpha: 0.4 + 0.4 * progress),
+                blurRadius: 40 + 60 * progress,
+                spreadRadius: 4 + 10 * progress,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Arrival emblem for a star system (no planet to land on).
+class _ArrivalStar extends StatelessWidget {
+  const _ArrivalStar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 150,
+      height: 150,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const RadialGradient(
+          colors: <Color>[Colors.white, StarColors.gold, Color(0x00000000)],
+          stops: <double>[0.0, 0.4, 1.0],
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: StarColors.gold.withValues(alpha: 0.6),
+            blurRadius: 70,
+            spreadRadius: 10,
           ),
         ],
       ),

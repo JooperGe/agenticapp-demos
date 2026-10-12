@@ -169,6 +169,17 @@ class Universe {
     return null;
   }
 
+  /// Public star position lookup (light-years).
+  Vec3? starPositionById(int hygId) => _posById(hygId);
+
+  /// A stable drift point just off a star — where the ship parks when it
+  /// travels to a star that has no planets to land on.
+  Vec3? starArrivalPoint(int hygId) {
+    final pos = _posById(hygId);
+    if (pos == null) return null;
+    return pos + _spherePoint(_rngFor(hygId, 555), 1.2, 2.0);
+  }
+
   /// The planets within [radiusLy] of [posLy], nearest first, capped at [cap].
   /// Used to populate the map / selection around the player without ever
   /// materialising the whole universe.

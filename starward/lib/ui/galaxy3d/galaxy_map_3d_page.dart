@@ -140,9 +140,23 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
     if (starId != null) _openSystem(starId);
   }
 
+  String _launchMessage(LaunchResult r) {
+    switch (r) {
+      case LaunchResult.insufficientEnergy:
+        return '能量不足，无法出发';
+      case LaunchResult.alreadyTraveling:
+        return '已有航行进行中';
+      case LaunchResult.alreadyHere:
+        return '已经在这里了';
+      case LaunchResult.noSelection:
+        return '目标不可用';
+      case LaunchResult.success:
+        return '出发！';
+    }
+  }
+
   void _openSystem(int hygId) {
-    final shell = ShellScope.maybeOf(context);
-    showModalBottomSheet<void>(
+    final shell = ShellScope.maybeOf(context);    showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
@@ -156,6 +170,17 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
               if (planet != null) {
                 setState(() => _selectedId = planetId);
                 _openDetails(planet);
+              }
+            },
+            onGoToStar: (id) async {
+              final result = await _c.launchToStar(id);
+              if (!mounted) return;
+              if (result == LaunchResult.success) {
+                ShellScope.go(context, 1);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(_launchMessage(result))),
+                );
               }
             },
           ),
@@ -257,6 +282,12 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
                       ),
                     ),
                   ),
+                  // Cockpit framing — a through-the-viewport feel in first
+                  // person. Non-interactive so gestures pass through.
+                  if (_camera.mode == CameraMode.cockpit)
+                    const Positioned.fill(
+                      child: IgnorePointer(child: _CockpitOverlay()),
+                    ),
                   _TopBar(controller: _c, mode: _camera.mode),
                   _SideControls(
                     mode: _camera.mode,
@@ -448,4 +479,95 @@ class _BottomControls extends StatelessWidget {
       ),
     );
   }
+}
+
+/// First-person cockpit framing: a darkened viewport vignette, a rounded window
+/// frame with corner struts, and a faint central reticle — so looking around in
+/// cockpit mode feels like peering out of the ship's canopy.
+class _CockpitOverlay extends StatelessWidget {
+  const _CockpitOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(size: Size.infinite, painter: _CockpitPainter());
+  }
+}
+
+class _CockpitPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    final rect = Offset.zero & size;
+
+    // Vignette: darken the edges so the centre reads as the view out the glass.
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = RadialGradient(
+          center: Alignment.center,
+          radius: 0.95,
+          colors: <Color>[
+            const Color(0x00000000),
+            const Color(0x00000000),
+            StarColors.abyss.withValues(alpha: 0.55),
+            StarColors.abyss.withValues(alpha: 0.92),
+          ],
+          stops: const <double>[0.0, 0.55, 0.85, 1.0],
+        ).createShader(rect),
+    );
+
+    // Window frame: a rounded rectangle inset from the edges.
+    final inset = 14.0;
+    final frameRect = RRect.fromRectAndRadius(
+      Rect.fromLTRB(inset, inset + 48, w - inset, h - inset - 40),
+      const Radius.circular(34),
+    );
+    canvas.drawRRect(
+      frameRect,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5
+        ..color = StarColors.cyan.withValues(alpha: 0.25),
+    );
+    canvas.drawRRect(
+      frameRect.inflate(5),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 10
+        ..color = StarColors.deepNavy.withValues(alpha: 0.45),
+    );
+
+    // Corner struts.
+    final strut = Paint()
+      ..color = StarColors.cyan.withValues(alpha: 0.3)
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+    const s = 34.0;
+    final l = frameRect.left + 20, t = frameRect.top + 20;
+    final r = frameRect.right - 20, b = frameRect.bottom - 20;
+    canvas.drawLine(Offset(l, t), Offset(l + s, t), strut);
+    canvas.drawLine(Offset(l, t), Offset(l, t + s), strut);
+    canvas.drawLine(Offset(r, t), Offset(r - s, t), strut);
+    canvas.drawLine(Offset(r, t), Offset(r, t + s), strut);
+    canvas.drawLine(Offset(l, b), Offset(l + s, b), strut);
+    canvas.drawLine(Offset(l, b), Offset(l, b - s), strut);
+    canvas.drawLine(Offset(r, b), Offset(r - s, b), strut);
+    canvas.drawLine(Offset(r, b), Offset(r, b - s), strut);
+
+    // Central reticle.
+    final c = Offset(w / 2, h / 2);
+    final reticle = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..color = StarColors.cyan.withValues(alpha: 0.35);
+    canvas.drawCircle(c, 16, reticle);
+    canvas.drawLine(c.translate(-26, 0), c.translate(-16, 0), reticle);
+    canvas.drawLine(c.translate(16, 0), c.translate(26, 0), reticle);
+    canvas.drawLine(c.translate(0, -26), c.translate(0, -16), reticle);
+    canvas.drawLine(c.translate(0, 16), c.translate(0, 26), reticle);
+    canvas.drawCircle(c, 1.5, Paint()..color = StarColors.cyan.withValues(alpha: 0.5));
+  }
+
+  @override
+  bool shouldRepaint(_CockpitPainter oldDelegate) => false;
 }

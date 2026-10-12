@@ -47,10 +47,15 @@ class PlayerState {
     Set<String>? exploredPlanetIds,
     String? activeJourneyId,
     bool clearActiveJourney = false,
+    double? startX,
+    double? startY,
+    double? startZ,
+    bool toDeepSpace = false,
   }) {
     return PlayerState(
       energyBalance: energyBalance ?? this.energyBalance,
-      currentPlanetId: currentPlanetId ?? this.currentPlanetId,
+      currentPlanetId:
+          toDeepSpace ? null : (currentPlanetId ?? this.currentPlanetId),
       discoveredPlanetIds: discoveredPlanetIds ?? this.discoveredPlanetIds,
       exploredPlanetIds: exploredPlanetIds ?? this.exploredPlanetIds,
       activeJourneyId:
@@ -58,9 +63,9 @@ class PlayerState {
       createdAt: createdAt,
       startCoordX: startCoordX,
       startCoordY: startCoordY,
-      startX: startX,
-      startY: startY,
-      startZ: startZ,
+      startX: startX ?? this.startX,
+      startY: startY ?? this.startY,
+      startZ: startZ ?? this.startZ,
     );
   }
 
