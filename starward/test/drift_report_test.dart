@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:starward/core/drift.dart';
 import 'package:starward/core/vec3.dart';
 import 'package:starward/data/game_repository.dart';
 import 'package:starward/data/models/drift_report.dart';
@@ -9,6 +11,7 @@ import 'package:starward/data/models/engine.dart';
 import 'package:starward/data/models/journey.dart';
 import 'package:starward/data/storage/storage_backend.dart';
 import 'package:starward/state/game_controller.dart';
+import 'package:starward/ui/journey/drift_report_sheet.dart';
 
 class FakeClock {
   FakeClock(this._now);
@@ -269,6 +272,106 @@ void main() {
       expect(c.currentPlanetId, target.id, reason: 'it simply arrives');
       expect(c.pendingDriftReport, isNull);
     });
+
+    test('a halt reports the powered leg and stops the ship', () async {
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      final c = await _boot(clock, storage);
+      await c.installEngine(_greedy);
+      final target = c.planets.firstWhere((p) => p.id != c.currentPlanetId);
+      expect(await c.launchJourney(target, onEmpty: FuelPolicy.halt),
+          LaunchResult.success);
+      final journey = c.activeJourney!;
+      final exhaustAt = c.fuelExhaustTime(journey);
+
+      clock.advance(exhaustAt.difference(clock()) + const Duration(seconds: 1));
+      c.tick();
+
+      // A halt is not silence: the powered leg is exactly the news the player
+      // needs, so the same fuel-out report fires as for a coast.
+      expect(c.isCoasting, isFalse);
+      expect(c.driftVelocity.length, 0, reason: 'the ship really stopped');
+      final r = c.pendingDriftReport!;
+      expect(r.kind, DriftReportKind.fuelOut);
+      expect(r.from, journey.departure);
+      expect(r.to, exhaustAt);
+      expect(r.elapsed, exhaustAt.difference(journey.departure));
+
+      // The parked ship is never told it drifted. Unread, the fuel-out window
+      // is restored as-is; once read, a later boot has nothing to rebuild,
+      // because a zero-velocity ship cannot produce a drift report.
+      clock.advance(const Duration(days: 3));
+      final c2 = await _boot(clock, storage);
+      expect(c2.pendingDriftReport!.kind, DriftReportKind.fuelOut);
+      expect(c2.pendingDriftReport!.from, r.from);
+      expect(c2.pendingDriftReport!.to, r.to);
+
+      await c2.acknowledgeDriftReport();
+      clock.advance(const Duration(days: 3));
+      final c3 = await _boot(clock, storage);
+      expect(c3.pendingDriftReport, isNull);
+    });
+  });
+
+  group('arrival never queues a report', () {
+    test('arriving at a star leaves nothing pending', () async {
+      final storage = MemoryStorage();
+      final clock = FakeClock(DateTime(2026, 1, 1, 12));
+      final c1 = await _boot(clock, storage);
+      // The nearest planetless star — the cheapest star hop, so the full tank
+      // can afford it. Star destinations are journey ids of the form
+      // 'star:<hygId>', the same encoding `launchToStar` writes.
+      int? star;
+      var best = double.infinity;
+      for (var i = 0; i < c1.stars.count; i++) {
+        final id = c1.stars.starId[i];
+        if (c1.universe.planetsAtStar(id).isNotEmpty) continue;
+        final d = c1.distanceToStar(id);
+        if (d < best) {
+          best = d;
+          star = id;
+        }
+      }
+      expect(star, isNotNull, reason: 'expected some planetless star');
+      expect(await c1.launchToStar(star!), LaunchResult.success);
+
+      // Closed for the whole voyage: the arrival is reconciled on the next
+      // boot, which is the one place a stale drift velocity could survive
+      // alongside a fresh drift window and fake a report.
+      clock.advance(const Duration(hours: 2));
+      final c2 = await _boot(clock, storage);
+      expect(c2.activeJourney!.status, JourneyStatus.arrived);
+      expect(GameController.isStarDestination(c2.activeJourney!.destinationPlanetId),
+          isTrue);
+      expect(c2.pendingDriftReport, isNull);
+    });
+
+    test('arriving at a deep-space coordinate leaves nothing pending',
+        () async {
+      final storage = MemoryStorage();
+      final clock = FakeClock(DateTime(2026, 1, 1, 12));
+      final c1 = await _boot(clock, storage);
+      // Launch out from the initial deep-space anchor, then turn straight back:
+      // a return to open space targets a bare coordinate, not a planet or star.
+      final target = c1.planets
+          .where((p) => p.id != c1.currentPlanetId)
+          .reduce((a, b) => c1.distanceTo(a) <= c1.distanceTo(b) ? a : b);
+      expect(await c1.launchJourney(target), LaunchResult.success);
+      // A round trip costs about twice the outbound quote; top up so the
+      // return leg is affordable from a full-ish tank.
+      final session = await c1.startCourse('walk');
+      await c1.completeCourse(session.id, c1.energyCostTo(target));
+      expect(await c1.returnToOrigin(), LaunchResult.success);
+      expect(GameController.isCoordDestination(
+              c1.activeJourney!.destinationPlanetId), isTrue);
+
+      clock.advance(const Duration(days: 1));
+      final c2 = await _boot(clock, storage);
+      expect(c2.activeJourney!.status, JourneyStatus.arrived);
+      expect(GameController.isCoordDestination(
+              c2.activeJourney!.destinationPlanetId), isTrue);
+      expect(c2.pendingDriftReport, isNull);
+    });
   });
 
   group('a queued report survives a restart', () {
@@ -322,6 +425,102 @@ void main() {
       expect(c2.pendingDriftReport!.to, clock(),
           reason: 'the window is rebuilt for the later boot, not restored');
       expect(c2.pendingDriftReport!.elapsed, greaterThan(persisted.elapsed));
+    });
+  });
+
+  group('the report sheet', () {
+    Future<void> open(WidgetTester tester, DriftReport report) async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock, MemoryStorage());
+      await tester.pumpWidget(MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: ElevatedButton(
+              onPressed: () => showDriftReportSheet(
+                context,
+                controller: c,
+                report: report,
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a fuel-out report says how far it got', (tester) async {
+      await open(
+        tester,
+        DriftReport(
+          kind: DriftReportKind.fuelOut,
+          from: DateTime(2026, 3, 1, 9),
+          to: DateTime(2026, 3, 1, 11, 30),
+          elapsed: const Duration(hours: 2, minutes: 30),
+          distanceLy: 12.5,
+          fromPos: const Vec3(0, 0, 0),
+          toPos: const Vec3(12.5, 0, 0),
+          passedCount: 0,
+          nearest: const <PassedSystem>[],
+          hitBoundary: false,
+        ),
+      );
+      expect(find.text('燃料耗尽'), findsOneWidget);
+      expect(find.textContaining('12.5 ly'), findsOneWidget);
+      expect(find.textContaining('2 小时 30 分'), findsOneWidget);
+      // An empty stretch of space is a legitimate outcome, and the copy has to
+      // say so rather than showing an empty list.
+      expect(find.textContaining('空旷的星际空间'), findsOneWidget);
+    });
+
+    testWidgets('a drift report names what it went past', (tester) async {
+      await open(
+        tester,
+        DriftReport(
+          kind: DriftReportKind.drift,
+          from: DateTime(2026, 3, 1),
+          to: DateTime(2026, 3, 3),
+          elapsed: const Duration(days: 2),
+          distanceLy: 4608,
+          fromPos: const Vec3(0, 0, 0),
+          toPos: const Vec3(4608, 0, 0),
+          passedCount: 137,
+          nearest: const <PassedSystem>[
+            PassedSystem(hygId: 1001, distanceLy: 0.4, seconds: 10),
+            PassedSystem(hygId: 1000, distanceLy: 3.1, seconds: 50),
+          ],
+          hitBoundary: true,
+        ),
+      );
+      expect(find.text('滑行播报'), findsOneWidget);
+      expect(find.textContaining('4608.0 ly'), findsOneWidget);
+      expect(find.textContaining('2 天 0 小时'), findsOneWidget);
+      expect(find.textContaining('途经 137 个恒星系'), findsOneWidget);
+      expect(find.textContaining('0.4 ly'), findsOneWidget);
+      expect(find.textContaining('3.1 ly'), findsOneWidget);
+      expect(find.textContaining('贴着宇宙边界'), findsOneWidget);
+    });
+
+    testWidgets('dismissing it does not throw', (tester) async {
+      await open(
+        tester,
+        DriftReport(
+          kind: DriftReportKind.drift,
+          from: DateTime(2026, 3, 1),
+          to: DateTime(2026, 3, 1, 1),
+          elapsed: const Duration(hours: 1),
+          distanceLy: 100,
+          fromPos: const Vec3(0, 0, 0),
+          toPos: const Vec3(100, 0, 0),
+          passedCount: 0,
+          nearest: const <PassedSystem>[],
+          hitBoundary: false,
+        ),
+      );
+      await tester.tap(find.text('知道了'));
+      await tester.pumpAndSettle();
+      expect(find.text('知道了'), findsNothing);
     });
   });
 }

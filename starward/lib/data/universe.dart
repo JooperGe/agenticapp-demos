@@ -253,9 +253,13 @@ class Universe {
   /// The star systems a drift passed within [radiusLy] of, between
   /// [fromSeconds] and [upToSeconds] of it.
   ///
-  /// A full scan of the catalogue, one closed-form closest-approach per star —
-  /// a few milliseconds, which is affordable because it only runs when a
-  /// report is being written, not per frame.
+  /// A full scan of the catalogue — 109,401 stars, one closed-form
+  /// `closestApproach` each, and an `atan2`/`cos`/`sin` per star once the
+  /// window is past the shell's `hitSeconds`. This is *not* only run when a
+  /// report is written: the coasting screen reads it once a second, since the
+  /// journey page rebuilds on every `tick()` and the count only changes as the
+  /// window grows. So the cost is inherent to the algorithm and is paid at
+  /// roughly 1 Hz while coasting, not per frame.
   PassedSystems passedSystemsAlong({
     required DriftPath path,
     required double upToSeconds,

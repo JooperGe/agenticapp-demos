@@ -151,6 +151,10 @@ void main() {
     c.tick();
     expect(c.isCoasting, isTrue, reason: 'the tank ran dry and it coasts on');
     expect(c.activeJourney, isNull, reason: 'coasting is not a voyage');
+    // Running dry queues a fuel-out report, which the journey page now shows as
+    // a modal sheet. Its barrier would cover the tab bar, so clear it: this test
+    // is about the starfield, and the sheet has its own coverage.
+    await c.acknowledgeDriftReport();
 
     await tester.pumpWidget(
       MaterialApp(home: GameScope(controller: c, child: const HomeShell())),

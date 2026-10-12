@@ -13,6 +13,7 @@ import '../shell/shell_scope.dart';
 import '../widgets/common.dart';
 import '../widgets/planet_disc.dart';
 import '../widgets/starfield.dart';
+import 'drift_report_sheet.dart';
 
 /// Page 3 — the auto-journey / flight ambience screen. Always mounted inside
 /// the shell's [IndexedStack], so it must build while hidden and tear down its
@@ -56,6 +57,30 @@ class _JourneyPageState extends State<JourneyPage>
     super.dispose();
   }
 
+  // Guards against queueing the same report twice while the sheet is opening.
+  bool _reportScheduled = false;
+
+  /// Shows a queued drift report, once. Scheduled from the build rather than
+  /// awaited in it, because the sheet needs a frame that has already settled.
+  ///
+  /// The report is not necessarily new: a fuel-out report survives a restart,
+  /// so this can legitimately fire for a restored report on the very first
+  /// frame after boot.
+  void _maybeShowReport(GameController c) {
+    final report = c.pendingDriftReport;
+    if (report == null || _reportScheduled) return;
+    _reportScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) {
+        _reportScheduled = false;
+        return;
+      }
+      await showDriftReportSheet(context, controller: c, report: report);
+      await c.acknowledgeDriftReport();
+      _reportScheduled = false;
+    });
+  }
+
   /// Keeps the timer, flight ticker and reveal animation in lock-step with the
   /// live journey status. Driven from the controller rebuild so it reacts the
   /// instant a voyage launches elsewhere or flips to arrived.
@@ -92,6 +117,7 @@ class _JourneyPageState extends State<JourneyPage>
         animation: c,
         builder: (context, _) {
           _sync(c);
+          _maybeShowReport(c);
           final journey = c.activeJourney;
           switch (journey?.status) {
             case JourneyStatus.inProgress:
@@ -686,9 +712,36 @@ class _CoastDock extends StatelessWidget {
               label: '累计距离',
               value: '${controller.driftDistanceLy.toStringAsFixed(1)} ly'),
           _CoastStat(
+              label: '途经恒星系',
+              value: '${controller.passedSystemsSoFar.count}'),
+          _CoastStat(
               label: '当前坐标',
               value:
                   'X ${p.x.toStringAsFixed(1)}  Y ${p.y.toStringAsFixed(1)}  Z ${p.z.toStringAsFixed(1)}'),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: Material(
+              color: StarColors.panelLight,
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: controller.requestDriftReport,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 11),
+                  child: Text(
+                    '查看播报',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: StarColors.cyan,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

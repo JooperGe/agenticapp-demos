@@ -393,6 +393,9 @@ class GameController extends ChangeNotifier {
     return _universe.planetById(planetId)?.name ?? '深空';
   }
 
+  /// The display name for a star system, for report copy.
+  String starLabelFor(int hygId) => _universe.starLabel(hygId);
+
   DiscoveryState stateOf(String planetId) =>
       _planetStates[planetId] ?? DiscoveryState.undiscovered;
 
