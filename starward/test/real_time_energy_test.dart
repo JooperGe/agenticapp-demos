@@ -222,6 +222,65 @@ void main() {
           reason: 'the migration hands back exactly the quote v2 had taken');
     });
 
+    test('the energyModel guard refunds only an in-progress voyage', () async {
+      // The guard's third clause — `status == inProgress` — is load-bearing in
+      // both directions, so this test pins both and cannot pass vacuously.
+
+      // Direction 1: an in-progress voyage IS refunded (the migration working).
+      // v2 had taken the whole quote at launch and wrote no marker, so its
+      // stored balance is short by the full cost; loading must hand it back.
+      final clockA = FakeClock(DateTime(2026));
+      final storageA = MemoryStorage();
+      final a = await _boot(clockA, storage: storageA);
+      final targetA = _nearest(a);
+      final costA = a.energyCostTo(targetA);
+      final totalA = a.travelDurationTo(targetA);
+      await a.launchJourney(targetA);
+      clockA.advance(Duration(milliseconds: totalA.inMilliseconds ~/ 2));
+      final balanceBeforeA = a.player.energyBalance;
+
+      final rawA = await storageA.read('starward.save.v2');
+      final jsonA = jsonDecode(rawA!) as Map<String, dynamic>;
+      final playerA = jsonA['player'] as Map<String, dynamic>;
+      playerA['energyBalance'] = (playerA['energyBalance'] as int) - costA;
+      jsonA.remove('energyModel');
+      expect(jsonA.containsKey('energyModel'), isFalse,
+          reason: 'the fixture must genuinely omit the marker');
+      await storageA.write('starward.save.v2', jsonEncode(jsonA));
+
+      final a2 = await _boot(clockA, storage: storageA);
+      expect(a2.player.energyBalance, balanceBeforeA,
+          reason: 'the migration hands back exactly the quote v2 had taken');
+
+      // Direction 2: an arrived voyage is NOT refunded. A completed trip
+      // persists as an `arrived` activeJourney, and arrival already settled the
+      // burn — a refund here would be free energy on every restart of a docked
+      // save.
+      final clockB = FakeClock(DateTime(2026));
+      final storageB = MemoryStorage();
+      final b = await _boot(clockB, storage: storageB);
+      final targetB = _nearest(b);
+      final totalB = b.travelDurationTo(targetB);
+      await b.launchJourney(targetB);
+      clockB.advance(totalB + const Duration(seconds: 1));
+      b.tick();
+      expect(b.activeJourney?.status, JourneyStatus.arrived,
+          reason: 'a completed voyage persists as an arrived activeJourney');
+      final balanceOnArrivalB = b.player.energyBalance;
+
+      final rawB = await storageB.read('starward.save.v2');
+      final jsonB = jsonDecode(rawB!) as Map<String, dynamic>;
+      jsonB.remove('energyModel');
+      expect(jsonB.containsKey('energyModel'), isFalse);
+      expect((jsonB['activeJourney'] as Map<String, dynamic>)['status'],
+          'arrived');
+      await storageB.write('starward.save.v2', jsonEncode(jsonB));
+
+      final b2 = await _boot(clockB, storage: storageB);
+      expect(b2.player.energyBalance, balanceOnArrivalB,
+          reason: 'an arrived voyage already settled — no second refund');
+    });
+
     test('a save with no voyage in flight is left alone', () async {
       final clock = FakeClock(DateTime(2026));
       final storage = MemoryStorage();

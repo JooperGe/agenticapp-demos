@@ -173,6 +173,77 @@ void main() {
     expect(second, greaterThan(first),
         reason: 'the star-stream must keep moving while coasting');
   });
+
+  testWidgets('a queued drift report auto-shows when the journey view mounts',
+      (tester) async {
+    // Boot a doomed coast exactly as `the coasting starfield streams` does, then
+    // let the tank run dry: that queues a fuel-out report. Unlike that test we
+    // leave the report queued — this is its complement, and the report must
+    // surface on its own. The journey page is always mounted inside the shell's
+    // IndexedStack, so the sheet opens as soon as the shell is pumped; there is
+    // no tab to tap, because the sheet's barrier would cover the tab bar.
+    final clock = _FakeClock(DateTime(2026));
+    final c = await _bootAt(clock);
+    await c.installEngine(_greedy);
+
+    final target = c.planets
+        .where((p) => p.id != c.currentPlanetId)
+        .reduce((a, b) => c.distanceTo(a) < c.distanceTo(b) ? a : b);
+    await c.launchJourney(target, onEmpty: FuelPolicy.coast);
+    final journey = c.activeJourney!;
+
+    clock.advance(journey.totalDuration);
+    c.tick();
+    expect(c.pendingDriftReport, isNotNull,
+        reason: 'running dry queues a report, left unacknowledged here');
+
+    await tester.pumpWidget(
+      MaterialApp(home: GameScope(controller: c, child: const HomeShell())),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    // The sheet opens from a post-frame callback: give it a frame to fire and
+    // its entrance animation a moment to run.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('燃料耗尽'), findsOneWidget,
+        reason: 'the queued report auto-shows as the drift report sheet');
+    expect(find.text('知道了'), findsOneWidget);
+  });
+
+  testWidgets('the coasting readout shows the live drift totals',
+      (tester) async {
+    // Spec §6.2 (在线播报) requires the coasting page to show the running totals
+    // live, and §6.3's row 3 (在线滚动播报) is implemented by this readout.
+    // Acknowledge the fuel-out sheet so its barrier does not cover the dock,
+    // then assert the real strings the dock renders.
+    final clock = _FakeClock(DateTime(2026));
+    final c = await _bootAt(clock);
+    await c.installEngine(_greedy);
+
+    final target = c.planets
+        .where((p) => p.id != c.currentPlanetId)
+        .reduce((a, b) => c.distanceTo(a) < c.distanceTo(b) ? a : b);
+    await c.launchJourney(target, onEmpty: FuelPolicy.coast);
+    final journey = c.activeJourney!;
+
+    clock.advance(journey.totalDuration);
+    c.tick();
+    expect(c.isCoasting, isTrue, reason: 'the tank ran dry and it coasts on');
+    await c.acknowledgeDriftReport();
+
+    await tester.pumpWidget(
+      MaterialApp(home: GameScope(controller: c, child: const HomeShell())),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.text('航行').last);
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('途经恒星系'), findsOneWidget,
+        reason: 'the coasting dock shows how many systems the drift passed');
+    expect(find.text('查看播报'), findsOneWidget,
+        reason: 'the dock offers the on-demand drift report');
+  });
 }
 
 class _FakeClock {

@@ -253,7 +253,7 @@ class Universe {
   /// The star systems a drift passed within [radiusLy] of, between
   /// [fromSeconds] and [upToSeconds] of it.
   ///
-  /// A full scan of the catalogue — 109,401 stars, one closed-form
+  /// A full scan of the catalogue — 120,601 stars, one closed-form
   /// `closestApproach` each, and an `atan2`/`cos`/`sin` per star once the
   /// window is past the shell's `hitSeconds`. This is *not* only run when a
   /// report is written: the coasting screen reads it once a second, since the

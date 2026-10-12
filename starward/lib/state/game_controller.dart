@@ -117,8 +117,14 @@ class GameController extends ChangeNotifier {
     _reconcileJourney();
     // A drift that ran while the game was closed is the one thing the player
     // could not have watched happen. Recompute it once. A voyage that ran out
-    // of fuel while away has already queued its own report, and that news
-    // comes first — the drift window is not lost, it just waits its turn.
+    // of fuel while away has already queued its own report, and that news wins:
+    // there is one report slot by design (the save holds a single
+    // `pendingDriftReport`), so this `??=` deliberately leaves the fuel-out
+    // report in place and does not auto-queue the drift window. That is
+    // intended — "your voyage was cut short, you got this far" is both more
+    // urgent and more specific than "you also coasted" — and the drift summary
+    // stays reachable: the coasting screen shows the running totals live and
+    // its 查看播报 button yields the report on demand.
     _pendingDriftReport ??= buildDriftReport();
     _rebuildNearby();
     _ready = true;
@@ -941,7 +947,9 @@ class GameController extends ChangeNotifier {
       _addEnergy(
           Balance.explorationReward, EnergyTxType.explorationReward, planet.id);
     }
-    // The voyage that brought us here is now complete.
+    // The voyage that brought us here is complete. Safe to clear without a
+    // settle: the destination guard can only match an already-settled `arrived`
+    // voyage, so a widened guard would have to settle first.
     if (_activeJourney?.destinationPlanetId == planet.id) {
       _activeJourney = null;
       _player = _player.copyWith(clearActiveJourney: true);
@@ -1025,9 +1033,13 @@ class GameController extends ChangeNotifier {
   /// Books the fuel voyage [j] has burned up to [now], once, and returns it.
   ///
   /// Nothing is deducted at launch, so this is where a voyage's cost actually
-  /// reaches the ledger. Every path that ends a voyage calls it *before* the
-  /// journey is cleared or its status flips — that ordering is what keeps it
-  /// from booking twice.
+  /// reaches the ledger. The invariant is *exactly one settle per voyage-ending
+  /// path*: `burnedAt(now)` reads only `energyCost` and `progressAt(now)`, never
+  /// `status`, so settling before or after the status flip books the same
+  /// amount — it is the single call site, not the ordering, that prevents
+  /// double-booking. By convention each path still calls it *before* the
+  /// journey is cleared, which keeps the ledger entry attributable to a journey
+  /// that still exists.
   int _settleBurn(Journey j, DateTime now) {
     final burned = j.burnedAt(now);
     if (burned <= 0) return 0;
