@@ -8,9 +8,11 @@ import '../data/game_repository.dart';
 import '../data/hyg_catalog.dart';
 import '../data/models/discovery_record.dart';
 import '../data/models/energy_transaction.dart';
+import '../data/models/engine.dart';
 import '../data/models/journey.dart';
 import '../data/models/planet.dart';
 import '../data/models/player_state.dart';
+import '../data/models/ship.dart';
 import '../data/models/training_session.dart';
 import '../data/synthetic_galaxy.dart';
 import '../data/universe.dart';
@@ -67,6 +69,11 @@ class GameController extends ChangeNotifier {
   static const double _nearbyRadiusLy = 60;
 
   late PlayerState _player;
+
+  /// The vessel the player flies. Voyage cost and duration are read off
+  /// [_ship]'s engine, never from a global table — see [installEngine].
+  late Ship _ship;
+
   Journey? _activeJourney;
   final List<DiscoveryRecord> _discoveries = <DiscoveryRecord>[];
   final List<EnergyTransaction> _energyLedger = <EnergyTransaction>[];
@@ -102,6 +109,7 @@ class GameController extends ChangeNotifier {
     // strategy (random-universe by default, or confined to the Solar System),
     // inside the ship — not on a planet.
     final spawn = _spawn(_universe, _random);
+    _ship = Ship.standard;
     _player = PlayerState.deepSpaceStart(
       energy: Balance.initialEnergy,
       startCoordX: 0,
@@ -115,6 +123,7 @@ class GameController extends ChangeNotifier {
 
   void _restore(GameSave save) {
     _player = save.player;
+    _ship = save.ship;
     _activeJourney = save.activeJourney;
     _discoveries
       ..clear()
@@ -139,6 +148,7 @@ class GameController extends ChangeNotifier {
   Future<void> _persist() async {
     await _repository.save(GameSave(
       player: _player,
+      ship: _ship,
       activeJourney: _activeJourney,
       discoveries: _discoveries,
       energyLedger: _energyLedger,
@@ -160,6 +170,11 @@ class GameController extends ChangeNotifier {
   HygStars get stars => _universe.stars;
 
   PlayerState get player => _player;
+
+  /// The vessel the player flies. Its engine is the single source of truth for
+  /// voyage cost and duration.
+  Ship get ship => _ship;
+
   int get energy => _player.energyBalance;
   Journey? get activeJourney => _activeJourney;
   List<DiscoveryRecord> get discoveries =>
@@ -228,9 +243,14 @@ class GameController extends ChangeNotifier {
     return (toPos - from).length;
   }
 
-  int energyCostTo(Planet target) => energyCostForDistance(distanceTo(target));
+  /// Energy this ship would burn to reach [target]. Read off the fitted
+  /// engine, so a refit changes the quote immediately.
+  int energyCostTo(Planet target) =>
+      _ship.engine.energyCostFor(distanceTo(target));
+
+  /// How long this ship would take to reach [target].
   Duration travelDurationTo(Planet target) =>
-      Duration(seconds: travelSecondsForDistance(distanceTo(target)));
+      Duration(seconds: _ship.engine.secondsFor(distanceTo(target)));
 
   List<DiscoveryRecord> discoveriesFor(String planetId) =>
       _discoveries.where((d) => d.planetId == planetId).toList();
@@ -389,7 +409,7 @@ class GameController extends ChangeNotifier {
   }
 
   int energyCostToStar(int hygId) =>
-      energyCostForDistance(distanceToStar(hygId));
+      _ship.engine.energyCostFor(distanceToStar(hygId));
 
   /// Launches a journey to a *star* (used for stars with no planets — you drift
   /// in beside it). Mirrors [launchJourney] but the destination is a star.
@@ -399,12 +419,12 @@ class GameController extends ChangeNotifier {
     if (isTraveling) return LaunchResult.alreadyTraveling;
     final dist = (playerPosition3D - target).length;
     if (dist < 0.5) return LaunchResult.alreadyHere;
-    final cost = energyCostForDistance(dist);
+    final cost = _ship.engine.energyCostFor(dist);
     if (_player.energyBalance < cost) return LaunchResult.insufficientEnergy;
 
     final departure = _now();
     final arrival =
-        departure.add(Duration(seconds: travelSecondsForDistance(dist)));
+        departure.add(Duration(seconds: _ship.engine.secondsFor(dist)));
     final journey = Journey(
       id: _newId('jny'),
       originPlanetId: _player.currentPlanetId ?? kDeepSpaceId,
@@ -493,10 +513,9 @@ class GameController extends ChangeNotifier {
   ///
   /// This is unconditional — turning back one second after departure still plots
   /// a return voyage rather than stopping the ship where it is. The distance
-  /// floors in [travelSecondsForDistance] / [energyCostForDistance] already keep
-  /// a near-zero return leg from resolving to a zero-length trip, and stopping
-  /// short of the origin would strand the player in open space when they asked
-  /// to go home (use [abortJourney] for that).
+  /// floors on [Engine] already keep a near-zero return leg from resolving to a
+  /// zero-length trip, and stopping short of the origin would strand the player
+  /// in open space when they asked to go home (use [abortJourney] for that).
   Future<LaunchResult> returnToOrigin() async {
     final journey = _activeJourney;
     if (journey == null || journey.status != JourneyStatus.inProgress) {
@@ -506,7 +525,7 @@ class GameController extends ChangeNotifier {
     final currentPos = _positionAlong(journey, now);
     final originPos = _originPosOf(journey);
     final dist = (originPos - currentPos).length;
-    final cost = energyCostForDistance(dist);
+    final cost = _ship.engine.energyCostFor(dist);
     if (_player.energyBalance < cost) return LaunchResult.insufficientEnergy;
 
     // Where we return *to*: dock at the origin planet/star, or a free deep-space
@@ -522,7 +541,8 @@ class GameController extends ChangeNotifier {
       startY: currentPos.y,
       startZ: currentPos.z,
     );
-    final arrival = now.add(Duration(seconds: travelSecondsForDistance(dist)));
+    final arrival =
+        now.add(Duration(seconds: _ship.engine.secondsFor(dist)));
     final ret = Journey(
       id: _newId('jny'),
       originPlanetId: kDeepSpaceId,
@@ -621,6 +641,21 @@ class GameController extends ChangeNotifier {
     await _persist();
     notifyListeners();
     return TrainingClaimResult.success;
+  }
+
+  // --- Ship ----------------------------------------------------------------
+
+  /// Fits a different [engine] to the ship and persists the refit.
+  ///
+  /// This is the seam that makes the engine a real, separately-changeable part:
+  /// a refit is this one call, and every subsequent voyage quote, launch, and
+  /// return leg picks up the new numbers because they all read [_ship]. It is
+  /// a no-op when [engine] is already fitted.
+  Future<void> installEngine(Engine engine) async {
+    if (_ship.engine.id == engine.id) return;
+    _ship = _ship.withEngine(engine);
+    await _persist();
+    notifyListeners();
   }
 
   // --- Energy helpers ------------------------------------------------------

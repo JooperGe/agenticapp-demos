@@ -4,6 +4,7 @@ import 'models/discovery_record.dart';
 import 'models/energy_transaction.dart';
 import 'models/journey.dart';
 import 'models/player_state.dart';
+import 'models/ship.dart';
 import 'models/training_session.dart';
 import 'storage/storage_backend.dart';
 
@@ -12,6 +13,7 @@ import 'storage/storage_backend.dart';
 class GameSave {
   const GameSave({
     required this.player,
+    required this.ship,
     required this.activeJourney,
     required this.discoveries,
     required this.energyLedger,
@@ -20,6 +22,12 @@ class GameSave {
   });
 
   final PlayerState player;
+
+  /// The vessel the player flies. Kept beside [player] rather than inside it:
+  /// the player is the pilot's progress, the ship is the machine, and a refit
+  /// changes one without touching the other.
+  final Ship ship;
+
   final Journey? activeJourney;
   final List<DiscoveryRecord> discoveries;
   final List<EnergyTransaction> energyLedger;
@@ -32,6 +40,7 @@ class GameSave {
   Map<String, dynamic> toJson() => <String, dynamic>{
         'version': 1,
         'player': player.toJson(),
+        'ship': ship.toJson(),
         'activeJourney': activeJourney?.toJson(),
         'discoveries': discoveries.map((e) => e.toJson()).toList(),
         'energyLedger': energyLedger.map((e) => e.toJson()).toList(),
@@ -42,6 +51,14 @@ class GameSave {
 
   factory GameSave.fromJson(Map<String, dynamic> json) => GameSave(
         player: PlayerState.fromJson(json['player'] as Map<String, dynamic>),
+        // Saves written before ships were modelled have no 'ship' key. Falling
+        // back to the standard ship migrates them in place instead of
+        // abandoning the player's progress — and because the standard engine
+        // carries the numbers the game used before, such a save flies
+        // identically to how it did.
+        ship: json['ship'] == null
+            ? Ship.standard
+            : Ship.fromJson(json['ship'] as Map<String, dynamic>),
         activeJourney: json['activeJourney'] == null
             ? null
             : Journey.fromJson(json['activeJourney'] as Map<String, dynamic>),

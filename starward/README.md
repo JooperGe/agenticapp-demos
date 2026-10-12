@@ -30,9 +30,9 @@ flutter build apk --release
 
 分层清晰，UI 不直接读写存储，全部经由状态控制器。
 
-- `lib/core/` — `theme.dart`（深空视觉语言、颜色、面板样式）、`balance.dart`（**所有可调数值集中于此**：能量成本、航行时长、奖励、距离分级）。
+- `lib/core/` — `theme.dart`（深空视觉语言、颜色、面板样式）、`balance.dart`（**只放跨实体的经济调参**：初始能量、探索奖励。属于某个实体的数值放到那个实体上，见下）。
 - `lib/data/` — 领域层：
-  - `models/` 不可变数据模型（Planet / Journey / PlayerState / DiscoveryRecord / EnergyTransaction / TrainingSession），均带 JSON 序列化。
+  - `models/` 不可变数据模型（Planet / Journey / PlayerState / **Ship / Engine** / DiscoveryRecord / EnergyTransaction / TrainingSession），均带 JSON 序列化。
   - `storage/` `StorageBackend` 抽象接口 + `PrefsStorage`（设备）/`MemoryStorage`（测试），**为未来云端同步预留替换点**。
   - `galaxy_data.dart` 固定星图种子数据（5 颗手工设计的英雄星球 + 36 颗以常量种子确定性生成的背景星球，共 41 颗；每次启动完全一致，绝不重随机）。
   - `game_repository.dart` 整存整取一份 JSON 存档。
@@ -47,6 +47,27 @@ flutter build apk --release
   - `widgets/` 复用组件：`PlanetDisc`（程序化星球）、`StarfieldBackground`（星场）、`StarPanel`/`EnergyBadge`/`StarLabels`。
 
 状态注入用轻量的 `GameScope`（`InheritedNotifier`），不引入额外状态管理依赖。注意：通过 `Navigator.push` 打开的全屏路由（探索、训练流程）需重新包一层 `GameScope`。
+
+### 领域建模约定
+
+**属性归属于拥有它的实体。** 一个数值如果描述某个具体实体，就作为那个实体的字段存在；
+`Balance` 只放跨实体的经济调参。
+
+航行成本与耗时曾经是 `Balance.energyPerLy` / `Balance.travelSecondsPerLy` 两个全局常量，
+导致"换一台发动机"在结构上无法表达。现在它们是 `Engine` 的字段：
+
+```
+Ship { id, name, engine }
+Engine { id, name, energyPerLy, travelSecondsPerLy, minEnergyCost, minTravelSeconds }
+  ├─ energyCostFor(ly)   // 原 energyCostForDistance
+  └─ secondsFor(ly)      // 原 travelSecondsForDistance
+```
+
+航线报价、出发、返航全部读 `ship.engine`，所以**改造发动机 = 换掉一个字段**
+（`GameController.installEngine`），船体、玩家状态、航行规则都不受影响。标准引擎
+（`Engine.standard`）的数值与重构前逐位相同，因此这次迁移不改变任何游戏表现。
+
+新增可调数值前，先找它的宿主实体；没有宿主就先建模型。详细约定见 `CLAUDE.md`。
 
 ## 航行状态逻辑
 

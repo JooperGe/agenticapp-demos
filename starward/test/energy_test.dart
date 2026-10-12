@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:starward/core/balance.dart';
 import 'package:starward/data/game_repository.dart';
 import 'package:starward/data/models/planet.dart';
 import 'package:starward/data/storage/storage_backend.dart';
@@ -40,11 +39,9 @@ void main() {
 
       await c.launchJourney(target);
       expect(c.energy, before - cost);
-      // Cost scales linearly with distance, floored so a hop is never free.
-      expect(
-          cost,
-          math.max(Balance.minEnergyCost,
-              (c.distanceTo(target) * Balance.energyPerLy).round()));
+      // Cost scales linearly with distance, floored so a hop is never free —
+      // and it comes off the ship's fitted engine, not a global table.
+      expect(cost, c.ship.engine.energyCostFor(c.distanceTo(target)));
     });
 
     test('cannot launch without enough energy and balance is untouched',

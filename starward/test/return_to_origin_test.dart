@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:starward/core/balance.dart';
 import 'package:starward/data/game_repository.dart';
 import 'package:starward/data/models/journey.dart';
 import 'package:starward/data/models/planet.dart';
@@ -103,8 +102,9 @@ void main() {
 
       final back = c.activeJourney!;
       expect(back.totalDuration.inSeconds,
-          greaterThanOrEqualTo(Balance.minTravelSeconds));
-      expect(back.energyCost, greaterThanOrEqualTo(Balance.minEnergyCost));
+          greaterThanOrEqualTo(c.ship.engine.minTravelSeconds));
+      expect(back.energyCost,
+          greaterThanOrEqualTo(c.ship.engine.minEnergyCost));
     });
   });
 
