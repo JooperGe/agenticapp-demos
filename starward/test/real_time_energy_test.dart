@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
@@ -188,6 +189,61 @@ void main() {
       c.tick();
       expect(c.energy, before - burned - back.energyCost);
       expect(c.energyLedger.length, 2);
+    });
+  });
+
+  group('v2 save migration', () {
+    test('a pre-energy-model save gets its up-front deduction back', () async {
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      final c = await _boot(clock, storage: storage);
+      final target = _nearest(c);
+      final cost = c.energyCostTo(target);
+      final total = c.travelDurationTo(target);
+      await c.launchJourney(target);
+      clock.advance(Duration(milliseconds: total.inMilliseconds ~/ 2));
+      final live = c.energy;
+      final balanceBefore = c.player.energyBalance;
+
+      // Rewrite the save the way v2 wrote it: the whole quote already
+      // deducted, and no energyModel marker.
+      final raw = await storage.read('starward.save.v2');
+      final json = jsonDecode(raw!) as Map<String, dynamic>;
+      final player = json['player'] as Map<String, dynamic>;
+      player['energyBalance'] = (player['energyBalance'] as int) - cost;
+      json.remove('energyModel');
+      await storage.write('starward.save.v2', jsonEncode(json));
+
+      // Loading migrates it: the deduction comes back, so the live reading is
+      // exactly what it was before the round trip.
+      final c2 = await _boot(clock, storage: storage);
+      expect(c2.energy, live);
+      expect(c2.player.energyBalance, balanceBefore,
+          reason: 'the migration hands back exactly the quote v2 had taken');
+    });
+
+    test('a save with no voyage in flight is left alone', () async {
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      final c = await _boot(clock, storage: storage);
+      final before = c.energy;
+
+      final raw = await storage.read('starward.save.v2');
+      final json = jsonDecode(raw!) as Map<String, dynamic>;
+      json.remove('energyModel');
+      await storage.write('starward.save.v2', jsonEncode(json));
+
+      final c2 = await _boot(clock, storage: storage);
+      expect(c2.energy, before);
+    });
+
+    test('the marker survives a round trip', () async {
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      await _boot(clock, storage: storage);
+      final raw = await storage.read('starward.save.v2');
+      final json = jsonDecode(raw!) as Map<String, dynamic>;
+      expect(json['energyModel'], 2);
     });
   });
 }

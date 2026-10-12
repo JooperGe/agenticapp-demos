@@ -37,8 +37,13 @@ class GameSave {
   /// states are stored; a missing entry means "undiscovered".
   final Map<String, String> planetStates;
 
+  /// The save schema generation. Saves written before real-time fuel burning
+  /// lack the marker and are migrated on load.
+  static const int energyModel = 2;
+
   Map<String, dynamic> toJson() => <String, dynamic>{
         'version': 1,
+        'energyModel': energyModel,
         'player': player.toJson(),
         'ship': ship.toJson(),
         'activeJourney': activeJourney?.toJson(),
@@ -49,33 +54,50 @@ class GameSave {
         'planetStates': planetStates,
       };
 
-  factory GameSave.fromJson(Map<String, dynamic> json) => GameSave(
-        player: PlayerState.fromJson(json['player'] as Map<String, dynamic>),
-        // Saves written before ships were modelled have no 'ship' key. Falling
-        // back to the standard ship migrates them in place instead of
-        // abandoning the player's progress — and because the standard engine
-        // carries the numbers the game used before, such a save flies
-        // identically to how it did.
-        ship: json['ship'] == null
-            ? Ship.standard
-            : Ship.fromJson(json['ship'] as Map<String, dynamic>),
-        activeJourney: json['activeJourney'] == null
-            ? null
-            : Journey.fromJson(json['activeJourney'] as Map<String, dynamic>),
-        discoveries: (json['discoveries'] as List<dynamic>)
-            .map((e) => DiscoveryRecord.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        energyLedger: (json['energyLedger'] as List<dynamic>)
-            .map((e) => EnergyTransaction.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        trainingSessions: (json['trainingSessions'] as List<dynamic>)
-            .map((e) => TrainingSession.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        planetStates:
-            (json['planetStates'] as Map<String, dynamic>).map(
-          (k, v) => MapEntry(k, v as String),
-        ),
+  factory GameSave.fromJson(Map<String, dynamic> json) {
+    var player = PlayerState.fromJson(json['player'] as Map<String, dynamic>);
+    final activeJourney = json['activeJourney'] == null
+        ? null
+        : Journey.fromJson(json['activeJourney'] as Map<String, dynamic>);
+
+    // Saves written before real-time burning (no 'energyModel') had the whole
+    // voyage cost taken at launch. `energyBalance` now means "fuel not yet
+    // burned", so hand that deduction back — otherwise an in-flight save would
+    // pay for the same trip twice. A lossless migration, so no key bump.
+    if (json['energyModel'] == null &&
+        activeJourney != null &&
+        activeJourney.status == JourneyStatus.inProgress) {
+      player = player.copyWith(
+        energyBalance: player.energyBalance + activeJourney.energyCost,
       );
+    }
+
+    return GameSave(
+      player: player,
+      // Saves written before ships were modelled have no 'ship' key. Falling
+      // back to the standard ship migrates them in place instead of
+      // abandoning the player's progress — and because the standard engine
+      // carries the numbers the game used before, such a save flies
+      // identically to how it did.
+      ship: json['ship'] == null
+          ? Ship.standard
+          : Ship.fromJson(json['ship'] as Map<String, dynamic>),
+      activeJourney: activeJourney,
+      discoveries: (json['discoveries'] as List<dynamic>)
+          .map((e) => DiscoveryRecord.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      energyLedger: (json['energyLedger'] as List<dynamic>)
+          .map((e) => EnergyTransaction.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      trainingSessions: (json['trainingSessions'] as List<dynamic>)
+          .map((e) => TrainingSession.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      planetStates:
+          (json['planetStates'] as Map<String, dynamic>).map(
+        (k, v) => MapEntry(k, v as String),
+      ),
+    );
+  }
 }
 
 /// Reads and writes [GameSave]s through a [StorageBackend]. The UI never
