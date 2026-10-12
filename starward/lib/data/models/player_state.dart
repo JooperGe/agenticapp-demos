@@ -1,3 +1,5 @@
+import '../../core/vec3.dart';
+
 /// The player's mutable progress. Immutable value object — the controller
 /// replaces it wholesale via [copyWith] so state transitions are explicit and
 /// easy to reason about.
@@ -14,6 +16,8 @@ class PlayerState {
     required this.startX,
     required this.startY,
     required this.startZ,
+    required this.driftVelocity,
+    required this.driftStartedAt,
   });
 
   final int energyBalance;
@@ -38,6 +42,20 @@ class PlayerState {
   final double startY;
   final double startZ;
 
+  /// Deep-space drift. The ship's position while [currentPlanetId] is null is
+  /// `startX/Y/Z` advanced by this velocity since [driftStartedAt] — see
+  /// `GameController.playerPosition3D`.
+  ///
+  /// Zero velocity (the default for every save written before coasting
+  /// existed) means the ship is parked: it sits at the anchor forever, which is
+  /// exactly the static deep-space hover the game had before.
+  final Vec3 driftVelocity;
+
+  /// When [driftVelocity] started being applied. Only meaningful while
+  /// [driftVelocity] is non-zero; the epoch default keeps a parked ship's
+  /// arithmetic well away from any "you have been drifting for 56 years" bug.
+  final DateTime driftStartedAt;
+
   bool get inDeepSpace => currentPlanetId == null;
 
   PlayerState copyWith({
@@ -51,6 +69,8 @@ class PlayerState {
     double? startY,
     double? startZ,
     bool toDeepSpace = false,
+    Vec3? driftVelocity,
+    DateTime? driftStartedAt,
   }) {
     return PlayerState(
       energyBalance: energyBalance ?? this.energyBalance,
@@ -66,6 +86,8 @@ class PlayerState {
       startX: startX ?? this.startX,
       startY: startY ?? this.startY,
       startZ: startZ ?? this.startZ,
+      driftVelocity: driftVelocity ?? this.driftVelocity,
+      driftStartedAt: driftStartedAt ?? this.driftStartedAt,
     );
   }
 
@@ -91,6 +113,8 @@ class PlayerState {
       startX: startX,
       startY: startY,
       startZ: startZ,
+      driftVelocity: const Vec3(0, 0, 0),
+      driftStartedAt: DateTime.fromMillisecondsSinceEpoch(0),
     );
   }
 
@@ -109,6 +133,13 @@ class PlayerState {
         startX: (json['startX'] as num?)?.toDouble() ?? 0,
         startY: (json['startY'] as num?)?.toDouble() ?? 0,
         startZ: (json['startZ'] as num?)?.toDouble() ?? 0,
+        driftVelocity: Vec3(
+          (json['driftVelocityX'] as num?)?.toDouble() ?? 0,
+          (json['driftVelocityY'] as num?)?.toDouble() ?? 0,
+          (json['driftVelocityZ'] as num?)?.toDouble() ?? 0,
+        ),
+        driftStartedAt: DateTime.fromMillisecondsSinceEpoch(
+            (json['driftStartedAt'] as int?) ?? 0),
       );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -123,5 +154,9 @@ class PlayerState {
         'startX': startX,
         'startY': startY,
         'startZ': startZ,
+        'driftVelocityX': driftVelocity.x,
+        'driftVelocityY': driftVelocity.y,
+        'driftVelocityZ': driftVelocity.z,
+        'driftStartedAt': driftStartedAt.millisecondsSinceEpoch,
       };
 }

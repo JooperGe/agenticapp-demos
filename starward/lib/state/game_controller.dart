@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 
 import '../core/balance.dart';
+import '../core/drift.dart';
 import '../core/vec3.dart';
 import '../data/game_repository.dart';
 import '../data/hyg_catalog.dart';
@@ -201,10 +202,48 @@ class GameController extends ChangeNotifier {
       ? Vec3(_player.startX, _player.startY, _player.startZ)
       : null;
 
-  /// The ship's current 3D position in light-years (planet or deep-space drift).
-  Vec3 get playerPosition3D =>
-      currentPlanet?.pos ??
-      Vec3(_player.startX, _player.startY, _player.startZ);
+  /// The ship's current drift velocity in ly/s. Zero whenever the ship is
+  /// parked — which is every state the game had before coasting existed.
+  Vec3 get driftVelocity => _player.driftVelocity;
+
+  /// The ship's current 3D position in light-years.
+  ///
+  /// Docked at a planet it is that planet's position. Adrift it is the
+  /// deep-space anchor advanced by any drift — and because a parked ship has
+  /// zero velocity, this returns the anchor untouched, which is what every
+  /// deep-space state did before coasting existed.
+  Vec3 get playerPosition3D {
+    final planet = currentPlanet;
+    if (planet != null) return planet.pos;
+    final start = Vec3(_player.startX, _player.startY, _player.startZ);
+    return driftPositionAt(
+      start: start,
+      velocity: _player.driftVelocity,
+      elapsedSeconds:
+          _now().difference(_player.driftStartedAt).inMilliseconds / 1000,
+      // No shell yet: `universeRadius` arrives in Task 6. With velocity still
+      // pinned to zero until Task 9, the bound is unreachable either way, so
+      // this is bit-identical to today's static deep space. Task 6 swaps this
+      // line for `math.max(_universe.universeRadius, start.length)`.
+      bound: start.length,
+    );
+  }
+
+  /// Pins the deep-space anchor to where the ship actually is right now, and
+  /// stops any drift — the engine is taking over the motion.
+  ///
+  /// Every launch must do this: [_originPosOf] reads the anchor, so a coasting
+  /// ship that launched without re-anchoring would plot its route from a stale
+  /// coordinate and arrive somewhere it never was.
+  void _anchorHere() {
+    final pos = playerPosition3D;
+    _player = _player.copyWith(
+      startX: pos.x,
+      startY: pos.y,
+      startZ: pos.z,
+      driftVelocity: const Vec3(0, 0, 0),
+    );
+  }
 
   /// The player's energy right now, in EN.
   ///
@@ -400,6 +439,7 @@ class GameController extends ChangeNotifier {
     final cost = energyCostTo(target);
     if (_player.energyBalance < cost) return LaunchResult.insufficientEnergy;
 
+    _anchorHere();
     final departure = _now();
     final arrival = departure.add(travelDurationTo(target));
     final journey = Journey(
@@ -439,6 +479,7 @@ class GameController extends ChangeNotifier {
     final cost = _ship.engine.energyCostFor(dist);
     if (_player.energyBalance < cost) return LaunchResult.insufficientEnergy;
 
+    _anchorHere();
     final departure = _now();
     final arrival =
         departure.add(Duration(seconds: _ship.engine.secondsFor(dist)));
@@ -570,6 +611,7 @@ class GameController extends ChangeNotifier {
       startX: currentPos.x,
       startY: currentPos.y,
       startZ: currentPos.z,
+      driftVelocity: const Vec3(0, 0, 0),
     );
     final arrival =
         now.add(Duration(seconds: _ship.engine.secondsFor(dist)));
