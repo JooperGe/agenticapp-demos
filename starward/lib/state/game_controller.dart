@@ -69,6 +69,15 @@ class GameController extends ChangeNotifier {
   /// How far around the player we surface procedural planets (light-years).
   static const double _nearbyRadiusLy = 60;
 
+  /// The position the nearby set was last built at, so a drifting ship can
+  /// skip the scan when it has barely moved.
+  Vec3? _nearbyScanPos;
+
+  /// How far the ship must travel before the nearby set is rebuilt. A coasting
+  /// ship covers 2304 ly/day, so rescanning every frame would walk 120k stars
+  /// sixty times a second for a list that hardly changed.
+  static const double _nearbyRescanLy = 20;
+
   late PlayerState _player;
 
   /// The vessel the player flies. Voyage cost and duration are read off
@@ -315,13 +324,21 @@ class GameController extends ChangeNotifier {
   /// immediate neighbourhood is sparse (e.g. far from the Sun) so there is
   /// always somewhere to travel.
   void _rebuildNearby() {
+    final pos = playerPosition3D;
     var radius = _nearbyRadiusLy;
-    var found = _universe.planetsNear(playerPosition3D, radius, cap: 90);
+    var found = _universe.planetsNear(pos, radius, cap: 90);
     var tries = 0;
     while (found.length < 10 && tries < 4) {
       radius *= 2;
-      found = _universe.planetsNear(playerPosition3D, radius, cap: 90);
+      found = _universe.planetsNear(pos, radius, cap: 90);
       tries++;
+    }
+    // Even 960 ly can come up empty — a ship that drifted or spawned far
+    // outside the shell has nothing within reach. Fall back to the nearest
+    // stars anywhere in the catalogue, which makes an empty `planets` set
+    // practically unreachable and leaves the player somewhere to fly.
+    if (found.length < 10) {
+      found = _universe.nearestPlanets(pos, cap: 90);
     }
     // Make sure an in-flight destination is always resolvable in the set.
     final destId = _activeJourney?.destinationPlanetId;
@@ -330,6 +347,18 @@ class GameController extends ChangeNotifier {
       if (dest != null) found = <Planet>[dest, ...found];
     }
     _nearby = List<Planet>.unmodifiable(found);
+    _nearbyScanPos = pos;
+  }
+
+  /// Rebuilds the nearby set only if the ship has drifted far enough to matter.
+  /// A no-op for a parked ship, and for a docked one.
+  void _maybeRescanNearby() {
+    if (_player.driftVelocity.length == 0) return;
+    final last = _nearbyScanPos;
+    if (last != null && (playerPosition3D - last).length < _nearbyRescanLy) {
+      return;
+    }
+    _rebuildNearby();
   }
 
   // --- Journey rules -------------------------------------------------------
@@ -422,10 +451,12 @@ class GameController extends ChangeNotifier {
       _reconcileJourney();
       _persist();
       notifyListeners();
-    } else {
-      // Still travelling — repaint progress without persisting.
-      notifyListeners();
+      return;
     }
+    // Still travelling, or coasting: repaint without persisting. A coasting
+    // ship may also have crossed into a new neighbourhood.
+    _maybeRescanNearby();
+    notifyListeners();
   }
 
   /// Validates and starts a journey to [target]. Energy is checked up front but

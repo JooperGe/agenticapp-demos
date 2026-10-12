@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
@@ -25,6 +26,22 @@ Future<GameController> _boot(FakeClock clock, {MemoryStorage? storage}) async {
   );
   await c.init();
   return c;
+}
+
+/// Rewrites the saved drift so the ship is coasting from a known anchor.
+Future<void> _setDrift(
+  MemoryStorage storage,
+  Vec3 velocity,
+  DateTime startedAt,
+) async {
+  final raw = await storage.read('starward.save.v2');
+  final json = jsonDecode(raw!) as Map<String, dynamic>;
+  final player = json['player'] as Map<String, dynamic>;
+  player['driftVelocityX'] = velocity.x;
+  player['driftVelocityY'] = velocity.y;
+  player['driftVelocityZ'] = velocity.z;
+  player['driftStartedAt'] = startedAt.millisecondsSinceEpoch;
+  await storage.write('starward.save.v2', jsonEncode(json));
 }
 
 void main() {
@@ -171,6 +188,50 @@ void main() {
       expect((found.first.pos - nowhere).length, closeTo(47002.8, 5));
       expect(found.first.pos.length, closeTo(3017.7, 5),
           reason: 'the nearest planet orbits a star near the outer shell');
+    });
+  });
+
+  group('_rebuildNearby under drift', () {
+    test('the nearby set is left alone until the ship has moved 20 ly',
+        () async {
+      final start = DateTime(2026, 1, 1);
+      final clock = FakeClock(start);
+      final storage = MemoryStorage();
+      await _boot(clock, storage: storage);
+      // 1 ly/s heading +X, anchored at the Solar-System spawn.
+      await _setDrift(storage, const Vec3(1, 0, 0), start);
+      final c = await _boot(clock, storage: storage);
+
+      final before = c.planets;
+      clock.advance(const Duration(seconds: 10)); // 10 ly — under the threshold
+      c.tick();
+      expect(identical(c.planets, before), isTrue,
+          reason: 'a 10 ly nudge must not trigger a 120k-star rescan');
+
+      clock.advance(const Duration(seconds: 15)); // 25 ly — over it
+      c.tick();
+      expect(identical(c.planets, before), isFalse);
+    });
+
+    test('a ship stranded far outside the shell still has destinations',
+        () async {
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      await _boot(clock, storage: storage);
+      // 50,000 ly out: nothing within the 960 ly the radius search reaches.
+      final raw = await storage.read('starward.save.v2');
+      final json = jsonDecode(raw!) as Map<String, dynamic>;
+      final player = json['player'] as Map<String, dynamic>;
+      player['startX'] = 50000.0;
+      player['startY'] = 0.0;
+      player['startZ'] = 0.0;
+      await storage.write('starward.save.v2', jsonEncode(json));
+
+      final c = await _boot(clock, storage: storage);
+      expect(c.planets, isNotEmpty,
+          reason: 'no soft-lock: there is always somewhere to fly');
+      // And they are the genuinely nearest ones, ~46,000 ly away.
+      expect(c.planets.first.pos.length, lessThan(50000));
     });
   });
 }
