@@ -270,4 +270,58 @@ void main() {
       expect(c.pendingDriftReport, isNull);
     });
   });
+
+  group('a queued report survives a restart', () {
+    test('a fuel-out report is restored, not rebuilt', () async {
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      final c = await _boot(clock, storage);
+      await c.installEngine(_greedy);
+      final target = c.planets.firstWhere((p) => p.id != c.currentPlanetId);
+      expect(await c.launchJourney(target, onEmpty: FuelPolicy.coast),
+          LaunchResult.success);
+      final journey = c.activeJourney!;
+
+      clock.advance(c.fuelExhaustTime(journey).difference(clock()) +
+          const Duration(seconds: 1));
+      c.tick();
+      final queued = c.pendingDriftReport!;
+      expect(queued.kind, DriftReportKind.fuelOut);
+
+      // Killed before the sheet was opened. The powered leg is history:
+      // `buildDriftReport` only ever produces the `drift` kind, so this window
+      // cannot be recomputed after the fact — it has to survive the restart.
+      final c2 = await _boot(clock, storage);
+      final r = c2.pendingDriftReport!;
+      expect(r.kind, DriftReportKind.fuelOut);
+      expect(r.from, queued.from);
+      expect(r.to, queued.to);
+      expect(r.distanceLy, queued.distanceLy);
+    });
+
+    test('a drift report is recomputed, not restored stale', () async {
+      final start = DateTime(2026, 3, 1);
+      final clock = FakeClock(start);
+      final storage = MemoryStorage();
+      await _boot(clock, storage);
+      await _drifting(clock, storage, const Vec3(1, 0, 0), start);
+      clock.advance(const Duration(minutes: 5));
+      final c = await _boot(clock, storage);
+
+      // Get a drift report onto disk: init() only builds one in memory, so
+      // acknowledge the auto-queued one and ask again — requestDriftReport()
+      // is what persists.
+      await c.acknowledgeDriftReport();
+      await c.requestDriftReport();
+      final persisted = c.pendingDriftReport!;
+      expect(persisted.kind, DriftReportKind.drift);
+
+      clock.advance(const Duration(hours: 3));
+      final c2 = await _boot(clock, storage);
+      expect(c2.pendingDriftReport!.kind, DriftReportKind.drift);
+      expect(c2.pendingDriftReport!.to, clock(),
+          reason: 'the window is rebuilt for the later boot, not restored');
+      expect(c2.pendingDriftReport!.elapsed, greaterThan(persisted.elapsed));
+    });
+  });
 }

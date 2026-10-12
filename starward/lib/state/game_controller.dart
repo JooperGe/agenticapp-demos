@@ -164,6 +164,17 @@ class GameController extends ChangeNotifier {
               orElse: () => DiscoveryState.undiscovered),
         ),
       ));
+    // A queued fuel-out report is history: the powered leg is over, and
+    // `buildDriftReport` can only ever produce the `drift` kind, so this
+    // window cannot be recomputed after the fact — it has to survive the
+    // restart. A queued drift report is a window that kept growing while the
+    // game was closed, and rebuilding it covers a superset of the same span
+    // (same `driftStartedAt`, later `now`), so it is deliberately left null
+    // for `init()` to recompute — design §6.3's offline window is
+    // `[driftStartedAt, now]`.
+    _pendingDriftReport = save.pendingDriftReport?.kind == DriftReportKind.fuelOut
+        ? save.pendingDriftReport
+        : null;
   }
 
   Future<void> _persist() async {
