@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import '../core/drift.dart';
 import '../core/vec3.dart';
 import 'galaxy_data.dart';
 import 'hyg_catalog.dart';
@@ -247,6 +248,54 @@ class Universe {
         (a.pos - posLy).length.compareTo((b.pos - posLy).length));
     if (found.length > cap) return found.sublist(0, cap);
     return found;
+  }
+
+  /// The star systems a drift passed within [radiusLy] of, between
+  /// [fromSeconds] and [upToSeconds] of it.
+  ///
+  /// A full scan of the catalogue, one closed-form closest-approach per star —
+  /// a few milliseconds, which is affordable because it only runs when a
+  /// report is being written, not per frame.
+  PassedSystems passedSystemsAlong({
+    required DriftPath path,
+    required double upToSeconds,
+    double fromSeconds = 0,
+    double radiusLy = 20,
+    int named = 8,
+  }) {
+    var count = 0;
+    final nearest = <PassedSystem>[];
+    void scan(HygStars set) {
+      for (var i = 0; i < set.count; i++) {
+        final approach = path.closestApproach(
+          set.positionOfIndex(i),
+          upToSeconds,
+          fromSeconds: fromSeconds,
+        );
+        if (approach.distanceLy > radiusLy) continue;
+        count++;
+        final hit = PassedSystem(
+          hygId: set.starId[i],
+          distanceLy: approach.distanceLy,
+          seconds: approach.seconds,
+        );
+        // Insertion-sorted and capped: only the closest [named] are ever shown,
+        // so there is no reason to sort 120k distances.
+        var at = nearest.length;
+        while (at > 0 && nearest[at - 1].distanceLy > hit.distanceLy) {
+          at--;
+        }
+        if (at >= named) continue;
+        nearest.insert(at, hit);
+        if (nearest.length > named) nearest.removeLast();
+      }
+    }
+
+    scan(stars);
+    for (final g in extraGalaxies) {
+      scan(g);
+    }
+    return PassedSystems(count: count, nearest: nearest);
   }
 
   /// The planets around the [starCount] nearest stars to [posLy], nearest
