@@ -9,6 +9,26 @@ JourneyStatus journeyStatusFromName(String name) =>
     JourneyStatus.values.firstWhere((s) => s.name == name,
         orElse: () => JourneyStatus.inProgress);
 
+/// What happens when a voyage's fuel runs out before it reaches its
+/// destination.
+///
+/// Chosen at launch rather than globally, because it is a decision about *this*
+/// trip: the same ship may want to limp home on one voyage and gamble on
+/// another.
+enum FuelPolicy {
+  /// Refuse to depart without enough energy for the whole trip.
+  refuse,
+
+  /// Burn out and stop, parked where the tank emptied.
+  halt,
+
+  /// Burn out and keep coasting at cruise speed.
+  coast,
+}
+
+FuelPolicy fuelPolicyFromName(String name) => FuelPolicy.values
+    .firstWhere((p) => p.name == name, orElse: () => FuelPolicy.halt);
+
 /// A single voyage between two planets.
 ///
 /// Progress is derived entirely from the departure/arrival timestamps, never
@@ -23,6 +43,7 @@ class Journey {
     required this.arrival,
     required this.energyCost,
     required this.status,
+    this.fuelPolicy = FuelPolicy.halt,
   });
 
   final String id;
@@ -32,6 +53,11 @@ class Journey {
   final DateTime arrival;
   final int energyCost;
   final JourneyStatus status;
+
+  /// What to do if the tank runs dry en route. Defaults to [FuelPolicy.halt] so
+  /// saves written before this existed — whose voyages were paid for in full
+  /// and therefore can never exhaust — load without a special case.
+  final FuelPolicy fuelPolicy;
 
   Duration get totalDuration => arrival.difference(departure);
 
@@ -62,7 +88,7 @@ class Journey {
   /// regardless of whether [status] has been reconciled yet.
   bool hasArrivedBy(DateTime now) => !now.isBefore(arrival);
 
-  Journey copyWith({JourneyStatus? status}) => Journey(
+  Journey copyWith({JourneyStatus? status, FuelPolicy? fuelPolicy}) => Journey(
         id: id,
         originPlanetId: originPlanetId,
         destinationPlanetId: destinationPlanetId,
@@ -70,6 +96,7 @@ class Journey {
         arrival: arrival,
         energyCost: energyCost,
         status: status ?? this.status,
+        fuelPolicy: fuelPolicy ?? this.fuelPolicy,
       );
 
   factory Journey.fromJson(Map<String, dynamic> json) => Journey(
@@ -81,6 +108,9 @@ class Journey {
         arrival: DateTime.fromMillisecondsSinceEpoch(json['arrival'] as int),
         energyCost: json['energyCost'] as int,
         status: journeyStatusFromName(json['status'] as String),
+        fuelPolicy: json['fuelPolicy'] == null
+            ? FuelPolicy.halt
+            : fuelPolicyFromName(json['fuelPolicy'] as String),
       );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -91,5 +121,6 @@ class Journey {
         'arrival': arrival.millisecondsSinceEpoch,
         'energyCost': energyCost,
         'status': status.name,
+        'fuelPolicy': fuelPolicy.name,
       };
 }

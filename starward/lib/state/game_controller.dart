@@ -313,6 +313,32 @@ class GameController extends ChangeNotifier {
   Duration travelDurationTo(Planet target) =>
       Duration(seconds: _ship.engine.secondsFor(distanceTo(target)));
 
+  /// The fraction of voyage [j]'s route the ship can currently afford, capped
+  /// at 1. Below 1 the tank runs dry partway; at 1 the destination is reachable.
+  ///
+  /// Read off the balance *at the moment of asking*, which is what lets a
+  /// course finished mid-flight raise it and pull a doomed trip back onto the
+  /// board (see spec §3.4).
+  double fuelExhaustProgressFor(Journey j) {
+    final p = _player.energyBalance / j.energyCost;
+    if (p >= 1) return 1;
+    return p <= 0 ? 0 : p;
+  }
+
+  /// [fuelExhaustProgressFor] for the voyage in progress, or null when parked.
+  double? get fuelExhaustProgress {
+    final j = _activeJourney;
+    if (j == null || j.status != JourneyStatus.inProgress) return null;
+    return fuelExhaustProgressFor(j);
+  }
+
+  /// When voyage [j] runs out of fuel — never later than its arrival.
+  DateTime fuelExhaustTime(Journey j) {
+    final p = fuelExhaustProgressFor(j);
+    return j.departure.add(
+        Duration(milliseconds: (j.totalDuration.inMilliseconds * p).round()));
+  }
+
   List<DiscoveryRecord> discoveriesFor(String planetId) =>
       _discoveries.where((d) => d.planetId == planetId).toList();
 
@@ -462,11 +488,15 @@ class GameController extends ChangeNotifier {
   /// Validates and starts a journey to [target]. Energy is checked up front but
   /// not deducted — the burn accrues in real time and is booked when the voyage
   /// ends (see [_settleBurn]).
-  Future<LaunchResult> launchJourney(Planet target) async {
+  Future<LaunchResult> launchJourney(
+    Planet target, {
+    FuelPolicy onEmpty = FuelPolicy.refuse,
+  }) async {
     if (target.id == _player.currentPlanetId) return LaunchResult.alreadyHere;
     if (isTraveling) return LaunchResult.alreadyTraveling;
     final cost = energyCostTo(target);
-    if (_player.energyBalance < cost) return LaunchResult.insufficientEnergy;
+    final gate = _launchGate(cost, onEmpty);
+    if (gate != null) return gate;
 
     _anchorHere();
     final departure = _now();
@@ -480,6 +510,7 @@ class GameController extends ChangeNotifier {
       arrival: arrival,
       energyCost: cost,
       status: JourneyStatus.inProgress,
+      fuelPolicy: onEmpty,
     );
     _activeJourney = journey;
     await _persist();
@@ -499,14 +530,18 @@ class GameController extends ChangeNotifier {
 
   /// Launches a journey to a *star* (used for stars with no planets — you drift
   /// in beside it). Mirrors [launchJourney] but the destination is a star.
-  Future<LaunchResult> launchToStar(int hygId) async {
+  Future<LaunchResult> launchToStar(
+    int hygId, {
+    FuelPolicy onEmpty = FuelPolicy.refuse,
+  }) async {
     final target = _universe.starArrivalPoint(hygId);
     if (target == null) return LaunchResult.noSelection;
     if (isTraveling) return LaunchResult.alreadyTraveling;
     final dist = (playerPosition3D - target).length;
     if (dist < 0.5) return LaunchResult.alreadyHere;
     final cost = _ship.engine.energyCostFor(dist);
-    if (_player.energyBalance < cost) return LaunchResult.insufficientEnergy;
+    final gate = _launchGate(cost, onEmpty);
+    if (gate != null) return gate;
 
     _anchorHere();
     final departure = _now();
@@ -520,6 +555,7 @@ class GameController extends ChangeNotifier {
       arrival: arrival,
       energyCost: cost,
       status: JourneyStatus.inProgress,
+      fuelPolicy: onEmpty,
     );
     _activeJourney = journey;
     await _persist();
@@ -759,6 +795,21 @@ class GameController extends ChangeNotifier {
   }
 
   // --- Energy helpers ------------------------------------------------------
+
+  /// Whether [cost] can be committed under [policy]. Null means yes.
+  ///
+  /// [FuelPolicy.refuse] demands the whole quote up front — the rule the game
+  /// has always had. [FuelPolicy.halt] and [FuelPolicy.coast] only need a drop
+  /// of fuel, because the ship is explicitly allowed to run dry en route. A
+  /// completely empty tank moves nothing under any policy.
+  LaunchResult? _launchGate(int cost, FuelPolicy policy) {
+    if (policy == FuelPolicy.refuse) {
+      return _player.energyBalance < cost
+          ? LaunchResult.insufficientEnergy
+          : null;
+    }
+    return _player.energyBalance <= 0 ? LaunchResult.insufficientEnergy : null;
+  }
 
   /// Books the fuel voyage [j] has burned up to [now], once, and returns it.
   ///
