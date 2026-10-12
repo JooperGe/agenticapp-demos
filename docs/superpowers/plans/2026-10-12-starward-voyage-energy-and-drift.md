@@ -1061,7 +1061,6 @@ import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:starward/core/vec3.dart';
 import 'package:starward/data/game_repository.dart';
-import 'package:starward/data/models/journey.dart';
 import 'package:starward/data/models/player_state.dart';
 import 'package:starward/data/storage/storage_backend.dart';
 import 'package:starward/state/game_controller.dart';
@@ -1345,7 +1344,7 @@ EOF
 )"
 ```
 
-**注意**：本 task 的 `playerPosition3D` 已经调用 `_universe.universeRadius`。若把 Task 4–7 严格按序执行，请先做 Task 6（`universeRadius`）再做本 task，或者把 `bound:` 一行暂时写成 `math.max(1e9, start.length)` 并在 Task 6 改回。**推荐先做 Task 6**——它是纯新增，不改任何调用点。
+**注意**：本 task 的 `playerPosition3D` 用的是 `bound: start.length`，**不**读 `_universe.universeRadius`——那个 getter 到 Task 6 才存在，本 task 必须能独立通过 `flutter analyze`。Task 6 的 Step 4 会把这一行换成 `math.max(_universe.universeRadius, start.length)`。所以 Task 4–7 按序执行即可，不需要调换顺序。在 Task 9 之前没有任何代码把 `driftVelocity` 设成非零，所以这个 bound 根本走不到，本 task 的行为逐位不变。
 
 ---
 
