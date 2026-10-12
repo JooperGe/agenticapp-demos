@@ -234,11 +234,17 @@ class _JourneyPageState extends State<JourneyPage>
       fit: StackFit.expand,
       children: <Widget>[
         // Coasting keeps the star-stream moving; parked stays calm and static.
+        // `scrollSpeed` is a static offset, not a rate (`starfield.dart:164`),
+        // so the motion has to come from the ever-growing `_phase` — the same
+        // mechanism `_buildFlight` uses below. A constant here freezes the field.
         Positioned.fill(
-          child: StarfieldBackground(
-            seed: 7,
-            starCount: 150,
-            scrollSpeed: coasting ? 0.35 : 0.0,
+          child: ValueListenableBuilder<double>(
+            valueListenable: _phase,
+            builder: (context, phase, _) => StarfieldBackground(
+              seed: 7,
+              starCount: 150,
+              scrollSpeed: coasting ? 0.35 * phase : 0.0,
+            ),
           ),
         ),
         SafeArea(
@@ -617,6 +623,7 @@ class _DriftDock extends StatelessWidget {
     );
   }
 }
+
 /// Shown in the standby state while the ship is coasting: where it is, how
 /// fast it is going, and how far it has come since the tank emptied.
 class _CoastDock extends StatelessWidget {

@@ -10,6 +10,7 @@ import 'package:starward/state/game_controller.dart';
 import 'package:starward/ui/game_scope.dart';
 import 'package:starward/ui/shell/home_shell.dart';
 import 'package:starward/ui/widgets/common.dart';
+import 'package:starward/ui/widgets/starfield.dart';
 
 /// End-to-end cover for the reported bug: turning back seconds after departure
 /// must show a return voyage in flight — not the standby screen reading
@@ -131,6 +132,42 @@ void main() {
 
     expect(find.textContaining('燃料将于'), findsNothing);
     expect(find.byKey(const ValueKey('fuel-marker')), findsNothing);
+  });
+
+  testWidgets('the coasting starfield streams', (tester) async {
+    // Boot a doomed coast exactly as the neighbouring test does, then let the
+    // tank run dry so the ship ends up coasting on the standby screen.
+    final clock = _FakeClock(DateTime(2026));
+    final c = await _bootAt(clock);
+    await c.installEngine(_greedy);
+
+    final target = c.planets
+        .where((p) => p.id != c.currentPlanetId)
+        .reduce((a, b) => c.distanceTo(a) < c.distanceTo(b) ? a : b);
+    await c.launchJourney(target, onEmpty: FuelPolicy.coast);
+    final journey = c.activeJourney!;
+
+    clock.advance(journey.totalDuration);
+    c.tick();
+    expect(c.isCoasting, isTrue, reason: 'the tank ran dry and it coasts on');
+    expect(c.activeJourney, isNull, reason: 'coasting is not a voyage');
+
+    await tester.pumpWidget(
+      MaterialApp(home: GameScope(controller: c, child: const HomeShell())),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.text('航行').last);
+    await tester.pump();
+
+    final first = tester
+        .widget<StarfieldBackground>(find.byType(StarfieldBackground))
+        .scrollSpeed;
+    await tester.pump(const Duration(seconds: 2));
+    final second = tester
+        .widget<StarfieldBackground>(find.byType(StarfieldBackground))
+        .scrollSpeed;
+    expect(second, greaterThan(first),
+        reason: 'the star-stream must keep moving while coasting');
   });
 }
 
