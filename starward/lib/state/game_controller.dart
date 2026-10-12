@@ -528,11 +528,11 @@ class GameController extends ChangeNotifier {
   }
 
   /// Turns the ship around mid-flight: launches a fresh journey from the point
-  /// reached so far back to where the active journey departed from. The outbound
-  /// leg's burn is settled before the return leg is quoted (fuel burns both
-  /// ways); the return leg then burns like any other voyage and settles on
-  /// arrival. Returns the launch outcome so the UI can report e.g. insufficient
-  /// energy.
+  /// reached so far back to where the active journey departed from. The return
+  /// quote is checked against the post-burn balance before the outbound leg is
+  /// settled (fuel burns both ways); the return leg then burns like any other
+  /// voyage and settles on arrival. Returns the launch outcome so the UI can
+  /// report e.g. insufficient energy.
   ///
   /// This is unconditional — turning back one second after departure still plots
   /// a return voyage rather than stopping the ship where it is. The distance
@@ -547,12 +547,16 @@ class GameController extends ChangeNotifier {
     final now = _now();
     final currentPos = _positionAlong(journey, now);
     final originPos = _originPosOf(journey);
-    // Settle the outbound leg first: the return quote has to be checked against
-    // the balance the player actually has left.
-    _settleBurn(journey, now);
     final dist = (originPos - currentPos).length;
     final cost = _ship.engine.energyCostFor(dist);
-    if (_player.energyBalance < cost) return LaunchResult.insufficientEnergy;
+    // The return quote is checked against the balance the player actually has
+    // left, i.e. after the outbound burn — but check it *before* settling.
+    // Settling and then bailing out would leave this voyage still in flight,
+    // and its arrival would book the same fuel a second time.
+    if (_player.energyBalance - journey.burnedAt(now) < cost) {
+      return LaunchResult.insufficientEnergy;
+    }
+    _settleBurn(journey, now);
 
     // Where we return *to*: dock at the origin planet/star, or a free deep-space
     // coordinate if the journey launched from open space.

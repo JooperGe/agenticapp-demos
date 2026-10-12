@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:starward/data/game_repository.dart';
+import 'package:starward/data/models/engine.dart';
 import 'package:starward/data/models/journey.dart';
 import 'package:starward/data/models/planet.dart';
 import 'package:starward/data/storage/storage_backend.dart';
@@ -125,6 +126,52 @@ void main() {
       final parked = c.deepSpaceOrigin3D!;
       final originPos = c.planetById(origin.id)!.pos;
       expect((parked - originPos).length, greaterThan(1));
+    });
+  });
+
+  group('返航付不起时', () {
+    test('does not book the outbound burn, and never books it twice', () async {
+      final clock = FakeClock(DateTime(2026, 1, 1, 12));
+      final c = await _boot(clock);
+      final origin = await _dockAtPlanet(c, clock);
+
+      final target = _farthestPlanet(c, origin.id);
+      expect(await c.launchJourney(target), LaunchResult.success);
+      final voyage = c.activeJourney!;
+      final outbound = voyage.energyCost;
+
+      clock.advance(voyage.totalDuration ~/ 2);
+
+      // A greedy refit prices the way home far beyond the remaining balance.
+      await c.installEngine(const Engine(
+        id: 'test.greedy',
+        name: '测试引擎',
+        energyPerLy: 1000,
+        travelSecondsPerLy: 37.5,
+        minEnergyCost: 1,
+        minTravelSeconds: 15,
+      ));
+
+      expect(await c.returnToOrigin(), LaunchResult.insufficientEnergy);
+
+      // The refusal must leave the voyage exactly as it was.
+      expect(c.activeJourney!.id, voyage.id, reason: 'still the outbound voyage');
+      expect(c.activeJourney!.status, JourneyStatus.inProgress);
+      expect(
+        c.energyLedger.where((t) => t.relatedObjectId == voyage.id),
+        isEmpty,
+        reason: 'a refused return must not settle the outbound leg',
+      );
+
+      // …and flying it out books that leg once, not twice.
+      clock.advance(voyage.totalDuration);
+      c.tick();
+      expect(c.currentPlanetId, target.id);
+      final booked = c.energyLedger
+          .where((t) => t.relatedObjectId == voyage.id)
+          .toList();
+      expect(booked.length, 1, reason: 'booked exactly once');
+      expect(booked.single.amount, -outbound);
     });
   });
 }
