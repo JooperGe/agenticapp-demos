@@ -8,6 +8,7 @@ import '../core/vec3.dart';
 import '../data/game_repository.dart';
 import '../data/hyg_catalog.dart';
 import '../data/models/discovery_record.dart';
+import '../data/models/drift_report.dart';
 import '../data/models/energy_transaction.dart';
 import '../data/models/engine.dart';
 import '../data/models/journey.dart';
@@ -85,6 +86,11 @@ class GameController extends ChangeNotifier {
   late Ship _ship;
 
   Journey? _activeJourney;
+
+  /// A report the player has not seen yet. Persisted, so being killed between
+  /// the drift happening and the sheet being opened does not lose it.
+  DriftReport? _pendingDriftReport;
+
   final List<DiscoveryRecord> _discoveries = <DiscoveryRecord>[];
   final List<EnergyTransaction> _energyLedger = <EnergyTransaction>[];
   final List<TrainingSession> _trainingSessions = <TrainingSession>[];
@@ -109,6 +115,11 @@ class GameController extends ChangeNotifier {
       _restore(save);
     }
     _reconcileJourney();
+    // A drift that ran while the game was closed is the one thing the player
+    // could not have watched happen. Recompute it once. A voyage that ran out
+    // of fuel while away has already queued its own report, and that news
+    // comes first — the drift window is not lost, it just waits its turn.
+    _pendingDriftReport ??= buildDriftReport();
     _rebuildNearby();
     _ready = true;
     notifyListeners();
@@ -165,6 +176,7 @@ class GameController extends ChangeNotifier {
       trainingSessions: _trainingSessions,
       planetStates:
           _planetStates.map((k, v) => MapEntry(k, v.name)),
+      pendingDriftReport: _pendingDriftReport,
     ));
   }
 
@@ -250,6 +262,86 @@ class GameController extends ChangeNotifier {
   /// How far the current drift has carried the ship, in light-years.
   double get driftDistanceLy =>
       isCoasting ? _player.driftVelocity.length * driftElapsed.inMilliseconds / 1000 : 0;
+
+  /// The path the current drift follows, or null when the ship is parked.
+  ///
+  /// `bound` is `max(universeRadius, |start|)` so a ship that spawned outside
+  /// the shell keeps its own radius instead of being teleported inward.
+  DriftPath? get driftPath {
+    if (!isCoasting) return null;
+    final start = Vec3(_player.startX, _player.startY, _player.startZ);
+    return DriftPath(
+      start: start,
+      velocity: _player.driftVelocity,
+      bound: math.max(_universe.universeRadius, start.length),
+    );
+  }
+
+  /// Seconds of drift at [at], counted from the moment the tank emptied.
+  double _driftSecondsAt(DateTime at) =>
+      at.difference(_player.driftStartedAt).inMilliseconds / 1000;
+
+  /// What the current drift has passed so far, for the coasting readout.
+  ///
+  /// A full catalogue scan — read it once per tick, never per frame.
+  PassedSystems get passedSystemsSoFar {
+    final path = driftPath;
+    if (path == null) return PassedSystems.none;
+    return _universe.passedSystemsAlong(
+      path: path,
+      upToSeconds: _driftSecondsAt(_now()),
+    );
+  }
+
+  /// The report for the current drift, covering everything since it began.
+  ///
+  /// Null when parked: a ship that is not moving has nothing to report, and
+  /// `driftStartedAt` defaults to the epoch — without the parked guard every
+  /// new player would be told they had been drifting for fifty-six years. Null
+  /// too for a window that has not opened yet — a drift that has not begun has
+  /// nothing to report either, and without that guard every launch while
+  /// coasting would queue a report of zero length.
+  DriftReport? buildDriftReport() {
+    final path = driftPath;
+    if (path == null) return null;
+    final now = _now();
+    if (!now.isAfter(_player.driftStartedAt)) return null;
+    final to = _driftSecondsAt(now);
+    final passed =
+        _universe.passedSystemsAlong(path: path, upToSeconds: to);
+    return DriftReport(
+      kind: DriftReportKind.drift,
+      from: _player.driftStartedAt,
+      to: now,
+      elapsed: now.difference(_player.driftStartedAt),
+      distanceLy: path.travelledBetween(0, to),
+      fromPos: path.positionAt(0),
+      toPos: path.positionAt(to),
+      passedCount: passed.count,
+      nearest: passed.nearest,
+      hitBoundary: to > path.hitSeconds,
+    );
+  }
+
+  DriftReport? get pendingDriftReport => _pendingDriftReport;
+
+  /// Queues a report for the drift so far — the coasting screen's "播报" button.
+  Future<void> requestDriftReport() async {
+    if (_pendingDriftReport != null) return;
+    final report = buildDriftReport();
+    if (report == null) return;
+    _pendingDriftReport = report;
+    await _persist();
+    notifyListeners();
+  }
+
+  /// Marks the queued report as read.
+  Future<void> acknowledgeDriftReport() async {
+    if (_pendingDriftReport == null) return;
+    _pendingDriftReport = null;
+    await _persist();
+    notifyListeners();
+  }
 
   /// Pins the deep-space anchor to where the ship actually is right now, and
   /// stops any drift — the engine is taking over the motion.
@@ -444,6 +536,38 @@ class GameController extends ChangeNotifier {
   void _applyFuelOut(Journey journey, DateTime now) {
     final exhaustAt = fuelExhaustTime(journey);
     final pos = _positionAlong(journey, exhaustAt);
+    // Report the powered leg: that is the part that just happened, and the part
+    // the player wants named. A powered leg is a straight line at constant
+    // speed — the same velocity `_cruiseVelocityOf` already derives — with the
+    // shell far enough out that it can never be reached.
+    //
+    // Built before the anchor below is moved to the exhaust point: both
+    // `_originPosOf` and `_cruiseVelocityOf` read the anchor, so on a
+    // deep-space origin they would otherwise report the leg as starting where
+    // it ended.
+    final legSeconds =
+        exhaustAt.difference(journey.departure).inMilliseconds / 1000;
+    final leg = DriftPath(
+      start: _originPosOf(journey),
+      velocity: _cruiseVelocityOf(journey),
+      bound: 1e12,
+    );
+    final passed = _universe.passedSystemsAlong(
+      path: leg,
+      upToSeconds: legSeconds,
+    );
+    _pendingDriftReport = DriftReport(
+      kind: DriftReportKind.fuelOut,
+      from: journey.departure,
+      to: exhaustAt,
+      elapsed: exhaustAt.difference(journey.departure),
+      distanceLy: leg.travelledBetween(0, legSeconds),
+      fromPos: leg.positionAt(0),
+      toPos: pos,
+      passedCount: passed.count,
+      nearest: passed.nearest,
+      hitBoundary: false,
+    );
     _settleTank(journey, now);
     _activeJourney = null;
     _player = _player.copyWith(
@@ -942,6 +1066,7 @@ class GameController extends ChangeNotifier {
   Future<void> resetSave() async {
     await _repository.clear();
     _activeJourney = null;
+    _pendingDriftReport = null;
     _discoveries.clear();
     _energyLedger.clear();
     _trainingSessions.clear();

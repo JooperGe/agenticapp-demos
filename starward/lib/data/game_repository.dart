@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'models/discovery_record.dart';
+import 'models/drift_report.dart';
 import 'models/energy_transaction.dart';
 import 'models/journey.dart';
 import 'models/player_state.dart';
@@ -19,6 +20,7 @@ class GameSave {
     required this.energyLedger,
     required this.trainingSessions,
     required this.planetStates,
+    required this.pendingDriftReport,
   });
 
   final PlayerState player;
@@ -37,6 +39,9 @@ class GameSave {
   /// states are stored; a missing entry means "undiscovered".
   final Map<String, String> planetStates;
 
+  /// A drift report the player has not read yet, or null when there is none.
+  final DriftReport? pendingDriftReport;
+
   /// The save schema generation. Saves written before real-time fuel burning
   /// lack the marker and are migrated on load.
   static const int energyModel = 2;
@@ -52,6 +57,7 @@ class GameSave {
         'trainingSessions':
             trainingSessions.map((e) => e.toJson()).toList(),
         'planetStates': planetStates,
+        'pendingDriftReport': pendingDriftReport?.toJson(),
       };
 
   factory GameSave.fromJson(Map<String, dynamic> json) {
@@ -96,6 +102,13 @@ class GameSave {
           (json['planetStates'] as Map<String, dynamic>).map(
         (k, v) => MapEntry(k, v as String),
       ),
+      // Saves written before drift reports existed have no key: no report is
+      // waiting, so fall back to null rather than abandoning the save.
+      pendingDriftReport: json['pendingDriftReport'] == null
+          ? null
+          : DriftReport.fromJson(
+              json['pendingDriftReport'] as Map<String, dynamic>,
+            ),
     );
   }
 }

@@ -60,6 +60,7 @@ GameSave _saveWith(Ship ship) => GameSave(
       energyLedger: const <EnergyTransaction>[],
       trainingSessions: const <TrainingSession>[],
       planetStates: const <String, String>{},
+      pendingDriftReport: null,
     );
 
 void main() {
