@@ -3,10 +3,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
+import '../../data/models/journey.dart';
 import '../../data/models/planet.dart';
 import '../../state/game_controller.dart';
 import '../galaxy/planet_details_sheet.dart';
 import '../game_scope.dart';
+import '../journey/fuel_choice_dialog.dart';
 import '../shell/shell_scope.dart';
 import '../widgets/common.dart';
 import 'camera3d.dart';
@@ -155,6 +157,38 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
     }
   }
 
+  /// Launches to a star system, asking how the voyage should end when the
+  /// ship cannot afford the whole trip.
+  Future<void> _launchToStar(int hygId) async {
+    final cost = _c.energyCostToStar(hygId);
+    FuelPolicy? policy;
+    if (_c.energy < cost) {
+      if (_c.energy <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('能量不足，先去做一组训练吧')),
+        );
+        return;
+      }
+      policy = await showFuelChoiceDialog(
+        context,
+        energy: _c.energy,
+        cost: cost,
+        distanceLy: _c.distanceToStar(hygId),
+        engine: _c.ship.engine,
+      );
+      if (policy == null || !mounted) return;
+    }
+    final result = await _c.launchToStar(hygId, onEmpty: policy ?? FuelPolicy.refuse);
+    if (!mounted) return;
+    if (result == LaunchResult.success) {
+      ShellScope.go(context, 1);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_launchMessage(result))),
+      );
+    }
+  }
+
   void _openSystem(int hygId) {
     final shell = ShellScope.maybeOf(context);    showModalBottomSheet<void>(
       context: context,
@@ -172,17 +206,7 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
                 _openDetails(planet);
               }
             },
-            onGoToStar: (id) async {
-              final result = await _c.launchToStar(id);
-              if (!mounted) return;
-              if (result == LaunchResult.success) {
-                ShellScope.go(context, 1);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(_launchMessage(result))),
-                );
-              }
-            },
+            onGoToStar: (id) => _launchToStar(id),
           ),
         );
         if (shell != null) {

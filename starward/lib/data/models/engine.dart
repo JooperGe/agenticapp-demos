@@ -41,6 +41,14 @@ class Engine {
   int secondsFor(double distanceLy) =>
       math.max(minTravelSeconds, (distanceLy * travelSecondsPerLy).round());
 
+  /// How far [energy] will carry this engine, in light-years.
+  ///
+  /// The plain inverse of [energyPerLy]. This is the number the fuel-out dialog
+  /// quotes back to the player ("you have 100 EN, that is 40.0 ly of the
+  /// 100.0 ly trip"), so it lives on the engine rather than being recomputed
+  /// wherever it is displayed.
+  double reachableLyFor(int energy) => energy / energyPerLy;
+
   /// The engine every new ship is fitted with.
   ///
   /// These are the numbers the game has always used, so a standard ship flies

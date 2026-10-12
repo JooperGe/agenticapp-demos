@@ -1,12 +1,16 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:starward/data/game_repository.dart';
+import 'package:starward/data/models/engine.dart';
 import 'package:starward/data/models/journey.dart';
 import 'package:starward/data/models/planet.dart';
 import 'package:starward/data/storage/storage_backend.dart';
 import 'package:starward/state/game_controller.dart';
+import 'package:starward/ui/journey/fuel_choice_dialog.dart';
 
 class FakeClock {
   FakeClock(this._now);
@@ -348,6 +352,77 @@ void main() {
       c.tick();
       expect(c.currentPlanetId, target.id, reason: 'it simply arrives');
       expect(c.driftVelocity.length, 0);
+    });
+  });
+
+  group('reachableLyFor', () {
+    test('is the plain inverse of energyPerLy', () {
+      expect(Engine.standard.reachableLyFor(100), 40.0);
+      expect(Engine.standard.reachableLyFor(300), 120.0);
+      expect(Engine.standard.reachableLyFor(0), 0.0);
+    });
+  });
+
+  group('the fuel choice dialog', () {
+    /// Pumps a button that opens the dialog, taps it, and settles. Returns the
+    /// future the dialog's result arrives on — already pending, because the
+    /// sheet is open by the time this returns.
+    Future<Future<FuelPolicy?>> open(
+      WidgetTester tester, {
+      required int energy,
+      required int cost,
+    }) async {
+      final picked = Completer<FuelPolicy?>();
+      await tester.pumpWidget(MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: ElevatedButton(
+              onPressed: () async {
+                picked.complete(await showFuelChoiceDialog(
+                  context,
+                  energy: energy,
+                  cost: cost,
+                  distanceLy: 100.0,
+                  engine: Engine.standard,
+                ));
+              },
+              child: const Text('go'),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('go'));
+      await tester.pumpAndSettle();
+      return picked.future;
+    }
+
+    testWidgets('spells out what the tank can and cannot reach',
+        (tester) async {
+      await open(tester, energy: 100, cost: 250);
+      expect(find.textContaining('100 EN'), findsOneWidget);
+      expect(find.textContaining('40.0 ly'), findsOneWidget);
+      expect(find.textContaining('100.0 ly'), findsOneWidget);
+      expect(find.text('放弃航行'), findsOneWidget);
+      expect(find.text('耗尽后停下'), findsOneWidget);
+      expect(find.text('耗尽后滑行'), findsOneWidget);
+    });
+
+    testWidgets('returns the policy the player tapped', (tester) async {
+      final future = await open(tester, energy: 100, cost: 250);
+      await tester.tap(find.text('耗尽后滑行'));
+      await tester.pumpAndSettle();
+      expect(await future, FuelPolicy.coast);
+    });
+
+    testWidgets('an empty tank is only offered a way out', (tester) async {
+      final future = await open(tester, energy: 0, cost: 250);
+      expect(find.text('耗尽后停下'), findsNothing,
+          reason: 'no fuel means no voyage to run out of');
+      expect(find.text('耗尽后滑行'), findsNothing);
+      expect(find.text('放弃航行'), findsOneWidget);
+      await tester.tap(find.text('放弃航行'));
+      await tester.pumpAndSettle();
+      expect(await future, isNull);
     });
   });
 }

@@ -7,6 +7,7 @@ import '../../data/models/planet.dart';
 import '../../state/game_controller.dart';
 import '../exploration/exploration_page.dart';
 import '../game_scope.dart';
+import '../journey/fuel_choice_dialog.dart';
 import '../shell/shell_scope.dart';
 import '../widgets/common.dart';
 import '../widgets/planet_disc.dart';
@@ -356,11 +357,24 @@ class _PrimaryAction extends StatelessWidget {
     final cost = controller.energyCostTo(planet);
     final canAfford = controller.energy >= cost;
     if (!canAfford) {
+      final hasFuel = controller.energy > 0;
       return Column(
         children: <Widget>[
           _Button(
             label: '能量不足（需 $cost EN · 现有 ${controller.energy} EN）',
             icon: Icons.bolt_rounded,
+          ),
+          const SizedBox(height: 10),
+          // With fuel in the tank the player gets a say in how the voyage
+          // ends; with none there is nothing to decide, so the only way
+          // forward is training.
+          _Button(
+            label: '选择如何出发',
+            icon: Icons.rocket_launch_rounded,
+            color: StarColors.cyan,
+            onPressed: hasFuel
+                ? () => _launchWithChoice(context, controller, planet)
+                : null,
           ),
           const SizedBox(height: 10),
           _Button(
@@ -393,6 +407,37 @@ class _PrimaryAction extends StatelessWidget {
         }
       },
     );
+  }
+
+  /// Asks how an under-funded voyage should end, then launches with that
+  /// policy.
+  ///
+  /// The quote is read once, for the dialog's copy; `launchJourney` re-derives
+  /// the same number from the same engine, and nothing can move the balance
+  /// while a modal sheet is open.
+  Future<void> _launchWithChoice(
+    BuildContext context,
+    GameController controller,
+    Planet planet,
+  ) async {
+    final policy = await showFuelChoiceDialog(
+      context,
+      energy: controller.energy,
+      cost: controller.energyCostTo(planet),
+      distanceLy: controller.distanceTo(planet),
+      engine: controller.ship.engine,
+    );
+    if (policy == null || !context.mounted) return;
+    final result = await controller.launchJourney(planet, onEmpty: policy);
+    if (!context.mounted) return;
+    if (result == LaunchResult.success) {
+      ShellScope.go(context, 1);
+      Navigator.of(context).pop();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_messageFor(result))),
+      );
+    }
   }
 
   String _messageFor(LaunchResult r) {
