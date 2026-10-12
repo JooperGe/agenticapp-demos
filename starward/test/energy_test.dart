@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:starward/data/game_repository.dart';
+import 'package:starward/data/models/energy_transaction.dart';
 import 'package:starward/data/models/planet.dart';
 import 'package:starward/data/storage/storage_backend.dart';
 import 'package:starward/state/game_controller.dart';
@@ -30,18 +31,23 @@ Planet _nearest(GameController c) => c.planets
 
 void main() {
   group('energy economy', () {
-    test('launch deducts exactly the distance-based cost', () async {
+    test('launch quotes from the engine; the burn settles on arrival', () async {
       final clock = FakeClock(DateTime(2026));
       final c = await _boot(clock);
       final before = c.energy;
       final target = _nearest(c);
       final cost = c.energyCostTo(target);
+      final total = c.travelDurationTo(target);
 
       await c.launchJourney(target);
-      expect(c.energy, before - cost);
+      expect(c.energy, before, reason: 'nothing burns at t=0');
       // Cost scales linearly with distance, floored so a hop is never free —
       // and it comes off the ship's fitted engine, not a global table.
       expect(cost, c.ship.engine.energyCostFor(c.distanceTo(target)));
+
+      clock.advance(total + const Duration(seconds: 1));
+      c.tick();
+      expect(c.energy, before - cost);
     });
 
     test('cannot launch without enough energy and balance is untouched',
@@ -98,8 +104,14 @@ void main() {
       final c = await _boot(clock);
       final target = _nearest(c);
       final cost = c.energyCostTo(target);
+      final total = c.travelDurationTo(target);
       await c.launchJourney(target);
+      expect(c.energyLedger, isEmpty, reason: 'booked at the end, not the start');
+
+      clock.advance(total + const Duration(seconds: 1));
+      c.tick();
       expect(c.energyLedger.first.amount, -cost);
+      expect(c.energyLedger.first.type, EnergyTxType.travelCost);
     });
   });
 

@@ -175,7 +175,6 @@ class GameController extends ChangeNotifier {
   /// voyage cost and duration.
   Ship get ship => _ship;
 
-  int get energy => _player.energyBalance;
   Journey? get activeJourney => _activeJourney;
   List<DiscoveryRecord> get discoveries =>
       List<DiscoveryRecord>.unmodifiable(_discoveries.reversed);
@@ -206,6 +205,22 @@ class GameController extends ChangeNotifier {
   Vec3 get playerPosition3D =>
       currentPlanet?.pos ??
       Vec3(_player.startX, _player.startY, _player.startZ);
+
+  /// The player's energy right now, in EN.
+  ///
+  /// While a voyage is in progress this is the fuel still aboard: the balance
+  /// minus what the engine has burned so far. Nothing is deducted at launch, so
+  /// this getter is the only place the burn is applied — which is what makes
+  /// the reading tick down in real time and still be correct after the app is
+  /// killed and restarted.
+  int get energy {
+    final j = _activeJourney;
+    if (j == null || j.status != JourneyStatus.inProgress) {
+      return _player.energyBalance;
+    }
+    final left = _player.energyBalance - j.burnedAt(_now());
+    return left < 0 ? 0 : left;
+  }
 
   /// Display name for a location id (planet name, star name, or "深空").
   String locationLabel(String? planetId) {
@@ -295,6 +310,8 @@ class GameController extends ChangeNotifier {
   }
 
   void _applyArrival(Journey journey) {
+    // The voyage ends here, so the whole quote lands now.
+    _settleBurn(journey, _now());
     final dest = journey.destinationPlanetId;
     // Travelling to a star (not a planet): arrive drifting beside it.
     if (_isStarDest(dest)) {
@@ -374,8 +391,9 @@ class GameController extends ChangeNotifier {
     }
   }
 
-  /// Validates and starts a journey to [target]. Atomic: energy is only
-  /// deducted when all guards pass, preventing double charges and negatives.
+  /// Validates and starts a journey to [target]. Energy is checked up front but
+  /// not deducted — the burn accrues in real time and is booked when the voyage
+  /// ends (see [_settleBurn]).
   Future<LaunchResult> launchJourney(Planet target) async {
     if (target.id == _player.currentPlanetId) return LaunchResult.alreadyHere;
     if (isTraveling) return LaunchResult.alreadyTraveling;
@@ -395,7 +413,6 @@ class GameController extends ChangeNotifier {
       status: JourneyStatus.inProgress,
     );
     _activeJourney = journey;
-    _spendEnergy(cost, EnergyTxType.travelCost, journey.id);
     await _persist();
     notifyListeners();
     return LaunchResult.success;
@@ -435,7 +452,6 @@ class GameController extends ChangeNotifier {
       status: JourneyStatus.inProgress,
     );
     _activeJourney = journey;
-    _spendEnergy(cost, EnergyTxType.travelCost, journey.id);
     await _persist();
     notifyListeners();
     return LaunchResult.success;
@@ -487,12 +503,17 @@ class GameController extends ChangeNotifier {
   }
 
   /// Aborts an in-progress journey, leaving the ship drifting at the point it
-  /// had reached along the route. Energy already spent is not refunded — the
-  /// fuel to get this far is gone. No-op if not travelling.
+  /// had reached along the route. Only the fuel burned to get this far is
+  /// billed — the unburned remainder never left the tank. No-op if not
+  /// travelling.
   Future<void> abortJourney() async {
     final journey = _activeJourney;
     if (journey == null || journey.status != JourneyStatus.inProgress) return;
-    final pos = _positionAlong(journey, _now());
+    final now = _now();
+    final pos = _positionAlong(journey, now);
+    // Only the fuel actually burned is billed — the rest never left the tank,
+    // so there is no refund to write.
+    _settleBurn(journey, now);
     _activeJourney = null;
     _player = _player.copyWith(
       toDeepSpace: true,
@@ -507,9 +528,11 @@ class GameController extends ChangeNotifier {
   }
 
   /// Turns the ship around mid-flight: launches a fresh journey from the point
-  /// reached so far back to where the active journey departed from. Charges
-  /// energy for the return leg (fuel burns both ways). Returns the launch
-  /// outcome so the UI can report e.g. insufficient energy.
+  /// reached so far back to where the active journey departed from. The outbound
+  /// leg's burn is settled before the return leg is quoted (fuel burns both
+  /// ways); the return leg then burns like any other voyage and settles on
+  /// arrival. Returns the launch outcome so the UI can report e.g. insufficient
+  /// energy.
   ///
   /// This is unconditional — turning back one second after departure still plots
   /// a return voyage rather than stopping the ship where it is. The distance
@@ -524,6 +547,9 @@ class GameController extends ChangeNotifier {
     final now = _now();
     final currentPos = _positionAlong(journey, now);
     final originPos = _originPosOf(journey);
+    // Settle the outbound leg first: the return quote has to be checked against
+    // the balance the player actually has left.
+    _settleBurn(journey, now);
     final dist = (originPos - currentPos).length;
     final cost = _ship.engine.energyCostFor(dist);
     if (_player.energyBalance < cost) return LaunchResult.insufficientEnergy;
@@ -553,7 +579,6 @@ class GameController extends ChangeNotifier {
       status: JourneyStatus.inProgress,
     );
     _activeJourney = ret;
-    _spendEnergy(cost, EnergyTxType.travelCost, ret.id);
     _rebuildNearby();
     await _persist();
     notifyListeners();
@@ -660,16 +685,26 @@ class GameController extends ChangeNotifier {
 
   // --- Energy helpers ------------------------------------------------------
 
-  void _spendEnergy(int cost, EnergyTxType type, String relatedId) {
-    final newBalance = math.max(0, _player.energyBalance - cost);
-    _player = _player.copyWith(energyBalance: newBalance);
+  /// Books the fuel voyage [j] has burned up to [now], once, and returns it.
+  ///
+  /// Nothing is deducted at launch, so this is where a voyage's cost actually
+  /// reaches the ledger. Every path that ends a voyage calls it *before* the
+  /// journey is cleared or its status flips — that ordering is what keeps it
+  /// from booking twice.
+  int _settleBurn(Journey j, DateTime now) {
+    final burned = j.burnedAt(now);
+    if (burned <= 0) return 0;
+    _player = _player.copyWith(
+      energyBalance: math.max(0, _player.energyBalance - burned),
+    );
     _energyLedger.add(EnergyTransaction(
       id: _newId('en'),
-      type: type,
-      amount: -cost,
-      createdAt: _now(),
-      relatedObjectId: relatedId,
+      type: EnergyTxType.travelCost,
+      amount: -burned,
+      createdAt: now,
+      relatedObjectId: j.id,
     ));
+    return burned;
   }
 
   void _addEnergy(int amount, EnergyTxType type, String relatedId) {

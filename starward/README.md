@@ -36,7 +36,7 @@ flutter build apk --release
   - `storage/` `StorageBackend` 抽象接口 + `PrefsStorage`（设备）/`MemoryStorage`（测试），**为未来云端同步预留替换点**。
   - `galaxy_data.dart` 固定星图种子数据（5 颗手工设计的英雄星球 + 36 颗以常量种子确定性生成的背景星球，共 41 颗；每次启动完全一致，绝不重随机）。
   - `game_repository.dart` 整存整取一份 JSON 存档。
-- `lib/state/game_controller.dart` — `ChangeNotifier`，承载全部规则：能量原子扣除、单一进行中航行、基于时间戳的航行进度、抵达重算、探索完成与奖励、训练一次性领取。可注入时钟（`clock`）便于测试。
+- `lib/state/game_controller.dart` — `ChangeNotifier`，承载全部规则：能量实时燃烧与终止结账、单一进行中航行、基于时间戳的航行进度、抵达重算、探索完成与奖励、训练一次性领取。可注入时钟（`clock`）便于测试。
 - `lib/ui/` — 页面层：
   - `shell/` 底部四标签导航（星图 / 航行 / 发现 / 训练）。
   - `galaxy/` 可拖拽缩放的星图 + 星球详情面板。
@@ -78,7 +78,12 @@ progress  = clamp((now - departure) / (arrival - departure), 0, 1)
 remaining = max(arrival - now, 0)
 ```
 
-因此退出 App、进入后台、甚至被系统杀死后重启，航行都会继续并在重新打开时恢复正确状态（`GameController.init()` 会在加载存档后调用 `_reconcileJourney()` 补算抵达）。同一时间最多一条进行中的航行，能量在校验全部通过后才原子扣除，杜绝重复扣费与负数。
+因此退出 App、进入后台、甚至被系统杀死后重启，航行都会继续并在重新打开时恢复正确状态（`GameController.init()` 会在加载存档后调用 `_reconcileJourney()` 补算抵达）。同一时间最多一条进行中的航行。
+
+**能量随航程实时燃烧**：出发时不扣任何能量，`GameController.energy` 每次读取时用
+`Journey.burnedAt(now)` 从时间戳算出已烧掉的部分（余额减掉它，下限 0）。账只在航程
+**终止**那一刻落库——抵达结算全额，中途停止结算已烧部分。所以燃料没烧掉之前从未离开
+玩家账户，也就不存在"退款"这个概念。
 
 测试用航行时长（见 `balance.dart`，非最终平衡数值）：短途 ~1.5 分、中途 7 分、长途 25 分。
 

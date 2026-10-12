@@ -148,16 +148,20 @@ void main() {
       expect(c.travelDurationTo(target), greaterThan(timeBefore));
     });
 
-    test('the launch actually deducts the refitted cost', () async {
+    test('the voyage bills the refitted cost, settled on arrival', () async {
       final clock = FakeClock(DateTime(2026));
       final c = await _boot(clock);
       await c.installEngine(_thrifty);
       final target = _nearest(c);
       final before = c.energy;
       final cost = c.energyCostTo(target);
+      final total = c.travelDurationTo(target);
 
       await c.launchJourney(target);
+      expect(c.energy, before, reason: 'nothing burns at t=0');
 
+      clock.advance(total + const Duration(seconds: 1));
+      c.tick();
       expect(c.energy, before - cost);
       expect(c.energyLedger.first.amount, -cost);
     });
