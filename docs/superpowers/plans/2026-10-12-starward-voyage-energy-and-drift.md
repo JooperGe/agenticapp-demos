@@ -22,6 +22,8 @@
 - 标准引擎数值（`Engine.standard`：`energyPerLy: 2.5`、`travelSecondsPerLy: 37.5`、`minEnergyCost: 1`、`minTravelSeconds: 15`）与 `Balance.initialEnergy: 300` 不改。
 - 每个 task 结束提交一次，commit message 用 conventional commits，并以 `Co-Authored-By: Claude Code <noreply@anthropic.com>` 结尾。
 
+> **⚠️ 执行期修正（务必先读）**：本计划在执行过程中发现了若干**计划文本自身的缺陷**——包括编译不过的代码块、错误的数值钉、无法满足的断言、以及指向不存在成员的标识符。这些修正**没有**回写进下面的 Task 正文（保留原文作为推理过程的审计痕迹），而是集中记录在文末的 [执行期修正](#执行期修正) 附录里。**如果你要照着某个 Task 的 Step 1 代码块抄写，请先查该附录**：Task 8、9、12、13、14 的代码块都有已知缺陷。附录按缺陷类别分组，每条给出修正内容与"错了会怎样"。
+
 ## 阶段与检查点
 
 Spec §10 把工作分成四阶段。计划沿用它的依赖顺序，但把**漂移地基**提前成一个独立阶段——否则"滑行"这个选项会先以"停下"的形态发布一次，再在下一个阶段改掉。这样每个阶段结束都是一个真正可发布、可测试、不留半成品的检查点：
@@ -4945,3 +4947,298 @@ EOF
 ```
 
 **阶段 D 检查点**：四条播报路径都走一遍——在线烧干（`fuelOut`）、离线滑行（`drift`）、滑行页手动「查看播报」（`drift`）、以及**反面**：出生/停止/`halt`/抵达恒星四种零速度深空状态下，绝不弹任何东西。
+
+---
+
+# 执行期修正
+
+本附录由执行者（controller）在 14 个 task 全部落地后补写，记录**计划文本自身**的缺陷与修正。
+
+**为什么单独成篇而不是就地改**：这些修正散落在 5 个 task 的正文里，就地改需要 20 多处编辑，且会把"当初为什么这么写"的推理痕迹擦掉——而那份推理正是本计划作为审计痕迹的价值所在。执行期对尚未派发的 task 采用**笔记文件**机制（`task-9-tests.md`、`task-10-notes.md`、`task-11-notes.md`、`task-12-14-notes.md`），派发时声明它**逐条取代** brief 的对应段落。下面每一条都注明了它当时的载体。
+
+**下面 Task 正文里的代码块一律保持原样，包括已知错误。** 抄写前请对照本附录。
+
+---
+
+## 一、两处硬错误（先读这两条）
+
+这两条不是"措辞不准"，而是照抄就必然失败。
+
+### 1.1 `DateTime - DateTime` 编译不过（Task 9 Step 1，`task-9-tests.md:101,121,150`）
+
+计划里三处写成 `c.fuelExhaustTime(...) - clock()`。Dart 的 `DateTime` **没有**接收 `DateTime` 的 `operator -`，这个表达式直接编译失败。
+
+**修正**：改用 `.difference(clock())`。
+
+**错了会怎样**：不会静默出错——编译不过，实现者立刻看到。但代价是白跑一轮：Task 9 的实现者确实在这里停下报告了。
+
+### 1.2 `energyLedger.last` 断言的是错的账目（Task 9 Step 1，`task-9-tests.md:88`）
+
+计划用 `expect(c.energyLedger.last.amount, -balance)` 断言油箱结算。但 `energyLedger` 是 `List.unmodifiable(_energyLedger.reversed)`（`game_controller.dart:191-192`）——**`.last` 是最旧的一笔**（`_doomed` 的第一跳，-6 EN），不是刚落的结算。应为 `.first`，这也是仓库既有约定（`energy_test.dart:113`、`ship_test.dart:166`）。
+
+**错了会怎样**：测试会失败并打印真实值，但**报错位置指向错误的语义**——实现者会以为结算金额算错了，去查 `_settleTank`，而真正的错误在测试自己的索引方向。这类"错误信息指向错误方向"的缺陷最费时间。
+
+---
+
+## 二、计划文本里的错误数值
+
+### 2.1 两处窗口钳制距离各差 ~0.009，超出自己的容差（Task 12，plan 3490/3505）
+
+计划钉 `closeTo(36.3968, 0.001)` 与 `closeTo(61.4783, 0.001)`，容差 0.001 而偏差 0.009——**对着正确实现也会失败**。
+
+**修正**：`36.4056` / `61.4879`。
+
+**依据**：不是重算一遍就完事。同一 brief 的另外三个锚点（`onArc.seconds = 400.7618`、`offArc.seconds = 191.3223`、`travelledBetween(0,100) = 93.3013`）独立确认了几何模型；其中 93.3013 单独钉住了表面速度 0.5 ly/s，与任何角度无关。0.5 也不是巧合：它是 `Vec3(0,1,0)` 在撞击点 `(50, 86.6025, 0)`（法向 `(0.5, 0.866025, 0)`）的切向分量，所以圆弧在 xy 平面内以 ω = 0.005 rad/s 运行。
+
+**验证方式**：指令是"**先跑三个锚点**"——锚点全过则模型确认，两个修正值就应落在容差内；若某个**锚点**失败则说明模型本身错了，必须停下报告而不是就地重钉。实现者照做，三个锚点全过，两个值精确落在 36.4056 / 61.4879。之后审阅者又用 Python 独立重算一遍，确认全部数值。
+
+**错了会怎样**：两个测试对着正确实现失败，并打印实测值——是"报告并调整"，不是静默错误答案。反过来，如果我接受了原值或让实现者"钉成实测值"，那么几何模型就再没有任何独立校验，一个静默错误的几何会一路带到 Task 13/14。
+
+### 2.2 `nearestPlanets` 的最近行星钉错了恒星（Task 6）
+
+计划把最近**行星**钉在 46812.9 ly / 半径 3197.6，理由是"离 (50000,0,0) 最近的那颗恒星有行星"。事实是**没有**——`planetCountForStar(116717) == 0`。
+
+**修正**：重钉为 47002.8 / 3017.7（真正有行星的最近恒星按距离排第 **4** 位，id 115954）。
+
+**错了会怎样**：实现者按计划写测试，必然失败；而"哪颗恒星有行星"是数据问题不是代码问题，容易被误判成实现 bug。
+
+**顺带记一笔**：我自己的预检探针当时只量了最近**恒星**和轨道偏移，**没有**检查它是否带行星，所以扫描表里这一行记的是 "ok"——扫描的结论是错的。这是本计划唯一一次"扫描放过了真实缺陷"。
+
+---
+
+## 三、计划文本里无法满足的断言
+
+这类缺陷的特征是：**计划同时要求 A 和 B，而 A 与 B 互斥**。照抄的实现者会陷入两难，正确的反应是停下报告而不是猜。
+
+### 3.1 Task 3 迁移测试断言了一个不可能成立的等式（`Ruling 7`）
+
+计划写 `c2.energy == c2.energyCostTo(target) - (cost * 0.5).round()`，隐含假设"余额 == 本程报价"。但 `Balance.initialEnergy` 是 300、报价是 7，所以这一行**与它上面那行（断言实时读数不变）不可能同时通过**。
+
+**修正**：改为在改写存档前捕获 `balanceBefore`，断言 `c2.player.energyBalance == balanceBefore`——直接钉住迁移的算术，而不是复述派生读数。
+
+**错了会怎样**：钉的是余额而非边界处的派生读数；但上一行仍钉住读数，"什么都没变"的两半都还有覆盖。
+
+### 3.2 Task 13 一条断言与同一测试内三行自相矛盾（`Ruling 41`）
+
+`covers the powered leg, not the drift that follows`（`:235`）断言 `toPos` 等于**滑行后**位置，而同一测试的 `:232`、`:236`、`:238` 要求 `toPos` 是**耗尽点**。设计 §6.3 明确 `fuelOut` 窗口取动力段而非滑行段，所以兄弟行是对的、`:235` 是错的。
+
+**修正**：改成否定断言，直接表达意图——窗口止于耗尽点、**不得**延伸进滑行段。
+
+**错了会怎样**：测试侧改动，错了当场失败，污染不到实现。
+
+### 3.3 Task 13 一条断言与设计 §6.3 的窗口表冲突（`Ruling 40`）
+
+`it is shown once and then never again`（`:164`）要求"确认过的播报不再出现"。但 §6.3 把 `init()` 的离线补算窗口定义为 `[driftStartedAt, now]`，而同一文件的两个兄弟测试正需要这个语义：`it survives a kill before the player ever read it` 要求第二次启动**无需确认**就能产出播报；`the coasting screen can ask for one on demand` 要求确认之后 `requestDriftReport()` 仍能给出**整段**漂移。
+
+**判据**：计划引用的"只显示一次"只出现在**计划**里，不在 spec 里；而 spec §6.4 的"无状态"那句话（"位置永远只是 `(start, velocity, driftStartedAt, now)` 的函数"）是在论证大圆解不需要额外存档状态，**不是**关于"已确认"状态的声明。
+
+**修正**：保留实现，改测试。重命名为 `a reboot recomputes the window for the still-running drift`，断言第二次启动的 `elapsed` **严格大于**第一次。
+
+**错了会怎样**：玩家在长时间滑行中反复打开 App，每次都会看到播报、且窗口每次更长。若这被证明烦人，那是一次 UX 改动（持久化一个确认标记并移动窗口起点），不是正确性修复。
+
+### 3.4 一条断言在计划自己的实现下不可能通过（`Ruling 31`）
+
+Task 13 的 `measures the window the player could not watch` 断言 `pendingDriftReport` 为 null，理由是"还没过时间"。但 brief 自己的 `buildDriftReport` 只有 `if (path == null) return null;` 一道门，而该门按注释只针对**停泊**的船；`_drifting` 给的是非零速度，所以会排出一份零长度播报。
+
+**修正**：判定断言对、实现缺一道门——补 `if (!now.isAfter(_player.driftStartedAt)) return null;`。
+
+**错了会怎样**：玩家在开始滑行的同一秒内重启，那一刻不会收到播报——这正是期望行为。反过来若删掉断言，则每次滑行中启动都会凭空造一份播报。
+
+### 3.5 迁移守卫的 `status == inProgress` 分支没有回归测试（遗留）
+
+**不是**计划文本缺陷，是覆盖缺口，但同类：该分支可达且承重（已完成的航程以 `activeJourney` + `status: arrived` 持久化，守卫写错会**退款**），而 brief 的三个测试只覆盖 `inProgress` 与"无航程"。
+
+**处置**：留给最终整支审阅判断是否值得在唯一一次修复波里补上。这是所有遗留小项中唯一保护玩家可见数字的一条。
+
+---
+
+## 四、标识符 / import / 文件清单缺陷（共六处）
+
+**同一类缺陷，六次**：计划点名了一个不存在于它所声称位置的成员、import 或文件。**全部**是编译失败，没有一处会静默出错。但六次意味着这不是偶发——根因是计划作者在**纯文本**层面推理，而 import 传递性、成员归属文件这类事实只有对着代码才看得见。因此 Task 12-14 的预检被重跑了一遍，且第二遍是对着**已生成的 brief** 而不是计划原文（Task 12/13 的四处编译错误全都来自"成员不存在于它被点名的位置"）。
+
+| # | Task | 缺陷 | 修正 |
+|---|---|---|---|
+| 18 | 10 | 对话框 import 块缺 `StarPanel` 的家：它在 `lib/ui/widgets/common.dart:91`，**不在** `core/theme.dart` | 加 `import '../widgets/common.dart';` |
+| 25 | 13 | 测试读 `c.universeRadius`，该成员不存在且没有任何 task 添加它 | 改 `c.universe.universeRadius`（`Ruling 14` 已删掉那个冗余转发 getter） |
+| 26 | 13 | `game_controller.dart` 用了 `DriftReport` / `DriftReportKind` 却没让实现者 import；Dart import 不传递 | 加 `import '../data/models/drift_report.dart';` |
+| 27 | 13 | `GameSave.pendingDriftReport` 设为**必填**（正确），但会打断 `test/ship_test.dart:47` 的 `_saveWith`——第四个 `GameSave(` 构造点，brief 从未列出 | 把 `test/ship_test.dart` 加入文件清单，传 `pendingDriftReport: null` |
+| 28 | 14 | 与 #18 逐字节相同：`drift_report_sheet.dart` 的 import 块缺 `common.dart`，而 Interfaces 行声称 `StarPanel` 在 `core/theme.dart` | 加 `import '../widgets/common.dart';` |
+| 43 | 14 | 同上，对**已生成的 brief** 再确认一次（task-14-brief.md:134-138） | 同上 |
+
+**为什么 25 那条不只是编译修复**：Task 13 的两条半径断言写的是 `closeTo(c.universeRadius, 1.0)` 与 `closeTo(c.universeRadius - 3000, 1.0)`——读**活值**而非硬编码 3066。所以把它改成 `c.universe.universeRadius` 恰恰是让这两条断言保持**与星表无关**的原因。见第五节的 `Ruling 34`。
+
+---
+
+## 五、结构性与设计性修正
+
+### 5.1 Task 5 的 bound 与 Task 6 的前向依赖（`Ruling 1`）
+
+Task 5 用 `bound: start.length`，Task 6 第 4 步再换成 `math.max(_universe.universeRadius, start.length)`。原因：Task 5 必须能独立编译、独立 analyze 干净，不能消费 Task 6 尚未产出的接口。在 Task 5 里这个 bound 不可达（Task 9 之前没有任何东西写入非零 `driftVelocity`），所以行为逐位不变。
+
+**注意**：Task 5 正文末尾的"注意"段原文描述的是**修正前**的代码，并建议实现者要么把 Task 6 提前、要么临时写 `math.max(1e9, start.length)`——照做会把 `Ruling 1` 刚删掉的前向依赖重新引进来。该段已在执行期就地改正（`Ruling 8`）。**这是本附录之外唯一被就地修改的计划文本**，与 `Ruling 9` 的数值修正一起。
+
+### 5.2 Task 2 必须同时删除 `_spendEnergy`（`Ruling 2`）
+
+三个调用点全部消失后 `_spendEnergy` 变成孤儿，而 `flutter analyze` 把 `unused_element` 当硬失败，会打破强制的 `No issues found`。新增子步骤 3g 删除它。
+
+### 5.3 Task 13 不得复制 `_cruiseVelocityOf` 的函数体（`Ruling 3`）
+
+计划原本让实现者内联重算 `(pos - origin) / legSeconds`，那是 `_cruiseVelocityOf` 函数体的逐字副本，而"逻辑块逐字重复"在审阅标准里是 Important 级问题。两者代数上等价（`pos - origin = (dest-origin)·legSeconds/totalDuration`，且因 `exhaustAt <= arrival` 无钳制），所以改为直接调 `_cruiseVelocityOf(journey)`。
+
+### 5.4 文件结构表里的一行没有 task 支撑（`Ruling 4` / `Ruling 5`）
+
+File Structure 表写"`starward/README.md` / `starward/CLAUDE.md`——阶段 1 与阶段 3 结束时补一段模型说明"，但只有一个 task 支撑它的一半：Task 2 重写 README 里被本次改动**变成假**的那段（"能量在校验全部通过后才原子扣除"）是必须的；阶段 3 那段和 CLAUDE.md 那一半**完全没有 task**。在 Task 11 加 Step 4b 写 README 的"漂流（drift）"一节（阶段 C 才是滑行首次可见的地方）。**CLAUDE.md 一行不改**——spec 没要求，且 CLAUDE.md 里没有任何内容因本计划变为假：它的能量指引正是"属性归属于实体"约定，本计划是遵守它而非违反它。
+
+### 5.5 Task 8 的 `_drainBelow` 到不了自己的前置条件（`Ruling 10`）
+
+计划让测试用"反复飞便宜的短途直到余额降到目标值"来造干油箱。但在默认 `refuse` 策略下，飞船在第一个付不起的航次就停下，余额落在 `initialEnergy mod cost` 决定的地方——而第三个测试的 `expect(c.energy, 0)` 只在某个航次报价整除 300 时才到得了。
+
+**修正**：换成 `_setEnergy(storage, balance)`——直接改写存档里的 `player.energyBalance` 再重启。精确，且与 Task 7 的 `_setDrift` 同一套路。
+
+**连带**：Task 8 的门限测试用余额 **1** 而非计划的 30/40（`Ruling 11`）——门限是 `0 < balance < cost`，而 `cost >= Engine.minEnergyCost == 1`，所以 1 是唯一对**任意**目的地都保证落在带内的余额。耗尽点容差改为 `dist * (0.5 / totalDurationMs)`（`Ruling 12`）——那才是毫秒取整真正带来的误差量级（60 ly 腿约 1.3e-5），比计划的裸 `lessThan(1e-6)` 大一个数量级，后者是在赌腿长。补足用**计算出的** `cost` 而非固定的 400（`Ruling 13`）——这是 `Ruling 7` 的同类重复。
+
+### 5.6 Task 9 的 `_doomed` 引用了已被删除的 helper（`Ruling 16`）
+
+`Ruling 10` 删掉 `_drainBelow` 之后，Task 9 的 `_doomed` 仍在调它。重写为：共享 `MemoryStorage` 启动 → 飞**最近**行星并 `acknowledgeArrival()`（这一跳不能省：滑行测试要读 `c.planetById(journey.originPlanetId)!.pos`，而从虚空出发的航程带 `kDeepSpaceId`，`planetById` 返回 null 会让 `!` 抛异常）→ `_setEnergy(storage, 1)` 重启 → 断言 `c.energyCostTo(far) > c.energy` 作为前置条件。
+
+### 5.7 Task 10 的三个对话框测试打不开对话框（`Ruling 17`）
+
+计划的 `open()` helper 是 `async` 且把 `await tester.tap` 放在**里面**，但测试 1 用 `unawaited(open(...))` 调用它——没有任何一次让出事件循环，按钮永远不会被点，弹层永远不会存在。测试 2、3 是镜像错误。
+
+**修正**：改用 `Completer`，helper 自己 await 自己的 pump 与 tap，再交回一个 pending future。附带好处：测试 3 的 `isNull` 变成承重断言——对话框永不 resolve 会**挂住**测试而不是让它通过。
+
+### 5.8 Task 10 的两处重复与一处自相矛盾的注释（`Ruling 19` / `Ruling 20`）
+
+`_launchToStar` 把"launch → mounted 检查 → ShellScope.go / SnackBar"这八行尾段写了两遍，只差 `onEmpty:` 参数。两遍都是本 task **新写**的代码，逐字重复是 Important 级问题，所以改成先选策略、再单次 launch。**明确不**扩展到 `planet_details_sheet.dart`：那里的第三份副本是**既有**代码，抽取它意味着重写一条本 task 没被要求碰的可用路径。`_launchWithChoice` 的文档注释自相矛盾（既说"对话框关闭后重读"又说"只读一次"），两句都不描述代码，已替换。
+
+### 5.9 Task 11 的 `scrollSpeed` 是偏移量不是速率（`Ruling 36` / `Ruling 37`）
+
+**这是本计划最严重的一处计划缺陷**，因为它以"看起来合理"的形态交付了一个坏掉的特性。`starfield.dart:164` 是 `final scroll = scrollSpeed * (0.3 + s.layer);`——**没有帧时间因子**，所以 `scrollSpeed` 是静态位移而非速度。计划给待机星空传裸常量 `0.35`，于是：(a) 滑行星空**永不流动**，与 commit message、README 的漂流一节、以及 brief 自己的手工检查项都矛盾；(b) `needsTimer` 仍然为 `c.isCoasting` 启动 `_flightTicker`，而它唯一的输出 `_phase` 只被 `_buildFlight` 读——留下一个永远在每帧重排回调、却没有任何消费者的小部件。
+
+**修正**：一处改动同时修好两条——把待机 `StarfieldBackground` 包进 `ValueListenableBuilder<double>`，传 `coasting ? 0.35 * phase : 0.0`，与 `_buildFlight` 同构。把 `0.35` 解读为"每秒速率"是对作者意图的忠实读法：`_buildFlight` 的有效基础速率是 `0.0008 * 180 = 0.144`/s，同一量级，说明 `0.35` 当初就是当速率挑的。这比"只把 ticker 从滑行分支摘掉"更好——后者能消掉 CPU 开销，但会放弃本 task 的意义所在（流动的星空）。
+
+**`Ruling 37`**：修复波必须带一条**回归测试**，而且这条测试正是缺了它才让冻结的星空交付出去。断言方式是直接读缺陷：从树上读 `StarfieldBackground.scrollSpeed`，pump 两秒，再读一次，要求它**变大**。这一条同时覆盖两个发现——若 ticker 没跑，`_phase` 不会前进，值就是静止的。
+
+**验证**：修复前先确认 RED——两次读数都是 `0.35`，`greaterThan` 失败。这正是"常量真的冻住了场"的直接证据。复审者又独立把 standby 改回裸 `0.35`、单独重跑该测试、观察到 `Expected: a value greater than <0.35> Actual: <0.35>`（`flight_panel_test.dart:169`），然后还原文件并确认 `git status` 干净。
+
+### 5.10 Task 12 的圆弧方位角搜索被固定圈数截断（`Ruling 38`）
+
+`drift.dart:151-154` 用固定的 `for (var lap = -1; lap <= 2; lap++)`，只生成 `[-3π, 5π]` 内的方位角。而 `thetaFrom` / `thetaTo` 随窗口长度**无界**增长，所以一旦 `thetaFrom` 超过 `5π`，没有任何生成出来的方位角能满足 `t > thetaFrom`，候选集退化成两个端点——报出的最小值成了**高估**，会错误地丢掉飞船确实路过的恒星。
+
+**量级**：`5π` 的弧长在 `shellRadius = 3066` 下约 48,160 ly，按巡航速度（`1/37.5 = 0.0267 ly/s`）约 **21 天**滑行。也就是说窗口要在撞壳后约三周才打开。
+
+**判定修而不是推**：这是本 task 存在的那个查询给出**错误答案**，Task 13 一开始传入真实播报窗口就可达，审阅者给出了精确且廉价的界，替代方案是把潜伏 bug 交给它下游的两个 task。
+
+**修正**：`lapFrom = ceil((thetaFrom - bearing) / 2π)`、`lapTo = floor((thetaTo - bearing) / 2π)`，按窗口自身定界。
+
+**错了会怎样**：替换后的循环每个跨越的整圈迭代一次（任何现实窗口都是零到几次），代价是几次点积和一个模长——相对于一次已经走遍全星表的扫描可以忽略。
+
+**验证**：复审者先符号化推导 `ceil`/`floor`，再数值暴力验证九个用例零漏检，确认 (a) 多圈窗口完全覆盖、(b) 空区间跑零次迭代而非行为异常、(c) 端点重复无害（`d < bestDistance` 忽略相等）、(d) **负方位角安全**——推导与符号无关，且因 `fromArc = max(from, hitSeconds)` 恒有 `thetaFrom >= 0`。它还把循环改回去复现 RED 于 `141.3955375614488`，与实现者报告和我自己的独立计算**十位有效数字一致**，然后还原并确认树干净。
+
+### 5.11 Task 12 一条测试与自己比较（`Ruling 39`）
+
+`test/drift_test.dart:122-138` 断言 `path.positionAt(s)` 等于 `driftPositionAt(...)`，但重构后 `driftPositionAt` **就是** `positionAt`——循环拿一个值和它自己比，对任何实现都通过。**一条不可能失败的测试**，审阅标准视为缺陷。
+
+**修正**：把比较循环换成对**模型**的断言，不引入任何新的魔数——在 `hitSeconds` 之前飞船必须在直线段上（`positionAt(40) == (50, 40, 0)`），之后必须贴着球壳（`positionAt(100).length == 100`、`positionAt(900).length == 100`）。这些能失败，而且测的是物理而不是"代码与自己的代理比对"。两条原有钉子（`hitSeconds == 86.6025`、`shellRadius == 100`）保留。
+
+### 5.12 Task 11 的两个星表钉子在它们被放置的上下文里不可达（`Ruling 34`）
+
+计划的 `expect(cost, 2598)`（greedy）与 `expect(c.energyCostTo(target), 6)`（standard）都源自"seed-3 出生点最近的星球距 2.5983 ly"。**数值是对的，来源是错的**：这些数是在**curated fallback** 星表下算出来的，而 `flight_panel_test.dart` 用 `testWidgets`（初始化了 binding），所以 `HygCatalog.load()` 读的是真 `hyg.bin`，数字不同（最近行星 `p1-0-0` 距 1.6083615705492669 ly，standard 报价 4，greedy 报价 1608，附近 90 颗行星；而 fallback 是 `haven` 距 2.5983300523078428，6，2598，27）。
+
+**机制**：`HygCatalog.load()` 以 `catch (_) { return null; }` 结尾（"asset 缺失 → 调用方用 curated fallback"，`hyg_catalog.dart:143-145`），而 `rootBundle` 需要 binding。`test/coast_test.dart:148` 在 `universeRadius` 分组里带了 `setUpAll(TestWidgetsFlutterBinding.ensureInitialized)`——这正是该分组的真星表 `3066` 钉子能工作、而同文件的裸 `test()` 分组看到 fallback 的原因。**计划自相矛盾**：作者在 fallback 上下文里算了这些钉子，却把它们放进了 widget 上下文。把它们移出 `testWidgets` 不可能（它们需要 `tester.pumpWidget` 渲染面板），所以放置是对的、钉子错了。
+
+**修正**：两个绝对钉都换成**关系式前置条件**（注定失败的航程 `cost > c.energy`，可负担的 `cost < c.energy`），而不是重钉成 4/1608。理由：这些测试的主语是面板的**行为**（警告显不显示），那是关系；在那里钉绝对值会让一个 UI 测试耦合到一个可重新生成的二进制资源，而仓库已有专门的归属地放真星表钉子（`coast_test.dart` 那个显式 `ensureInitialized` 的分组）。关系式仍然约束了状态——`installEngine(_greedy)` 静默失效会让 `cost > 300` 失败，最近行星移出 120 ly 会让 `cost < 300` 失败——所以它是承重的，不是空洞的。
+
+**错了会怎样**：测试不再记录真星表的绝对报价，所以 `hyg.bin` 变更导致的出生点移动会被关系式而非数字捕获。若日后想钉绝对值，正确位置是带 `ensureInitialized` 的裸 `test()` 分组，不是 widget 测试。
+
+**注意 `Ruling 23` 已被本条推翻**：我曾在预检里跑了一个裸 `test()` 探针复现了 2598/6，并把结论从"若不一致就停下报告"升级为"这些是实测值，让它们通过"。那个探针**没有 binding**，量的是 fallback 星表。数字是对的，关于其来源的断言是错的。
+
+### 5.13 Task 11 的 `_buildStandby` 有一个死分支（`Ruling 22`）
+
+计划写 `coasting ? explore : (drifting ? explore : nightlight)`，外层分支是死的——`isCoasting` 要求非零 `driftVelocity`，其唯一写入者是 `_applyFuelOut`，而它在同一次 `copyWith` 里设 `toDeepSpace: true`，所以 `coasting ⇒ drifting`，内层三元两个臂是同一个图标。改成约简后的一行。**明确不**把同样的推理扩展到相邻的三元（标题、正文、dock 选择、顶栏副标题），那些**确实**区分这两个状态。
+
+### 5.14 Task 13 的离线补算缺一道"时间没有前进"的门（见 3.4）
+
+### 5.15 Task 14 的 `_applyFuelOut` 语句顺序（`Ruling 42`）
+
+实现者发现动力段播报块坐在 `_player = _player.copyWith(startX: pos.x, …)`（锚点改写）**之后**，所以在深空起点上播报的 `fromPos` 记的是**耗尽点**而非出发点——因为 `_originPosOf` 读 `startX/Y/Z`，而那些已经被覆盖了。把块移到改写之前是正确的。
+
+**这正是本账本 Task 9 遗留小项 4 标注为"未测试"的那个危险**（"没有任何测试覆盖**深空起点**的燃料耗尽，而那是唯一让求值顺序真正改变 `_cruiseVelocityOf` 的情形"）。
+
+**按 `Ruling 37` 的教训，修复不算完成直到有东西在没有它时失败**：实现者确认 `covers the powered leg` 就是从深空起点出发的（`currentPlanetId == null` → `originPlanetId = kDeepSpaceId` → `_originPosOf` 读锚点），并**通过把块挪回改写之后证明这条钉子会咬人**——RED 于 `-0.1307705142964797`（真起点）对 `-0.06875925482588272`（耗尽点）——然后逐字节还原控制器。
+
+### 5.16 Task 13 的持久化是只写的（`Ruling 46` / `Ruling 47`）
+
+`_restore` 从不读 `save.pendingDriftReport`，所以 `init()` 的 `??=` 永远覆盖为重建值——字段写得进、序列化往返无损、**没有任何东西读回它**。
+
+**修正必须是 kind-aware 而非朴素还原**：持久化的 `fuelOut` 报告必须还原，因为 `buildDriftReport` 只可能产出 `drift` 类，那个窗口事后无法重算（这正是该字段存在的理由）；持久化的 `drift` 报告**不得**还原，因为它的窗口是 `[driftStartedAt, now]`，重启后重建覆盖的是同一段的**严格超集**（同一 `driftStartedAt`、更晚的 `now`），所以什么也没丢。朴素还原会通过最显眼的测试，然后给一个"滑行中杀掉 App、三天后回来"的玩家显示"滑行了 5 分钟"。
+
+**一句话**：还原无法重算的，重算可以重算的。
+
+**`Ruling 47` 要求修复波带两条测试**，第二条才是重点：第一条（`fuelOut` 报告在杀掉后存活）在修复前是 RED，失败信息正是玩家可见的症状——`Expected: DriftReportKind.fuelOut, Actual: DriftReportKind.drift`。第二条（`drift` 报告**被重算而非还原**）对着**替代方案**验证：把修复换成朴素的 `_pendingDriftReport = save.pendingDriftReport;` 后，第一条**仍然通过**而第二条失败（`Expected: 2026-03-01 03:05:00, Actual: 2026-03-01 00:05:00`，那个陈旧的五分钟窗口）。没有第二条，朴素还原会通过审阅并把陈旧窗口重新引进来。
+
+**`Ruling 40` 的一处自我更正**：我曾把 `greaterThan` 的理由说成"能抓到陈旧的持久化值"，那是错的——陈旧值是被**丢弃**而非还原，所以不会让它失败。该断言仍然承重，但针对的是我拒绝过的那个替代方案（持久化一个"已播报到某时刻"的水位标记）。
+
+### 5.17 Task 13 一条测试的 `reason` 是假的（`Ruling 32`）
+
+`it survives a kill before the player ever read it` 能通过，但它的 `reason`——"排队的播报被持久化，而非从头重建"——是假的：`init()` 的插入从不调 `_persist()`，所以第二次启动是**重建**、从另一条路到达同样的 30 分钟。**删掉持久化这个测试也照过**，所以它完全没有覆盖持久化。判定实现正确、标签错误（重建是计划自己的意图"Recompute it once"，且严格更好：关闭期间继续的滑行给出更长而非陈旧的窗口）。改 `reason` 文本，保留两条断言，不加 `_persist()` 调用。
+
+### 5.18 Task 13 的 Interfaces 归属写错了 task（`Ruling 33`）
+
+计划把 `isCoasting` 和 `driftElapsed` 归给"Task 5/6"，实际由 Task 11 定义。无代码改动，标注以免实现者去 Task 5/6 里翻找、或在找不到时自行发明。
+
+### 5.19 Task 12/13 的两条测试没有跟着一起改（`Ruling 41` / `Ruling 13` 的同类）
+
+`a mid-flight top-up means there is nothing to report`（`:254`）硬编码 `completeCourse(session.id, 400)`，而 `_greedy` 引擎的报价是 2496 EN，于是进度落在 `700/2496 = 0.2804…` 而非 1.0，航程永远不结束。改用**计算出的** `cost`，让测试跟着引擎走而不是跟着某人量过一次的数字走。这是 `Ruling 13` 的同类重复。
+
+### 5.20 Task 14 的 sheet 测试依赖哪个星表加载（`Ruling 35`，无需动作）
+
+计划的手工 `DriftReport` fixture 带 `passedCount: 137` 与 `nearest` 列表，UI 调 `controller.starLabelFor(s.hygId)` → `Universe.starLabel(int)`（`universe.dart:89`）。该方法**是全函数**：扫描 `stars` 与 `extraGalaxies` 找同名的恒星，否则返回兜底 `'恒星系 SW-$hygId'`。不会抛、不会返回 null，所以 fixture 的 id 不在已加载星表里也能确定性渲染。与 `Ruling 34` **同类但不同缺陷**：那里值是星表的**测量**，这里是星表只会装饰的 fixture 字段。**唯一实际后果**：若测试断言某个 fixture 恒星渲染出的标签，必须断言 `恒星系 SW-<id>` 兜底形式，而非真实星表名。
+
+### 5.21 Task 14 必须修正 `passedSystemsAlong` 的文档注释（`Ruling 49`）
+
+`universe.dart:255-258` 把全星表扫描的代价辩解为"几毫秒，之所以可负担是因为它只在**写播报时**运行，**不是每帧**"。Task 14 的 `_CoastDock` 在 `build` 里调 `controller.passedSystemsSoFar`，而 `_JourneyPageState` 每次 `notifyListeners` 都重建、`tick()` 每秒一次——所以真实节奏是**每秒一次**。注释本身没有错到会误导今天的读者，但会给未来的读者（正是那个在判断"新调用点是否可负担"的人）留下错误的代价模型。
+
+**明确不加缓存、不降频**：每秒本来就是自然节奏（计数只在窗口增长时变化），所以每秒缓存什么也买不到，剩下的代价是算法固有的。诚实的反应是**量而不是猜**：Task 14 的 Step 4 手工检查应该观察滑行页是否卡顿并报告所见。**注意 debug/release 的分野**——`flutter run` 是 JIT，逐星三角函数比实际发布的 AOT 构建贵得多，所以 brief 的"2–5 ms"可能是 release 数字而手工检查跑在 debug。
+
+**实测结果**：实现者跑不了 `flutter run`（沙箱里没有可观察的 GUI），于是**对着真星表直接量**——**每次扫描约 5.2–5.5 ms（debug/JIT）**（直线段 5.46 ms，圆弧段 5.20 ms）。每秒一次、每次约 5 ms，占一秒的 0.5%，不需要优化。
+
+**这条实测推翻了我自己的猜测**：我预测圆弧段的逐星 `atan2`/`cos`/`sin` 在 JIT 下会占主导，结果两段代价相同——真正的开销是 `positionOfIndex` 里每次扫描约 **121k 次 `Vec3` 分配**。记下来是因为账本里一个错误的机理会让后来重看性能问题的人走错方向。
+
+**由此暴露一处措辞不准**：修正后的注释说"109,401 颗恒星"，但 `passedSystemsAlong` 扫的是 `stars` **加上每一个 `extraGalaxies`**，spec §5.1 计的是 120,601 总数。这与 `Ruling 49` 想修的那类不精确是同一类。
+
+### 5.22 Task 14 必须补上 §6.3 第一行表格的覆盖（`Ruling 50`）
+
+**接受标准 #13 的字面读法会导致一次错误的代码改动**。#13 说"零速度的深空待命不得产生任何播报——出生、`abortJourney`、`halt`、抵达恒星、抵达坐标五种情况都断言 `pendingDriftReport == null`"。字面照做意味着 halt 不得留下播报——但 `_applyFuelOut`（`game_controller.dart:570`）在速度分支**之前**就设 `_pendingDriftReport`，所以 `FuelPolicy.halt` 的燃料耗尽与 `coast` 一样排出一份 `fuelOut` 播报。
+
+**设计两处推翻字面读法**：§6.2 的规范性句子是"**生成门槛（关键，避免误报）：只有 `driftVelocity != 0` 时才在 `init()` 里补算离线播报**"——门开在 `init()` 的**离线补算**上，而列出的五种状态是那个补算不得触发的零速度待命情形（给出的理由是 `driftStartedAt` 默认为 epoch，没有这道门每个新玩家都会被告知自己漂流了 56 年）。§6.3 的四窗口表把**燃料耗尽停下**列为独立一行，产出 `[departure, t_exhaust]` 的 `fuelOut` 播报。所以 halt 确实有消息要告诉玩家（"你的油箱在这里烧干了，你走到了这么远"），brief 的弹层也为它带了活分支（`_whereabouts` → "现在停在 $coord，漂浮于深空"）。**实现不需要改。**
+
+**缺口在覆盖**：`test/fuel_out_test.dart` 对 `pendingDriftReport` 有**零**处引用，而 `drift_report_test.dart` 唯一的燃料耗尽测试是 **coast** 情形。所以 §6.3 的第一行——halt 的燃料耗尽——没有任何测试，而要紧的区分是**状态**与**转移**：既有的 `a player who comes back much later without moving` 覆盖的是停泊**状态**不产出漂移播报，没有任何东西覆盖 halt **产出**它自己的 `fuelOut` 播报。
+
+**修正**：Task 14 补一条 halt 用例，断言 `kind == DriftReportKind.fuelOut`、`driftVelocity == 0`、以及动力段窗口；外加正确读法的 #13 条目——那艘停泊船此后的启动**永不**产出 `drift` 播报（`Ruling 46` 之后，未确认则给出还原的 `fuelOut`，已确认则给出 null，但绝不是 `drift`）。
+
+### 5.23 Task 14 必须补上抵达的负例（`Ruling 45`）
+
+接受标准 #13 的负例清单列了五种状态，而 Task 14 自己的阶段 D 检查点也重复了它。全 `test/` 树里 `pendingDriftReport` 只出现在 `drift_report_test.dart` 和 `ship_test.dart:63`（仅构造参数）。当时已覆盖：出生、停泊后隔很久回来、`abortJourney`、飞行中补足。**抵达完全没有覆盖**。
+
+**先查机理再判定缺口是否要紧**：`driftPath` 在 `!isCoasting` 时返回 null，`isCoasting` 是 `driftVelocity.length > 0`，而 `buildDriftReport` 开头就是 `final path = driftPath; if (path == null) return null;`——所以零速度飞船**按构造不可能**产出播报。不变量是健全的，因此这不是潜伏 bug。但测试仍然值得写，因为它真正钉住的是**抵达会把速度归零**：经 `_reconcileJourney()` 的离线抵达路径，是唯一可能让一个陈旧的非零 `driftVelocity` 与一个新的 `driftStartedAt` 并存、从而给一艘**准点抵达**的飞船弹出"你漂流了"的地方。
+
+**修正**：补 arrive-star 与 arrive-coord 两个控制器级用例，各自断言航程到达 `JourneyStatus.arrived` 且 `pendingDriftReport == null`，其中**离线变体**（新启动、时钟已过抵达时刻）是承重的那条。Task 14 是正确归属：它已经在往 `drift_report_test.dart` 追加，也已经拥有点名这份清单的阶段 D 检查点，于是检查点从"愿景"变成"可验证"。
+
+---
+
+## 六、未在本附录中修正的：遗留小项
+
+各 task 审阅发现的 minor 一律**不进修复循环**，而是留在账本里（`progress.md`），并汇总给最终整支审阅判断是否值得进唯一一次修复波。最值得看的三条：
+
+1. **`completeExploration` 清 `_activeJourney` 而不结算**（`game_controller.dart:627-630`）——安全仅仅因为抵达已经先结算过。它是第五个清 `_activeJourney` 的地方，也是唯一不结算的那个。
+2. **迁移守卫的 `status == inProgress` 分支没有回归测试**（见 3.5）——唯一保护玩家可见数字的遗留项。
+3. **`_settleBurn` 的文档注释夸大了自己的机理**（`game_controller.dart:695-697`）——它声称"先结算后翻转"的顺序防止了重复记账；真正的机理是每条终结路径只结算一次，因为 `burnedAt` 从不读 `status`。
+
+完整清单（含测试覆盖观察、注释不准确、结构性/性能取舍、以及已被后续 task 关闭的条目）见 `.superpowers/sdd/2026-10-12-starward-voyage-energy-and-drift/final-review-notes.md` 第三节。
+
+---
+
+## 七、本计划确立的证明标准
+
+跨整支建立、并适用于上面每一条：**一条测试在被观察到"没有它就会失败"之前，不算承重。** 本计划要求并执行了三次 revert-to-RED 演示——Task 11 的星空（`Ruling 37`）、Task 13 的 `_applyFuelOut` 语句顺序（`Ruling 42`）、Task 13 的 kind-aware 还原（`Ruling 47`，通过证明**朴素替代方案**让第一条测试保持绿、第二条失败）。所以"一条测试不可能失败"在本计划里是**严重**问题，而"一条测试只是偏弱"是 nit。
