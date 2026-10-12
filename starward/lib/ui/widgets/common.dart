@@ -78,6 +78,13 @@ class StarLabels {
     }
     return '${d.inSeconds} 秒';
   }
+
+  /// Human-friendly distance in light-years, e.g. "0.03 ly" / "34 ly".
+  ///
+  /// Short hops keep two decimals — rounding them to whole light-years would
+  /// render a real distance as a nonsensical "0 ly".
+  static String distance(double ly) =>
+      ly < 1 ? '${ly.toStringAsFixed(2)} ly' : '${ly.round()} ly';
 }
 
 /// The translucent info panel used throughout the app.

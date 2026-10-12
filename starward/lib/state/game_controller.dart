@@ -218,7 +218,9 @@ class GameController extends ChangeNotifier {
   double journeyDistance(Journey j) {
     final Vec3? toPos = _isStarDest(j.destinationPlanetId)
         ? _universe.starArrivalPoint(_starIdFromDest(j.destinationPlanetId))
-        : _universe.planetById(j.destinationPlanetId)?.pos;
+        : _isCoordDest(j.destinationPlanetId)
+            ? _coordFromDest(j.destinationPlanetId)
+            : _universe.planetById(j.destinationPlanetId)?.pos;
     if (toPos == null) return 0;
     final Vec3 from = j.originPlanetId == kDeepSpaceId
         ? Vec3(_player.startX, _player.startY, _player.startZ)
@@ -226,10 +228,9 @@ class GameController extends ChangeNotifier {
     return (toPos - from).length;
   }
 
-  TravelTier tierTo(Planet target) => tierForDistance(distanceTo(target));
-  int energyCostTo(Planet target) => energyCostForTier(tierTo(target));
+  int energyCostTo(Planet target) => energyCostForDistance(distanceTo(target));
   Duration travelDurationTo(Planet target) =>
-      Duration(seconds: travelSecondsForTier(tierTo(target)));
+      Duration(seconds: travelSecondsForDistance(distanceTo(target)));
 
   List<DiscoveryRecord> discoveriesFor(String planetId) =>
       _discoveries.where((d) => d.planetId == planetId).toList();
@@ -291,6 +292,20 @@ class GameController extends ChangeNotifier {
       return;
     }
 
+    // Returning to a free point in deep space: arrive drifting there.
+    if (_isCoordDest(dest)) {
+      final target = _coordFromDest(dest);
+      _activeJourney = journey.copyWith(status: JourneyStatus.arrived);
+      _player = _player.copyWith(
+        toDeepSpace: true,
+        startX: target.x,
+        startY: target.y,
+        startZ: target.z,
+      );
+      _rebuildNearby();
+      return;
+    }
+
     _activeJourney = journey.copyWith(status: JourneyStatus.arrived);
     _player = _player.copyWith(currentPlanetId: dest);
     // Reaching a planet discovers it (if not already explored).
@@ -311,6 +326,19 @@ class GameController extends ChangeNotifier {
 
   /// Whether a journey destination id refers to a star rather than a planet.
   static bool isStarDestination(String id) => _isStarDest(id);
+
+  // Deep-space waypoints — used when turning back to an origin that was open
+  // space (not a planet or star) — are encoded as 'coord:<x>,<y>,<z>'.
+  static String _coordDestId(Vec3 p) => 'coord:${p.x},${p.y},${p.z}';
+  static bool _isCoordDest(String id) => id.startsWith('coord:');
+  static Vec3 _coordFromDest(String id) {
+    final parts = id.substring(6).split(',');
+    return Vec3(
+        double.parse(parts[0]), double.parse(parts[1]), double.parse(parts[2]));
+  }
+
+  /// Whether a journey destination id refers to a free deep-space coordinate.
+  static bool isCoordDestination(String id) => _isCoordDest(id);
 
   /// Call periodically (e.g. once per second from a visible journey view) to
   /// surface the arrival transition without any always-on timer.
@@ -361,7 +389,7 @@ class GameController extends ChangeNotifier {
   }
 
   int energyCostToStar(int hygId) =>
-      energyCostForTier(tierForDistance(distanceToStar(hygId)));
+      energyCostForDistance(distanceToStar(hygId));
 
   /// Launches a journey to a *star* (used for stars with no planets — you drift
   /// in beside it). Mirrors [launchJourney] but the destination is a star.
@@ -371,13 +399,12 @@ class GameController extends ChangeNotifier {
     if (isTraveling) return LaunchResult.alreadyTraveling;
     final dist = (playerPosition3D - target).length;
     if (dist < 0.5) return LaunchResult.alreadyHere;
-    final tier = tierForDistance(dist);
-    final cost = energyCostForTier(tier);
+    final cost = energyCostForDistance(dist);
     if (_player.energyBalance < cost) return LaunchResult.insufficientEnergy;
 
     final departure = _now();
     final arrival =
-        departure.add(Duration(seconds: travelSecondsForTier(tier)));
+        departure.add(Duration(seconds: travelSecondsForDistance(dist)));
     final journey = Journey(
       id: _newId('jny'),
       originPlanetId: _player.currentPlanetId ?? kDeepSpaceId,
@@ -403,6 +430,114 @@ class GameController extends ChangeNotifier {
     _player = _player.copyWith(clearActiveJourney: true);
     await _persist();
     notifyListeners();
+  }
+
+  // --- Mid-flight controls -------------------------------------------------
+
+  /// The 3D position a journey departed from (planet, star, or deep-space drift).
+  Vec3 _originPosOf(Journey j) {
+    final id = j.originPlanetId;
+    if (id == kDeepSpaceId) {
+      return Vec3(_player.startX, _player.startY, _player.startZ);
+    }
+    if (_isStarDest(id)) {
+      return _universe.starArrivalPoint(_starIdFromDest(id)) ?? playerPosition3D;
+    }
+    if (_isCoordDest(id)) return _coordFromDest(id);
+    return _universe.planetById(id)?.pos ?? playerPosition3D;
+  }
+
+  /// The 3D position a journey is heading toward.
+  Vec3? _destPosOf(Journey j) {
+    final id = j.destinationPlanetId;
+    if (_isStarDest(id)) {
+      return _universe.starArrivalPoint(_starIdFromDest(id));
+    }
+    if (_isCoordDest(id)) return _coordFromDest(id);
+    return _universe.planetById(id)?.pos;
+  }
+
+  /// The ship's current 3D position partway along [j] at [now], by linear
+  /// interpolation between origin and destination. Matches the timestamp-driven
+  /// progress model, so there is no stored position to drift out of sync.
+  Vec3 _positionAlong(Journey j, DateTime now) {
+    final from = _originPosOf(j);
+    final to = _destPosOf(j) ?? from;
+    return from + (to - from) * j.progressAt(now);
+  }
+
+  /// Aborts an in-progress journey, leaving the ship drifting at the point it
+  /// had reached along the route. Energy already spent is not refunded — the
+  /// fuel to get this far is gone. No-op if not travelling.
+  Future<void> abortJourney() async {
+    final journey = _activeJourney;
+    if (journey == null || journey.status != JourneyStatus.inProgress) return;
+    final pos = _positionAlong(journey, _now());
+    _activeJourney = null;
+    _player = _player.copyWith(
+      toDeepSpace: true,
+      startX: pos.x,
+      startY: pos.y,
+      startZ: pos.z,
+      clearActiveJourney: true,
+    );
+    _rebuildNearby();
+    await _persist();
+    notifyListeners();
+  }
+
+  /// Turns the ship around mid-flight: launches a fresh journey from the point
+  /// reached so far back to where the active journey departed from. Charges
+  /// energy for the return leg (fuel burns both ways). Returns the launch
+  /// outcome so the UI can report e.g. insufficient energy.
+  ///
+  /// This is unconditional — turning back one second after departure still plots
+  /// a return voyage rather than stopping the ship where it is. The distance
+  /// floors in [travelSecondsForDistance] / [energyCostForDistance] already keep
+  /// a near-zero return leg from resolving to a zero-length trip, and stopping
+  /// short of the origin would strand the player in open space when they asked
+  /// to go home (use [abortJourney] for that).
+  Future<LaunchResult> returnToOrigin() async {
+    final journey = _activeJourney;
+    if (journey == null || journey.status != JourneyStatus.inProgress) {
+      return LaunchResult.noSelection;
+    }
+    final now = _now();
+    final currentPos = _positionAlong(journey, now);
+    final originPos = _originPosOf(journey);
+    final dist = (originPos - currentPos).length;
+    final cost = energyCostForDistance(dist);
+    if (_player.energyBalance < cost) return LaunchResult.insufficientEnergy;
+
+    // Where we return *to*: dock at the origin planet/star, or a free deep-space
+    // coordinate if the journey launched from open space.
+    final destId = journey.originPlanetId == kDeepSpaceId
+        ? _coordDestId(originPos)
+        : journey.originPlanetId;
+
+    // The ship now drifts at the point it had reached — origin of the return.
+    _player = _player.copyWith(
+      toDeepSpace: true,
+      startX: currentPos.x,
+      startY: currentPos.y,
+      startZ: currentPos.z,
+    );
+    final arrival = now.add(Duration(seconds: travelSecondsForDistance(dist)));
+    final ret = Journey(
+      id: _newId('jny'),
+      originPlanetId: kDeepSpaceId,
+      destinationPlanetId: destId,
+      departure: now,
+      arrival: arrival,
+      energyCost: cost,
+      status: JourneyStatus.inProgress,
+    );
+    _activeJourney = ret;
+    _spendEnergy(cost, EnergyTxType.travelCost, ret.id);
+    _rebuildNearby();
+    await _persist();
+    notifyListeners();
+    return LaunchResult.success;
   }
 
   // --- Exploration ---------------------------------------------------------

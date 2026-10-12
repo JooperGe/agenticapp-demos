@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:starward/core/balance.dart';
 import 'package:starward/data/game_repository.dart';
 import 'package:starward/data/models/planet.dart';
 import 'package:starward/data/storage/storage_backend.dart';
@@ -25,8 +24,7 @@ void main() {
 
     final target = controller.planets.firstWhere((p) =>
         p.id != controller.currentPlanetId &&
-        controller.stateOf(p.id) == DiscoveryState.undiscovered &&
-        controller.tierTo(p) == TravelTier.short);
+        controller.stateOf(p.id) == DiscoveryState.undiscovered);
 
     int? switchedTo;
     await tester.pumpWidget(

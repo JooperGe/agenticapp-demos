@@ -127,6 +127,77 @@ class _JourneyPageState extends State<JourneyPage>
     ShellScope.go(context, 0);
   }
 
+  // --- Flight actions ------------------------------------------------------
+
+  Future<void> _abortFlight(GameController c) async {
+    final ok = await _confirm(
+      title: '停止航行',
+      message: '飞船将在当前位置停下，漂浮于深空。已消耗的能量不会退还。',
+      confirmLabel: '停止',
+      danger: true,
+    );
+    if (ok != true) return;
+    await c.abortJourney();
+  }
+
+  Future<void> _changeCourse(GameController c) async {
+    final ok = await _confirm(
+      title: '改变航向',
+      message: '将中止当前航行并回到星图重新选择目的地。已消耗的能量不会退还。',
+      confirmLabel: '去星图',
+    );
+    if (ok != true) return;
+    await c.abortJourney();
+    if (!mounted) return;
+    ShellScope.go(context, 0);
+  }
+
+  Future<void> _returnHome(GameController c) async {
+    final ok = await _confirm(
+      title: '返航',
+      message: '飞船将掉头返回出发点，需要为返程消耗能量。',
+      confirmLabel: '返航',
+    );
+    if (ok != true) return;
+    final res = await c.returnToOrigin();
+    if (!mounted) return;
+    if (res == LaunchResult.insufficientEnergy) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('能量不足，无法返航')),
+      );
+    }
+  }
+
+  Future<bool?> _confirm({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    bool danger = false,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: StarColors.deepNavy,
+        title: Text(title, style: const TextStyle(color: StarColors.offWhite)),
+        content: Text(message,
+            style: const TextStyle(color: StarColors.muted, height: 1.5)),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消', style: TextStyle(color: StarColors.faint)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(confirmLabel,
+                style: TextStyle(
+                    color: danger ? StarColors.danger : StarColors.cyan,
+                    fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Nearest not-yet-explored planet, preferring the hand-authored hero worlds
   /// so the suggestion always leads somewhere with real content to discover.
   Planet? _recommendDestination(GameController c) {
@@ -268,12 +339,23 @@ class _JourneyPageState extends State<JourneyPage>
           bottom: 24,
           child: SafeArea(
             top: false,
-            child: _FlightPanel(
-              controller: c,
-              journey: journey,
-              destName: destName,
-              progress: progress,
-              now: now,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                _FlightPanel(
+                  controller: c,
+                  journey: journey,
+                  destName: destName,
+                  progress: progress,
+                  now: now,
+                ),
+                const SizedBox(height: 12),
+                _FlightControls(
+                  onReturn: () => _returnHome(c),
+                  onChangeCourse: () => _changeCourse(c),
+                  onStop: () => _abortFlight(c),
+                ),
+              ],
             ),
           ),
         ),
@@ -290,6 +372,8 @@ class _JourneyPageState extends State<JourneyPage>
 
   Widget _buildArrival(GameController c, Journey journey) {
     final isStar = GameController.isStarDestination(journey.destinationPlanetId);
+    final isDeepSpace =
+        GameController.isCoordDestination(journey.destinationPlanetId);
     final dest = c.planetById(journey.destinationPlanetId);
     final destName = c.locationLabel(journey.destinationPlanetId);
     final canExplore = !isStar && dest != null && dest.pointsOfInterest.isNotEmpty;
@@ -340,9 +424,11 @@ class _JourneyPageState extends State<JourneyPage>
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  isStar || dest == null
-                      ? '恒星系'
-                      : '${dest.designation} · ${StarLabels.planetType(dest.type)}',
+                  isDeepSpace
+                      ? '深空坐标'
+                      : (isStar || dest == null
+                          ? '恒星系'
+                          : '${dest.designation} · ${StarLabels.planetType(dest.type)}'),
                   style: const TextStyle(
                     color: StarColors.faint,
                     fontSize: 12,
@@ -522,7 +608,7 @@ class _RecommendCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final distance = controller.distanceTo(planet).round();
+    final distance = StarLabels.distance(controller.distanceTo(planet));
     final cost = controller.energyCostTo(planet);
     return StarPanel(
       child: Column(
@@ -552,7 +638,7 @@ class _RecommendCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '距离 $distance ly · 预计消耗 $cost EN',
+                      '距离 $distance · 预计消耗 $cost EN',
                       style: const TextStyle(
                           color: StarColors.muted, fontSize: 12),
                     ),
@@ -641,7 +727,7 @@ class _FlightPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final distance = controller.journeyDistance(journey).round();
+    final distance = StarLabels.distance(controller.journeyDistance(journey));
     final remaining = journey.remainingAt(now);
     final percent = (progress * 100).round();
     return StarPanel(
@@ -710,7 +796,7 @@ class _FlightPanel extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: <Widget>[
-              Text('航程 $distance ly',
+              Text('航程 $distance',
                   style:
                       const TextStyle(color: StarColors.muted, fontSize: 12)),
               Text('能量 ${controller.energy} EN',
@@ -843,6 +929,98 @@ class _ActionButton extends StatelessWidget {
     );
   }
 }
+/// Mid-flight command row: turn back, re-plot a course, or stop and drift.
+class _FlightControls extends StatelessWidget {
+  const _FlightControls({
+    required this.onReturn,
+    required this.onChangeCourse,
+    required this.onStop,
+  });
+
+  final VoidCallback onReturn;
+  final VoidCallback onChangeCourse;
+  final VoidCallback onStop;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: _FlightControlButton(
+            label: '返航',
+            icon: Icons.u_turn_left_rounded,
+            color: StarColors.cyan,
+            onTap: onReturn,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _FlightControlButton(
+            label: '改航向',
+            icon: Icons.alt_route_rounded,
+            color: StarColors.gold,
+            onTap: onChangeCourse,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _FlightControlButton(
+            label: '停止',
+            icon: Icons.stop_rounded,
+            color: StarColors.danger,
+            onTap: onStop,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FlightControlButton extends StatelessWidget {
+  const _FlightControlButton({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: StarColors.panel,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: color.withValues(alpha: 0.5)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(icon, color: color, size: 20),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                    color: color, fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// The player's ship: a sleek hull with a pulsing engine bloom. [glow] (0..1)
 /// is driven by the flight phase so the exhaust breathes in real time.
 class _Ship extends StatelessWidget {

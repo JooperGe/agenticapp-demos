@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 /// Central game-balance configuration.
 ///
 /// Every tunable number lives here so balancing never means hunting through
@@ -8,54 +10,25 @@ class Balance {
   /// Starting energy for a fresh save.
   static const int initialEnergy = 300;
 
-  /// Energy cost per travel tier.
-  static const int shortTripCost = 20;
-  static const int midTripCost = 50;
-  static const int longTripCost = 100;
+  /// Travel cost and pacing scale linearly with distance (light-years) — no
+  /// tiers — so a short hop is quick and cheap while a long haul is neither.
+  static const double energyPerLy = 2.5;
+  static const double travelSecondsPerLy = 37.5;
+
+  /// Floors so even a jump to a close neighbour still takes a beat and costs a
+  /// little, and never resolves to 0 s / 0 EN.
+  static const int minEnergyCost = 1;
+  static const int minTravelSeconds = 15;
 
   /// A small bonus granted the first time a planet is fully explored.
   static const int explorationReward = 15;
-
-  /// Test-mode travel durations (seconds). Deliberately short so a new player
-  /// reaches a destination within minutes — NOT the final live pacing.
-  static const int shortTripSeconds = 90; // ~1.5 min
-  static const int midTripSeconds = 420; // 7 min
-  static const int longTripSeconds = 1500; // 25 min
-
-  /// Distance thresholds (in light-years) that map a journey to a tier. Short
-  /// hops stay within a star system / immediate neighbours; long hauls cross
-  /// to farther systems.
-  static const double midTripDistance = 12;
-  static const double longTripDistance = 40;
 }
 
-/// The three travel tiers derived from map distance.
-enum TravelTier { short, mid, long }
+/// Energy required to travel [distanceLy] light-years (linear in distance).
+int energyCostForDistance(double distanceLy) => math.max(
+    Balance.minEnergyCost, (distanceLy * Balance.energyPerLy).round());
 
-TravelTier tierForDistance(double distance) {
-  if (distance >= Balance.longTripDistance) return TravelTier.long;
-  if (distance >= Balance.midTripDistance) return TravelTier.mid;
-  return TravelTier.short;
-}
-
-int energyCostForTier(TravelTier tier) {
-  switch (tier) {
-    case TravelTier.short:
-      return Balance.shortTripCost;
-    case TravelTier.mid:
-      return Balance.midTripCost;
-    case TravelTier.long:
-      return Balance.longTripCost;
-  }
-}
-
-int travelSecondsForTier(TravelTier tier) {
-  switch (tier) {
-    case TravelTier.short:
-      return Balance.shortTripSeconds;
-    case TravelTier.mid:
-      return Balance.midTripSeconds;
-    case TravelTier.long:
-      return Balance.longTripSeconds;
-  }
-}
+/// Flight time for [distanceLy] light-years (linear in distance).
+int travelSecondsForDistance(double distanceLy) => math.max(
+    Balance.minTravelSeconds,
+    (distanceLy * Balance.travelSecondsPerLy).round());

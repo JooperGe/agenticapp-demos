@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:starward/core/balance.dart';
 import 'package:starward/data/game_repository.dart';
 import 'package:starward/data/models/journey.dart';
 import 'package:starward/data/models/planet.dart';
@@ -26,18 +25,16 @@ Future<GameController> _boot(FakeClock clock, {MemoryStorage? storage}) async {
   return controller;
 }
 
-Planet _firstReachable(GameController c, TravelTier tier) {
-  return c.planets.firstWhere(
-    (p) => p.id != c.currentPlanetId && c.tierTo(p) == tier,
-  );
-}
+Planet _nearestPlanet(GameController c) => c.planets
+    .where((p) => p.id != c.currentPlanetId)
+    .reduce((a, b) => c.distanceTo(a) <= c.distanceTo(b) ? a : b);
 
 void main() {
   group('journey progress is derived from timestamps', () {
     test('progress and remaining track the clock', () async {
       final clock = FakeClock(DateTime(2026, 1, 1, 12));
       final c = await _boot(clock);
-      final target = _firstReachable(c, TravelTier.short);
+      final target = _nearestPlanet(c);
 
       final result = await c.launchJourney(target);
       expect(result, LaunchResult.success);
@@ -55,7 +52,7 @@ void main() {
     test('progress clamps to 1 and remaining never goes negative', () async {
       final clock = FakeClock(DateTime(2026, 1, 1, 12));
       final c = await _boot(clock);
-      final target = _firstReachable(c, TravelTier.short);
+      final target = _nearestPlanet(c);
       await c.launchJourney(target);
       final journey = c.activeJourney!;
 
@@ -70,7 +67,7 @@ void main() {
       final storage = MemoryStorage();
       final clock = FakeClock(DateTime(2026, 1, 1, 12));
       final c1 = await _boot(clock, storage: storage);
-      final target = _firstReachable(c1, TravelTier.short);
+      final target = _nearestPlanet(c1);
       await c1.launchJourney(target);
       expect(c1.isTraveling, isTrue);
 
@@ -90,7 +87,7 @@ void main() {
     test('cannot launch a second journey while in progress', () async {
       final clock = FakeClock(DateTime(2026, 1, 1, 12));
       final c = await _boot(clock);
-      final a = _firstReachable(c, TravelTier.short);
+      final a = _nearestPlanet(c);
       await c.launchJourney(a);
       final energyAfterFirst = c.energy;
 

@@ -189,7 +189,7 @@ class _StatsGrid extends StatelessWidget {
           _Stat(
             icon: Icons.straighten_rounded,
             label: '距离',
-            value: atPlanet ? '当前位置' : '${distance.round()} ly',
+            value: atPlanet ? '当前位置' : StarLabels.distance(distance),
           ),
           _divider(),
           _Stat(

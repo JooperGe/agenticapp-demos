@@ -24,22 +24,27 @@ Future<GameController> _boot(FakeClock clock, {MemoryStorage? storage}) async {
   return c;
 }
 
-Planet _reachable(GameController c, TravelTier tier) => c.planets.firstWhere(
-      (p) => p.id != c.currentPlanetId && c.tierTo(p) == tier,
-    );
+/// The closest planet we could launch to — the cheapest hop on offer.
+Planet _nearest(GameController c) => c.planets
+    .where((p) => p.id != c.currentPlanetId)
+    .reduce((a, b) => c.distanceTo(a) <= c.distanceTo(b) ? a : b);
 
 void main() {
   group('energy economy', () {
-    test('launch deducts exactly the tier cost', () async {
+    test('launch deducts exactly the distance-based cost', () async {
       final clock = FakeClock(DateTime(2026));
       final c = await _boot(clock);
       final before = c.energy;
-      final target = _reachable(c, TravelTier.short);
+      final target = _nearest(c);
       final cost = c.energyCostTo(target);
 
       await c.launchJourney(target);
       expect(c.energy, before - cost);
-      expect(cost, Balance.shortTripCost);
+      // Cost scales linearly with distance, floored so a hop is never free.
+      expect(
+          cost,
+          math.max(Balance.minEnergyCost,
+              (c.distanceTo(target) * Balance.energyPerLy).round()));
     });
 
     test('cannot launch without enough energy and balance is untouched',
@@ -94,9 +99,10 @@ void main() {
     test('every balance change leaves a ledger entry', () async {
       final clock = FakeClock(DateTime(2026));
       final c = await _boot(clock);
-      final target = _reachable(c, TravelTier.short);
+      final target = _nearest(c);
+      final cost = c.energyCostTo(target);
       await c.launchJourney(target);
-      expect(c.energyLedger.first.amount, -Balance.shortTripCost);
+      expect(c.energyLedger.first.amount, -cost);
     });
   });
 
