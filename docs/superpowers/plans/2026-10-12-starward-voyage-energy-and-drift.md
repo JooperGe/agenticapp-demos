@@ -4956,6 +4956,8 @@ EOF
 
 **为什么单独成篇而不是就地改**：这些修正散落在 5 个 task 的正文里，就地改需要 20 多处编辑，且会把"当初为什么这么写"的推理痕迹擦掉——而那份推理正是本计划作为审计痕迹的价值所在。执行期对尚未派发的 task 采用**笔记文件**机制（`task-9-tests.md`、`task-10-notes.md`、`task-11-notes.md`、`task-12-14-notes.md`），派发时声明它**逐条取代** brief 的对应段落。下面每一条都注明了它当时的载体。
 
+> **⚠️ 关于下文引用的路径**：本附录引用的 `task-*-tests.md` / `task-*-notes.md` / `task-*-brief.md`、执行期账本 `progress.md`、各审阅报告与 diff 包，全部位于**被 git 忽略的执行工作区** `.superpowers/sdd/2026-10-12-starward-voyage-energy-and-drift/`。按 subagent-driven-development 流程，该工作区在最终整支审阅通过后**已被删除**（"the git history is the record now"），因此这些路径是**历史位置，不可再取**。需要核对时请以 git 历史为准：每个 task 一次提交，commit message 说明了它做了什么。执行期做出的全部裁决（`Ruling 1`–`Ruling 62`，含每条"错了会怎样"）已在收尾时**逐条上报给人类合作者**，这是它们唯一的留存形式——按流程，随工作区一起消失的裁决等于没做过的裁决。
+
 **下面 Task 正文里的代码块一律保持原样，包括已知错误。** 抄写前请对照本附录。
 
 ---
