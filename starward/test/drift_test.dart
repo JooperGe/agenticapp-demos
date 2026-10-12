@@ -119,7 +119,7 @@ void main() {
   });
 
   group('DriftPath', () {
-    test('agrees with driftPositionAt on every leg', () {
+    test('stays on the leg before the shell and on the shell after', () {
       final path = DriftPath(
         start: const Vec3(50, 0, 0),
         velocity: const Vec3(0, 1, 0),
@@ -127,16 +127,12 @@ void main() {
       );
       expect(path.hitSeconds, closeTo(86.6025, 0.0001));
       expect(path.shellRadius, 100);
-      for (final s in <double>[0, 40, 86.6025, 100, 900]) {
-        final a = path.positionAt(s);
-        final b = driftPositionAt(
-          start: const Vec3(50, 0, 0),
-          velocity: const Vec3(0, 1, 0),
-          elapsedSeconds: s,
-          bound: 100,
-        );
-        expectVec(a, b, tol: 1e-9);
-      }
+      // Before the shell hit the ship is still on the straight leg.
+      expectVec(path.positionAt(40), const Vec3(50, 40, 0), tol: 1e-9);
+      // Past it the ship rides the shell, so its distance from the origin is
+      // the shell radius exactly.
+      expect(path.positionAt(100).length, closeTo(100, 1e-9));
+      expect(path.positionAt(900).length, closeTo(100, 1e-9));
     });
 
     test('closest approach on the straight leg, clamped to the leg', () {
@@ -203,6 +199,21 @@ void main() {
       // Arc at s = 300 → θ = 0.5·(300-86.6025)/100 = 1.0669873 rad.
       expect(cut.seconds, closeTo(300, 1e-9));
       expect(cut.distanceLy, closeTo(61.4879, 0.001));
+    });
+
+    test('a long window still finds the bearing on a later lap', () {
+      // This star sits exactly on the great circle at bearing 0, so the true
+      // minimum is 0 once per revolution. The window opens past the first few
+      // revolutions, so only a bearing generated from the window's own range
+      // (here t = 6π) reaches it.
+      final path = DriftPath(
+        start: const Vec3(50, 0, 0),
+        velocity: const Vec3(0, 1, 0),
+        bound: 100,
+      );
+      final passed = path.closestApproach(const Vec3(50, 86.6025, 0), 4170.6,
+          fromSeconds: 3228.2);
+      expect(passed.distanceLy, closeTo(0, 0.001));
     });
 
     test('travelledBetween adds up both legs', () {

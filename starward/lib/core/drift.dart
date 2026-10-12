@@ -145,12 +145,18 @@ class DriftPath {
         // The star's bearing in the great circle's plane. The distance to the
         // circle is minimised there, so the answer over a bounded arc is either
         // that bearing or one of the arc's two ends — evaluate both ends and
-        // every equivalent bearing that lands inside, take the best.
+        // every equivalent bearing that lands inside, take the best. The
+        // bearing repeats every full revolution, and a long window can span
+        // several of them, so bound the laps by the window itself rather than
+        // a fixed range that would silently miss the minimum.
         final bearing = math.atan2(wt, wn);
         final candidates = <double>[thetaFrom, thetaTo];
-        for (var lap = -1; lap <= 2; lap++) {
-          final t = bearing + 2 * math.pi * lap;
-          if (t > thetaFrom && t < thetaTo) candidates.add(t);
+        // The bounds above already guarantee the range; a bearing landing
+        // exactly on an endpoint is a harmless duplicate of a candidate.
+        final lapFrom = ((thetaFrom - bearing) / (2 * math.pi)).ceil();
+        final lapTo = ((thetaTo - bearing) / (2 * math.pi)).floor();
+        for (var lap = lapFrom; lap <= lapTo; lap++) {
+          candidates.add(bearing + 2 * math.pi * lap);
         }
         for (final t in candidates) {
           final p = (_normal * math.cos(t) + _tangent * math.sin(t)) *
