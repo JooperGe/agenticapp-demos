@@ -39,6 +39,22 @@ void main() {
     return recorder.endRecording().toImageSync(800, 600);
   }
 
+  /// Counts the pixels with alpha > 0 in [image]. `ui.Picture` exposes no
+  /// draw-call count, so rasterising to an image and scanning the alpha channel
+  /// is the only way to tell "the painter drew something" from "it drew
+  /// nothing" — which is exactly what the inside/outside shell distinction
+  /// needs.
+  Future<int> opaquePixels(ui.Image image) async {
+    final data = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!;
+    final bytes = data.buffer.asUint8List();
+    var n = 0;
+    for (var i = 3; i < bytes.length; i += 4) {
+      if (bytes[i] > 0) n++;
+    }
+    image.dispose();
+    return n;
+  }
+
   Camera3D cameraAt(double distance) => Camera3D(
         target: const Vec3(0, 0, 0),
         yaw: 0.6,
@@ -66,5 +82,23 @@ void main() {
     final image = paintAt(cameraAt(2 * rWorld));
     expect(image.width, 800);
     image.dispose();
+  });
+
+  // Spec §10 test 4: inside the sphere (d < R) the shell must draw nothing.
+  // `ui.Picture` exposes no draw-call count, so the discriminator is real
+  // pixels: the same scene rendered outside the shell (d = 2.3·R, shellFade == 1,
+  // shell drawn) versus inside it (d = 880, the route-focus distance — a real
+  // camera position, not a contrived one — where shellFade == 0 and the shell
+  // is skipped). The shell's fill washes the whole projected disc, so the
+  // outside render lights up far more pixels.
+  //
+  // Measured: outside = 199696 px, inside = 11895 px (ratio ≈ 16.8×). The 5×
+  // bound sits far below that and far above 1×, so it cannot flip on a
+  // legitimate change; it fails only if the shell leaks into the inside render.
+  test('draws the shell outside the sphere and not inside it', () async {
+    final outside = await opaquePixels(paintAt(cameraAt(2.3 * rWorld)));
+    final inside = await opaquePixels(paintAt(cameraAt(880)));
+    expect(inside, greaterThan(0)); // the star field alone still paints
+    expect(outside, greaterThan(inside * 5));
   });
 }
