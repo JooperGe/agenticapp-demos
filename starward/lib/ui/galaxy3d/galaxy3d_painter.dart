@@ -74,7 +74,7 @@ class Galaxy3DPainter extends CustomPainter {
         field: g,
         camera: camera,
         worldScale: scene.worldScale,
-        maxDraw: 5200,
+        maxDraw: kGalaxyMaxDraw,
         distanceScaled: true,
       );
     }

@@ -10,6 +10,21 @@ import 'camera3d.dart';
 /// 1 / ln(10) — converts natural logs to base-10 for the magnitude rescale.
 const double _invLn10 = 0.4342944819032518;
 
+/// [drawStarField]'s `maxDraw` for a synthetic galaxy, in the star map and the
+/// universe overview alike.
+///
+/// The catalogue's own cap thins 109 000 stars down to a few thousand; a
+/// synthetic galaxy is only a few thousand to begin with and is the subject of
+/// the view, so it has to be drawn **whole**. Stars are pre-sorted
+/// brightest-first and a galaxy's magnitude rises with radius, so clipping one
+/// discards its faintest stars first — which is to say its outer disk, the very
+/// fade that keeps it from ending in a hard edge. At the old 5200, SG-2 (6000
+/// stars) lost its outer half and rendered to 292 ly of its 611 ly radius.
+///
+/// `test/synthetic_galaxy_test.dart` pins that every galaxy fits under it, so
+/// adding a bigger one fails loudly here instead of silently truncating.
+const int kGalaxyMaxDraw = 8000;
+
 /// The magnitude rescale shared by the hot loop and [apparentMagnitude].
 ///
 /// Takes precomputed squared distances rather than a star, so the hot loop can

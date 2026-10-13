@@ -36,11 +36,12 @@ class UniverseOverviewPainter extends CustomPainter {
   final double journeyProgress;
   final Listenable repaint;
 
-  /// Draw caps inherited from the star-map painter. At full framing nearly
-  /// every star lands on screen, so these bound both density and cost; they are
-  /// a tuning knob, not a design promise (see the spec's §6.3).
+  /// Draw cap for the catalogue. At full framing nearly every star lands on
+  /// screen, so this bounds both density and cost; it is a tuning knob, not a
+  /// design promise (see the spec's §6.3). The synthetic galaxies get
+  /// [kGalaxyMaxDraw] instead, because clipping one distorts the thing the
+  /// view is showing.
   static const int _hygMaxDraw = 5000;
-  static const int _galaxyMaxDraw = 5200;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -84,7 +85,7 @@ class UniverseOverviewPainter extends CustomPainter {
         field: g,
         camera: camera,
         worldScale: ws,
-        maxDraw: _galaxyMaxDraw,
+        maxDraw: kGalaxyMaxDraw,
         distanceScaled: false,
       );
     }

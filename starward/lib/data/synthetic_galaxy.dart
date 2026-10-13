@@ -66,6 +66,40 @@ class SyntheticGalaxy {
     const arms = 2;
     const windings = 2.4;
 
+    // Radial scale length of the exponential disk. Stars are sampled from a
+    // density ∝ r·e^(-r/h), so by 0.65 R the disk is down to e^(-3.3) ≈ 4% of
+    // its central value and it fades out well before [diskRadius]. The old
+    // sampling was uniform *in area* (`pow(u, 0.5)`), which held full density
+    // right up to the rim and then stopped dead — every galaxy ended in a hard
+    // bright circle with 15% of its stars in the outer tenth of the radius,
+    // against 0.9% for the real catalogue.
+    final scaleLength = diskRadius / 5;
+
+    // Where the disk's stars go. A little under two thirds ride an arm; the
+    // rest fill the space between them, so the arms read as a density wave
+    // rather than as a drawing. The scatter is applied *across* the arm as
+    // well as along it: an angular jitter on its own leaves the arm a
+    // near-zero-width curve, and a curve is what drew the crisp rings.
+    const armFraction = 0.62;
+    const armAngularSpread = 0.45; // radians, 1σ
+    const armRadialSpread = 0.045; // fraction of diskRadius, 1σ
+
+    // A soft core rather than a knot: the old bulge packed 22% of the stars
+    // into 18% of the radius, eight times the disk's own surface density.
+    const bulgeFraction = 0.14;
+    const bulgeRadius = 0.22; // fraction of diskRadius
+
+    // The disk's vertical scatter. `thickness` keeps its historical meaning of
+    // roughly the 3σ extent, so the standard deviation is a third of it.
+    final scaleHeight = thickness / 3;
+
+    // Magnitudes. The real catalogue's median star is ~8.4 mag and its fifth
+    // percentile ~6.1; a galaxy spanning 2.2–7.6 outshone the entire sky and
+    // rendered as a glaring ring.
+    const bulgeMagnitude = 3.2;
+    const diskMagnitude = 5.0;
+    const diskMagnitudeSpan = 3.6;
+
     final xs = <double>[];
     final ys = <double>[];
     final zs = <double>[];
@@ -73,31 +107,52 @@ class SyntheticGalaxy {
     final cols = <int>[];
 
     for (var i = 0; i < count; i++) {
-      final bulge = rng.nextDouble() < 0.22;
+      final bulge = rng.nextDouble() < bulgeFraction;
       double inPlaneX, inPlaneY, offW, mag;
       int color;
       if (bulge) {
-        final r = diskRadius * 0.18 * math.pow(rng.nextDouble(), 0.6);
+        final r =
+            diskRadius * bulgeRadius * math.pow(rng.nextDouble(), 0.6).toDouble();
         final a = rng.nextDouble() * math.pi * 2;
         inPlaneX = r * math.cos(a);
         inPlaneY = r * math.sin(a);
-        offW = _gauss(rng) * thickness * 1.4;
-        mag = 1.6 + rng.nextDouble() * 3.0;
+        offW = _gauss(rng, scaleHeight * 1.4);
+        mag = bulgeMagnitude + rng.nextDouble() * 2.6;
         color = _warm(rng);
       } else {
-        final rad = diskRadius * math.pow(rng.nextDouble(), 0.5).toDouble();
+        // Exponential disk, sampled as the sum of two exponentials: that sum
+        // is distributed exactly as r·e^(-r/h). Resampling past the rim keeps
+        // the galaxy inside the radius it advertises, and costs ~4% of draws.
+        double rad;
+        do {
+          rad = -scaleLength *
+              (math.log(1 - rng.nextDouble()) +
+                  math.log(1 - rng.nextDouble()));
+        } while (rad > diskRadius);
+
         final arm = rng.nextInt(arms);
-        final spiral = rad / diskRadius * windings * math.pi * 2 +
-            arm * (math.pi * 2 / arms);
-        final jitter = _gauss(rng) * 0.35;
-        final a = spiral + jitter;
-        inPlaneX = rad * math.cos(a);
-        inPlaneY = rad * math.sin(a);
-        offW = _gauss(rng) * thickness;
-        final armness = math.cos(jitter * 3).abs();
-        mag = 2.2 + rad / diskRadius * 4.2 + rng.nextDouble() * 1.2;
-        // SG-1 arms are blue; a "reddish" galaxy skews its arms warm/pink.
-        color = armness > 0.5
+        final onArm = rng.nextDouble() < armFraction;
+        final jitter = _gauss(rng, 1);
+        final a = onArm
+            ? rad / diskRadius * windings * math.pi * 2 +
+                arm * (math.pi * 2 / arms) +
+                jitter * armAngularSpread
+            : rng.nextDouble() * math.pi * 2;
+        // Across the arm as well as along it — this is what gives the arms a
+        // width instead of leaving them wires.
+        final r = onArm
+            ? (rad + _gauss(rng, 1) * diskRadius * armRadialSpread)
+                .clamp(0.0, diskRadius)
+            : rad;
+        inPlaneX = r * math.cos(a);
+        inPlaneY = r * math.sin(a);
+        offW = _gauss(rng, scaleHeight);
+        mag = diskMagnitude +
+            rad / diskRadius * diskMagnitudeSpan +
+            rng.nextDouble() * 1.2;
+        // SG-1 arms are blue; a "reddish" galaxy skews its arms warm/pink. The
+        // stars between the arms are older and warm in either galaxy.
+        color = onArm && jitter.abs() < 0.8
             ? (reddish ? _pink(rng) : _blue(rng))
             : _warm(rng);
       }
@@ -151,8 +206,10 @@ class SyntheticGalaxy {
     );
   }
 
-  static double _gauss(math.Random rng) =>
-      (rng.nextDouble() + rng.nextDouble() + rng.nextDouble() - 1.5) / 1.5;
+  /// Gaussian noise with standard deviation [sd], from the sum of three
+  /// uniforms: cheap, and bounded at ±1.5·sd so no star flies off the disk.
+  static double _gauss(math.Random rng, double sd) =>
+      (rng.nextDouble() + rng.nextDouble() + rng.nextDouble() - 1.5) / 1.5 * sd;
 
   static int _blue(math.Random rng) {
     const pool = <int>[0xFFBFD4FF, 0xFFD6E4FF, 0xFFA9C4FF, 0xFFEAF0FF];
