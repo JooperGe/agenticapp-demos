@@ -169,7 +169,7 @@ class _JourneyPageState extends State<JourneyPage>
       danger: true,
     );
     if (ok != true) return;
-    await c.abortJourney();
+    await c.stopShip();
   }
 
   Future<void> _changeCourse(GameController c) async {
@@ -179,7 +179,55 @@ class _JourneyPageState extends State<JourneyPage>
       confirmLabel: '去星图',
     );
     if (ok != true) return;
-    await c.abortJourney();
+    await c.stopShip();
+    if (!mounted) return;
+    ShellScope.go(context, 0);
+  }
+
+  /// One line of drift totals, read *before* the brake clears them.
+  ///
+  /// Braking nulls `driftPath`, so `buildDriftReport()` returns null and these
+  /// numbers are gone for good the moment the ship stops. Reciting them in the
+  /// confirmation is the whole mitigation — there is deliberately no queued
+  /// summary report.
+  String _driftSummary(GameController c) {
+    final elapsed = c.driftElapsed;
+    final hours = elapsed.inHours;
+    final duration = hours >= 24
+        ? '${(hours / 24).toStringAsFixed(1)} 天'
+        : (hours >= 1 ? '$hours 小时' : '${elapsed.inMinutes} 分钟');
+    return '$duration · ${c.driftDistanceLy.toStringAsFixed(1)} ly · '
+        '途经 ${c.passedSystemsSoFar.count} 个恒星系';
+  }
+
+  Future<void> _brakeCoast(GameController c) async {
+    // Read the summary first: after the brake it no longer exists.
+    final summary = _driftSummary(c);
+    final braking = c.brakingCost;
+    final ok = await _confirm(
+      title: '停止滑行',
+      message: '飞船将制动停下，漂浮于深空。\n\n'
+          '本次滑行 $summary\n'
+          '制动消耗 $braking EN，制动后剩余 ${c.energy - braking} EN。',
+      confirmLabel: '制动',
+      danger: true,
+    );
+    if (ok != true) return;
+    await c.stopShip();
+  }
+
+  Future<void> _brakeAndChangeCourse(GameController c) async {
+    final summary = _driftSummary(c);
+    final braking = c.brakingCost;
+    final ok = await _confirm(
+      title: '制动并改变航向',
+      message: '飞船将制动停下，然后回到星图重新选择目的地。\n\n'
+          '本次滑行 $summary\n'
+          '制动消耗 $braking EN，制动后剩余 ${c.energy - braking} EN。',
+      confirmLabel: '制动并去星图',
+    );
+    if (ok != true) return;
+    await c.stopShip();
     if (!mounted) return;
     ShellScope.go(context, 0);
   }
@@ -310,7 +358,11 @@ class _JourneyPageState extends State<JourneyPage>
                 ),
                 const SizedBox(height: 26),
                 if (coasting)
-                  _CoastDock(controller: c)
+                  _CoastDock(
+                    controller: c,
+                    onBrake: () => _brakeCoast(c),
+                    onChangeCourse: () => _brakeAndChangeCourse(c),
+                  )
                 else if (drifting)
                   _DriftDock(controller: c)
                 else
@@ -651,11 +703,18 @@ class _DriftDock extends StatelessWidget {
 }
 
 /// Shown in the standby state while the ship is coasting: where it is, how
-/// fast it is going, and how far it has come since the tank emptied.
+/// fast it is going, how far it has come since the tank emptied, and — the
+/// part that used to be missing — how to make it stop.
 class _CoastDock extends StatelessWidget {
-  const _CoastDock({required this.controller});
+  const _CoastDock({
+    required this.controller,
+    required this.onBrake,
+    required this.onChangeCourse,
+  });
 
   final GameController controller;
+  final VoidCallback onBrake;
+  final VoidCallback onChangeCourse;
 
   @override
   Widget build(BuildContext context) {
@@ -668,6 +727,8 @@ class _CoastDock extends StatelessWidget {
         : (hours >= 1
             ? '$hours 小时'
             : '${elapsed.inMinutes} 分钟');
+    final braking = controller.brakingCost;
+    final canBrake = controller.canBrake;
     return StarPanel(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Column(
@@ -718,30 +779,50 @@ class _CoastDock extends StatelessWidget {
               label: '当前坐标',
               value:
                   'X ${p.x.toStringAsFixed(1)}  Y ${p.y.toStringAsFixed(1)}  Z ${p.z.toStringAsFixed(1)}'),
+          _CoastStat(
+            label: '制动需要',
+            value: '$braking EN（现有 ${controller.energy} EN）',
+            valueColor: canBrake ? null : StarColors.danger,
+          ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: Material(
-              color: StarColors.panelLight,
-              borderRadius: BorderRadius.circular(12),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: controller.requestDriftReport,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 11),
-                  child: Text(
-                    '查看播报',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: StarColors.cyan,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _ActionButton(
+                  label: '制动停下',
+                  icon: Icons.anchor_rounded,
+                  color: StarColors.danger,
+                  onPressed: canBrake ? onBrake : null,
                 ),
               ),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _ActionButton(
+                  label: '改变航向',
+                  icon: Icons.alt_route_rounded,
+                  filled: false,
+                  onPressed: canBrake ? onChangeCourse : null,
+                ),
+              ),
+            ],
           ),
+          const SizedBox(height: 10),
+          _ActionButton(
+            label: '查看播报',
+            icon: Icons.article_rounded,
+            filled: false,
+            onPressed: controller.requestDriftReport,
+          ),
+          if (!canBrake) ...<Widget>[
+            const SizedBox(height: 10),
+            _ActionButton(
+              label: '前往训练补充能量',
+              icon: Icons.favorite_rounded,
+              color: StarColors.flora,
+              filled: false,
+              onPressed: () => ShellScope.go(context, 3),
+            ),
+          ],
         ],
       ),
     );
@@ -749,10 +830,14 @@ class _CoastDock extends StatelessWidget {
 }
 
 class _CoastStat extends StatelessWidget {
-  const _CoastStat({required this.label, required this.value});
+  const _CoastStat({required this.label, required this.value, this.valueColor});
 
   final String label;
   final String value;
+
+  /// Overrides the reading's colour — used to flag a braking burn the tank
+  /// cannot cover.
+  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
@@ -764,8 +849,8 @@ class _CoastStat extends StatelessWidget {
               style: const TextStyle(color: StarColors.faint, fontSize: 11)),
           const Spacer(),
           Text(value,
-              style: const TextStyle(
-                color: StarColors.offWhite,
+              style: TextStyle(
+                color: valueColor ?? StarColors.offWhite,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               )),
@@ -1111,11 +1196,18 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = filled ? StarColors.abyss : color;
+    // A dead button must look dead. Every existing call site passes an
+    // onPressed, so this only affects the ones that opt into disabling.
+    final disabled = onPressed == null;
+    final fg = disabled
+        ? StarColors.faint
+        : (filled ? StarColors.abyss : color);
     return SizedBox(
       width: double.infinity,
       child: Material(
-        color: filled ? color : Colors.transparent,
+        color: disabled
+            ? StarColors.panelLight
+            : (filled ? color : Colors.transparent),
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
@@ -1124,7 +1216,7 @@ class _ActionButton extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 15),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
-              border: filled
+              border: filled || disabled
                   ? null
                   : Border.all(color: color.withValues(alpha: 0.6)),
             ),

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:starward/core/vec3.dart';
 import 'package:starward/data/game_repository.dart';
@@ -9,6 +10,8 @@ import 'package:starward/data/models/engine.dart';
 import 'package:starward/data/models/journey.dart';
 import 'package:starward/data/storage/storage_backend.dart';
 import 'package:starward/state/game_controller.dart';
+import 'package:starward/ui/game_scope.dart';
+import 'package:starward/ui/shell/home_shell.dart';
 
 class FakeClock {
   FakeClock(this._now);
@@ -393,6 +396,62 @@ void main() {
         1,
         reason: 'the new enum member has to survive energyTxTypeFromName',
       );
+    });
+  });
+
+  group('the coasting panel', () {
+    testWidgets('offers a brake and a course change, and braking stops the ship',
+        (tester) async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _coasting(clock, MemoryStorage());
+      clock.advance(const Duration(hours: 1));
+
+      await tester.pumpWidget(
+        MaterialApp(home: GameScope(controller: c, child: const HomeShell())),
+      );
+      // Never pumpAndSettle here: the coasting panel runs a one-second ticker
+      // that schedules a frame every tick, so settling never happens.
+      await tester.pump();
+      await tester.tap(find.text('航行'));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('制动停下'), findsOneWidget);
+      expect(find.text('改变航向'), findsOneWidget);
+      expect(find.text('查看播报'), findsOneWidget);
+      expect(find.textContaining('100 EN'), findsWidgets,
+          reason: 'the braking readout is on the panel');
+
+      await tester.tap(find.text('制动停下'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('停止滑行'), findsOneWidget,
+          reason: 'braking is confirmed before it is charged');
+
+      await tester.tap(find.text('制动'));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(c.isCoasting, isFalse);
+      expect(c.energyLedger.single.amount, -100);
+      expect(c.energy, 200);
+    });
+
+    testWidgets('disables both buttons when the braking burn is unaffordable',
+        (tester) async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _coasting(clock, MemoryStorage(), energy: 50);
+
+      await tester.pumpWidget(
+        MaterialApp(home: GameScope(controller: c, child: const HomeShell())),
+      );
+      await tester.pump();
+      await tester.tap(find.text('航行'));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final brake = tester.widget<InkWell>(find.ancestor(
+        of: find.text('制动停下'),
+        matching: find.byType(InkWell),
+      ));
+      expect(brake.onTap, isNull);
+      expect(find.text('前往训练补充能量'), findsOneWidget);
     });
   });
 }
