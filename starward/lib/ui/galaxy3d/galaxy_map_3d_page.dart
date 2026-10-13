@@ -15,11 +15,13 @@ import 'camera3d.dart';
 import 'galaxy3d_painter.dart';
 import 'galaxy3d_scene.dart';
 import 'star_system_sheet.dart';
+import 'universe_overview_painter.dart';
 
 /// Page 1 (3D) — the galaxy as a real, rotatable, zoomable volume rendered by
-/// projecting a 3D scene onto a 2D canvas. Drag to orbit, pinch to zoom, toggle
-/// between the star-map overview and the first-person cockpit, and adjust the
-/// ship's sensor range (the per-ship "view range" hook for future upgrades).
+/// projecting a 3D scene onto a 2D canvas. Drag to orbit, pinch to zoom, switch
+/// between the star-map overview, the first-person cockpit and the universe
+/// overview, and adjust the ship's sensor range (the per-ship "view range" hook
+/// for future upgrades).
 class GalaxyMap3DPage extends StatefulWidget {
   const GalaxyMap3DPage({super.key});
 
@@ -44,6 +46,33 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
 
   double _lastScale = 1;
   bool _initedCamera = false;
+
+  double? _radiusLy;
+
+  /// `Universe.universeRadius` scans the whole catalogue on first access and
+  /// caches it per Universe instance; this caches it per page so a rebuild
+  /// never risks re-triggering that scan.
+  double get _universeRadiusLy => _radiusLy ??= _c.universe.universeRadius;
+
+  /// Sphere radius in world units.
+  double get _universeRadiusWorld => _universeRadiusLy * _worldScale;
+
+  /// Upper zoom bound. Derived from the framing distance rather than picked by
+  /// eye: `d_default` is 2.3R in landscape but 4.15R in portrait (400×800), so
+  /// a bound chosen for landscape would clamp the camera *closer* than the
+  /// framing distance on a phone and slice the shell open.
+  double get _maxDistance =>
+      maxDistanceFor(_camera.mode, _universeRadiusWorld);
+
+  /// The framing distance with a 15% margin, so the shell does not touch the
+  /// viewport edge.
+  double _overviewDefaultDistance(Size2 vp) =>
+      1.15 *
+      fitDistanceForSphere(
+        radius: _universeRadiusWorld,
+        viewport: vp,
+        fovDegrees: _camera.fovDegrees,
+      );
 
   @override
   void initState() {
@@ -87,30 +116,37 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
       // Rotation from drag (one finger): horizontal → yaw, vertical → pitch.
       final delta = d.focalPointDelta;
       const k = 0.006;
-      if (_camera.mode == CameraMode.orbit) {
-        _camera.yaw -= delta.dx * k;
-        _camera.pitch += delta.dy * k;
-      } else {
+      if (_camera.mode == CameraMode.cockpit) {
         // Cockpit: look around (invert so dragging feels like turning the view).
         _camera.yaw -= delta.dx * k;
         _camera.pitch -= delta.dy * k;
+      } else {
+        // Orbit and universe-overview both rotate the volume under the camera.
+        _camera.yaw -= delta.dx * k;
+        _camera.pitch += delta.dy * k;
       }
       _camera.clampPitch();
 
-      // Zoom from pinch: orbit changes distance, cockpit changes FOV.
+      // Zoom from pinch: cockpit changes FOV, the orbiting modes change distance.
       if (d.scale != 1.0) {
         final factor = d.scale / _lastScale;
         _lastScale = d.scale;
-        if (_camera.mode == CameraMode.orbit) {
-          _camera.distance = (_camera.distance / factor).clamp(70.0, 1800.0);
-        } else {
+        if (_camera.mode == CameraMode.cockpit) {
           _camera.fovDegrees = (_camera.fovDegrees / factor).clamp(30.0, 95.0);
+        } else {
+          _camera.distance =
+              (_camera.distance / factor).clamp(kMinZoomDistance, _maxDistance);
         }
       }
     });
   }
 
   void _onTapUp(TapUpDetails d, Size size) {
+    // The universe overview is read-only. At 12–16 ly/px a tap would hit a
+    // near-arbitrary star, and a mis-tap costs a voyage that may burn all the
+    // ship's energy — so there is no hit-testing here at all, rather than an
+    // inaccurate one. Switch back to 总览 to pick a star.
+    if (_camera.mode == CameraMode.overview) return;
     final scene = _scene;
     if (scene == null) return;
     // In-system planet disc first (the only planets drawn)…
@@ -238,31 +274,36 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
     });
   }
 
-  void _toggleMode() {
+  void _setMode(CameraMode mode, Size2 vp) {
+    if (_camera.mode == mode) return;
     setState(() {
-      if (_camera.mode == CameraMode.orbit) {
-        _camera.mode = CameraMode.cockpit;
-        _camera.eyeOverride = _shipPos;
-        // Aim the cockpit toward the galactic centre (origin) initially.
-        final dir = (const Vec3(0, 0, 0) - _shipPos).normalized;
-        _camera.yaw = math.atan2(dir.x, dir.z);
-        _camera.pitch = math.asin(dir.y.clamp(-1.0, 1.0)) * 0.6;
-        _camera.clampPitch();
-      } else {
-        _camera.mode = CameraMode.orbit;
-        _camera.target = _shipPos;
-        _camera.distance = 520;
-      }
+      placeCamera(
+        _camera,
+        mode: mode,
+        shipPosition: _shipPos,
+        overviewDistance: _overviewDefaultDistance(vp),
+      );
+      // Entering the cockpit points it at the galactic centre (origin); the
+      // other two modes are fully placed by placeCamera.
+      if (mode == CameraMode.cockpit) _aimCockpitAtOrigin();
     });
   }
 
-  void _recenter() {
+  void _aimCockpitAtOrigin() {
+    final dir = (const Vec3(0, 0, 0) - _shipPos).normalized;
+    _camera.yaw = math.atan2(dir.x, dir.z);
+    _camera.pitch = math.asin(dir.y.clamp(-1.0, 1.0)) * 0.6;
+    _camera.clampPitch();
+  }
+
+  void _recenter(Size2 vp) {
     setState(() {
-      if (_camera.mode == CameraMode.orbit) {
-        _camera.target = _shipPos;
-      } else {
-        _camera.eyeOverride = _shipPos;
-      }
+      placeCamera(
+        _camera,
+        mode: _camera.mode,
+        shipPosition: _shipPos,
+        overviewDistance: _overviewDefaultDistance(vp),
+      );
     });
   }
 
@@ -279,6 +320,7 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
           return LayoutBuilder(
             builder: (context, constraints) {
               final size = Size(constraints.maxWidth, constraints.maxHeight);
+              final vp = Size2(size.width, size.height);
               return Stack(
                 fit: StackFit.expand,
                 children: <Widget>[
@@ -292,18 +334,29 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
                     onTapUp: (d) => _onTapUp(d, size),
                     child: CustomPaint(
                       size: Size.infinite,
-                      painter: Galaxy3DPainter(
-                        scene: scene,
-                        camera: _camera,
-                        selectedId: _selectedId,
-                        shipPosition: _shipPos,
-                        sensorRange: _sensorRange,
-                        parkedPlanetId: _c.currentPlanetId,
-                        journey: _c.activeJourney,
-                        journeyProgress:
-                            _c.activeJourney?.progressAt(_c.now) ?? 0,
-                        repaint: _c,
-                      ),
+                      painter: _camera.mode == CameraMode.overview
+                          ? UniverseOverviewPainter(
+                              scene: scene,
+                              camera: _camera,
+                              shipPosition: _shipPos,
+                              universeRadiusLy: _universeRadiusLy,
+                              journey: _c.activeJourney,
+                              journeyProgress:
+                                  _c.activeJourney?.progressAt(_c.now) ?? 0,
+                              repaint: _c,
+                            )
+                          : Galaxy3DPainter(
+                              scene: scene,
+                              camera: _camera,
+                              selectedId: _selectedId,
+                              shipPosition: _shipPos,
+                              sensorRange: _sensorRange,
+                              parkedPlanetId: _c.currentPlanetId,
+                              journey: _c.activeJourney,
+                              journeyProgress:
+                                  _c.activeJourney?.progressAt(_c.now) ?? 0,
+                              repaint: _c,
+                            ),
                     ),
                   ),
                   // Cockpit framing — a through-the-viewport feel in first
@@ -315,8 +368,8 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
                   _TopBar(controller: _c, mode: _camera.mode),
                   _SideControls(
                     mode: _camera.mode,
-                    onToggleMode: _toggleMode,
-                    onRecenter: _recenter,
+                    onSelect: (m) => _setMode(m, vp),
+                    onRecenter: () => _recenter(vp),
                   ),
                   _BottomControls(
                     sensorRange: _sensorRange,
@@ -357,7 +410,11 @@ class _TopBar extends StatelessWidget {
                         letterSpacing: 4)),
                 const SizedBox(height: 2),
                 Text(
-                  mode == CameraMode.orbit ? '星图 · 总览' : '星图 · 座舱视角',
+                  switch (mode) {
+                    CameraMode.overview => '星图 · 寰宇',
+                    CameraMode.orbit => '星图 · 总览',
+                    CameraMode.cockpit => '星图 · 座舱视角',
+                  },
                   style: const TextStyle(color: StarColors.muted, fontSize: 12),
                 ),
               ],
@@ -373,12 +430,12 @@ class _TopBar extends StatelessWidget {
 class _SideControls extends StatelessWidget {
   const _SideControls({
     required this.mode,
-    required this.onToggleMode,
+    required this.onSelect,
     required this.onRecenter,
   });
 
   final CameraMode mode;
-  final VoidCallback onToggleMode;
+  final ValueChanged<CameraMode> onSelect;
   final VoidCallback onRecenter;
 
   @override
@@ -392,11 +449,24 @@ class _SideControls extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               _RoundButton(
-                icon: mode == CameraMode.orbit
-                    ? Icons.flight_rounded
-                    : Icons.public_rounded,
-                label: mode == CameraMode.orbit ? '座舱' : '总览',
-                onTap: onToggleMode,
+                icon: Icons.blur_circular_rounded,
+                label: '寰宇',
+                selected: mode == CameraMode.overview,
+                onTap: () => onSelect(CameraMode.overview),
+              ),
+              const SizedBox(height: 10),
+              _RoundButton(
+                icon: Icons.public_rounded,
+                label: '总览',
+                selected: mode == CameraMode.orbit,
+                onTap: () => onSelect(CameraMode.orbit),
+              ),
+              const SizedBox(height: 10),
+              _RoundButton(
+                icon: Icons.flight_rounded,
+                label: '座舱',
+                selected: mode == CameraMode.cockpit,
+                onTap: () => onSelect(CameraMode.cockpit),
               ),
               const SizedBox(height: 12),
               _RoundButton(
@@ -413,11 +483,17 @@ class _SideControls extends StatelessWidget {
 }
 
 class _RoundButton extends StatelessWidget {
-  const _RoundButton(
-      {required this.icon, required this.label, required this.onTap});
+  const _RoundButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.selected = false,
+  });
+
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
@@ -428,12 +504,26 @@ class _RoundButton extends StatelessWidget {
           Container(
             width: 46,
             height: 46,
-            decoration: panelDecoration(radius: 23),
-            child: Icon(icon, color: StarColors.cyan, size: 22),
+            decoration: panelDecoration(
+              radius: 23,
+              color: selected ? StarColors.panelLight : null,
+              border: selected ? StarColors.cyan.withValues(alpha: 0.75) : null,
+            ),
+            child: Icon(
+              icon,
+              color: selected ? StarColors.gold : StarColors.cyan,
+              size: 22,
+            ),
           ),
           const SizedBox(height: 4),
-          Text(label,
-              style: const TextStyle(color: StarColors.muted, fontSize: 10)),
+          Text(
+            label,
+            style: TextStyle(
+              color: selected ? StarColors.offWhite : StarColors.muted,
+              fontSize: 10,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
@@ -490,9 +580,11 @@ class _BottomControls extends StatelessWidget {
                   onChanged: onSensorChanged,
                 ),
                 Text(
-                  mode == CameraMode.orbit
-                      ? '拖动旋转 · 双指缩放 · 点击恒星进入星系'
-                      : '拖动环视四周 · 双指调整视场 · 点击恒星进入星系',
+                  switch (mode) {
+                    CameraMode.overview => '拖动旋转 · 双指缩放',
+                    CameraMode.orbit => '拖动旋转 · 双指缩放 · 点击恒星进入星系',
+                    CameraMode.cockpit => '拖动环视四周 · 双指调整视场 · 点击恒星进入星系',
+                  },
                   style:
                       const TextStyle(color: StarColors.faint, fontSize: 10.5),
                 ),

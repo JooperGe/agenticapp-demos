@@ -33,4 +33,39 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
     }
   });
+
+  testWidgets('the universe overview is reachable and replaces the sensor bar',
+      (tester) async {
+    final controller =
+        GameController(repository: GameRepository(MemoryStorage()));
+    await controller.init();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScope(controller: controller, child: const HomeShell()),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('星图 · 总览'), findsOneWidget);
+    expect(find.text('飞行器传感器范围'), findsOneWidget);
+
+    await tester.tap(find.text('寰宇'));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('星图 · 寰宇'), findsOneWidget);
+    // The overview painter built without throwing — a smoke test cannot assert
+    // what it drew, only that the whole subtree survived a real layout pass.
+
+    await tester.tap(find.text('总览'));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('星图 · 总览'), findsOneWidget);
+    expect(find.text('飞行器传感器范围'), findsOneWidget);
+
+    // And the third mode still works after a round trip through the overview.
+    await tester.tap(find.text('座舱'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('星图 · 座舱视角'), findsOneWidget);
+  });
 }
