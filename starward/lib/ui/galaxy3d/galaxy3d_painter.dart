@@ -9,9 +9,7 @@ import '../../data/models/journey.dart';
 import '../widgets/planet_disc.dart';
 import 'camera3d.dart';
 import 'galaxy3d_scene.dart';
-
-/// 1 / ln(10) — converts natural logs to base-10 for the magnitude rescale.
-const double _invLn10 = 0.4342944819032518;
+import 'star_field_painter.dart';
 
 /// Renders the 3D galaxy to a 2D canvas via perspective projection + painter's
 /// algorithm. This is the core of the "2D-faked 3D": depth-sorted draw order,
@@ -59,10 +57,26 @@ class Galaxy3DPainter extends CustomPainter {
 
     // Star backdrop: fast path over the real HYG field plus any extra galaxies.
     if (scene.hyg != null) {
-      _drawStarField(canvas, size, scene.hyg!, 5000);
+      drawStarField(
+        canvas,
+        size: size,
+        field: scene.hyg!,
+        camera: camera,
+        worldScale: scene.worldScale,
+        maxDraw: 5000,
+        distanceScaled: true,
+      );
     }
     for (final g in scene.extraGalaxies) {
-      _drawStarField(canvas, size, g, 5200);
+      drawStarField(
+        canvas,
+        size: size,
+        field: g,
+        camera: camera,
+        worldScale: scene.worldScale,
+        maxDraw: 5200,
+        distanceScaled: true,
+      );
     }
     if (host != null && hostScreen != null) {
       _drawHostStar(canvas, hostScreen, host.$2);
@@ -91,9 +105,25 @@ class Galaxy3DPainter extends CustomPainter {
     for (final d in calls) {
       d.draw(canvas);
     }
-    if (scene.hyg != null) _drawFieldLabels(canvas, size, scene.hyg!);
+    if (scene.hyg != null) {
+      drawFieldLabels(
+        canvas,
+        size: size,
+        field: scene.hyg!,
+        camera: camera,
+        worldScale: scene.worldScale,
+        distanceScaled: true,
+      );
+    }
     for (final g in scene.extraGalaxies) {
-      _drawFieldLabels(canvas, size, g);
+      drawFieldLabels(
+        canvas,
+        size: size,
+        field: g,
+        camera: camera,
+        worldScale: scene.worldScale,
+        distanceScaled: true,
+      );
     }
     _drawShip(canvas, vp);
   }
@@ -131,80 +161,6 @@ class Galaxy3DPainter extends CustomPainter {
     return bestPos == null ? null : (bestPos!, bestColor);
   }
 
-  /// Allocation-free render of a packed star field (the real HYG catalogue or a
-  /// synthetic galaxy). Precomputes the camera basis once, then iterates with
-  /// inline projection. Stars are pre-sorted brightest-first, so [maxDraw]
-  /// keeps the most important stars and bounds the work regardless of zoom.
-  void _drawStarField(Canvas canvas, Size size, HygStars field, int maxDraw) {
-    final hyg = field;
-    const near = 1.0;
-    // Star catalogue positions are in light-years; everything else in the
-    // scene (planets, ship, camera) is in world units (ly × worldScale), so
-    // scale stars to match — otherwise the ship ends up far outside the star
-    // field it's supposed to be sitting inside.
-    final ws = scene.worldScale;
-
-    // Camera basis as plain doubles.
-    final f = camera.forward.normalized;
-    var right = f.cross(Vec3.up);
-    if (right.length < 1e-6) right = const Vec3(1, 0, 0);
-    right = right.normalized;
-    final up = right.cross(f).normalized;
-    final eye = camera.eye;
-    final focal = (size.height / 2) / math.tan(camera.fovDegrees * math.pi / 360);
-    final cx = size.width / 2, cy = size.height / 2;
-    final fx = f.x, fy = f.y, fz = f.z;
-    final rx = right.x, ry = right.y, rz = right.z;
-    final ux = up.x, uy = up.y, uz = up.z;
-
-    final xyz = hyg.xyz;
-    final mag = hyg.mag;
-    final color = hyg.color;
-    final paint = Paint();
-    var drawn = 0;
-    for (var i = 0; i < hyg.count && drawn < maxDraw; i++) {
-      final wx = xyz[i * 3] * ws;
-      final wy = xyz[i * 3 + 1] * ws;
-      final wz = xyz[i * 3 + 2] * ws;
-      final relx = wx - eye.x;
-      final rely = wy - eye.y;
-      final relz = wz - eye.z;
-      final camZ = relx * fx + rely * fy + relz * fz;
-      if (camZ <= near) continue;
-      final camX = relx * rx + rely * ry + relz * rz;
-      final camY = relx * ux + rely * uy + relz * uz;
-      final invZ = focal / camZ;
-      final sx = cx + camX * invZ;
-      final sy = cy - camY * invZ;
-      if (sx < -8 || sx > size.width + 8 || sy < -8 || sy > size.height + 8) {
-        continue;
-      }
-      // Apparent magnitude is distance-dependent (brightness ∝ 1/d²). The
-      // catalogue value is as seen from Sol; rescale it to the viewer's actual
-      // distance so moving through space changes which stars dominate the sky.
-      final distEye2 = relx * relx + rely * rely + relz * relz;
-      final distSol2 = wx * wx + wy * wy + wz * wz;
-      final m = mag[i] +
-          2.5 * _invLn10 * math.log((distEye2 + 1e-12) / (distSol2 + 1e-12));
-      // Every star — including the system's sun — is a point at these
-      // distances; the host just gets an extra glow pass (see _drawHostStar).
-      final alpha = ((6.6 - m) / 8 + 0.12).clamp(0.05, 1.0);
-      final radius = (0.5 + (3.0 - m) * 0.33).clamp(0.5, 2.6);
-      paint.color = Color(color[i]).withValues(alpha: alpha);
-      if (m < 1.4) {
-        canvas.drawCircle(
-          Offset(sx, sy),
-          radius * 3,
-          Paint()
-            ..color = paint.color.withValues(alpha: alpha * 0.25)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
-        );
-      }
-      canvas.drawCircle(Offset(sx, sy), radius, paint);
-      drawn++;
-    }
-  }
-
   /// The system's sun as an intense *point* of light with layered bloom — a
   /// star at light-year range has no visible disc, however bright, so this is a
   /// bright core plus glow rather than a big sphere.
@@ -237,30 +193,6 @@ class Galaxy3DPainter extends CustomPainter {
     canvas.drawCircle(at, 3.2, Paint()..color = Colors.white);
   }
 
-  /// Labels only the brightest named stars, so famous landmarks (Sirius, Vega,
-  /// Arcturus, the synthetic galaxy's core…) are identifiable without flooding
-  /// the view with text.
-  void _drawFieldLabels(Canvas canvas, Size size, HygStars field) {
-    final vp = Size2(size.width, size.height);
-    final ws = scene.worldScale;
-    final eye = camera.eye;
-    for (final n in field.named.values) {
-      // Gate labels on the magnitude as seen from here, not from Sol — so the
-      // bright landmarks change with the ship's position (see _drawStarField).
-      final posW = n.position * ws;
-      final rel = posW - eye;
-      final distEye2 = rel.dot(rel);
-      final distSol2 = posW.dot(posW);
-      final m = n.magnitude +
-          2.5 * _invLn10 * math.log((distEye2 + 1e-12) / (distSol2 + 1e-12));
-      if (m > 1.6) continue;
-      final pr = camera.project(posW, vp);
-      if (!pr.visible) continue;
-      _label(canvas, pr.screen + const Offset(6, -6), n.name,
-          StarColors.muted.withValues(alpha: 0.8), 10);
-    }
-  }
-
   void _drawStar(Canvas canvas, SceneStar s, Projected pr, double dist) {
     // Brightness from magnitude; dimmer the farther past the sensor range.
     final base = (1.6 - (s.magnitude / 8)).clamp(0.12, 1.0);
@@ -285,7 +217,7 @@ class Galaxy3DPainter extends CustomPainter {
 
     // Label the brightest real stars when they are reasonably close in.
     if (s.name != null && s.magnitude < 1.6 && pr.scale > 0.015) {
-      _label(canvas, pr.screen + const Offset(6, -6), s.name!,
+      drawTextLabel(canvas, pr.screen + const Offset(6, -6), s.name!,
           StarColors.muted.withValues(alpha: alpha), 10);
     }
   }
@@ -349,7 +281,7 @@ class Galaxy3DPainter extends CustomPainter {
 
     _drawPhaseShadow(canvas, pr.screen, r, hostScreen);
 
-    _label(
+    drawTextLabel(
       canvas,
       pr.screen + Offset(0, r + 4),
       planet.name,
@@ -431,20 +363,6 @@ class Galaxy3DPainter extends CustomPainter {
         ..strokeWidth = 2
         ..color = StarColors.cyan,
     );
-  }
-
-  void _label(Canvas canvas, Offset at, String text, Color color, double size,
-      {bool center = false}) {
-    final tp = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-            color: color, fontSize: size, fontWeight: FontWeight.w600),
-      ),
-      textDirection: ui.TextDirection.ltr,
-    )..layout();
-    final offset = center ? at - Offset(tp.width / 2, 0) : at;
-    tp.paint(canvas, offset);
   }
 
   @override
