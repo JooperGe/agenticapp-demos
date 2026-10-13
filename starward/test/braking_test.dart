@@ -230,4 +230,35 @@ void main() {
       expect(c2.isCoasting, isTrue);
     });
   });
+
+  group('energyCostTo is the total the player will pay', () {
+    test('adds the braking burn while coasting', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _coasting(clock, MemoryStorage());
+      final target = c.planets.first;
+      final voyageFuel = c.ship.engine.energyCostFor(c.distanceTo(target));
+
+      expect(c.energyCostTo(target), voyageFuel + 100);
+    });
+
+    test('adds the braking burn to the star quote while coasting', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _coasting(clock, MemoryStorage());
+      // `stars.starId` is the HYG id array; `distanceToStar` keys off it.
+      final hygId = c.stars.starId[0];
+      final voyageFuel = c.ship.engine.energyCostFor(c.distanceToStar(hygId));
+
+      expect(c.energyCostToStar(hygId), voyageFuel + 100);
+    });
+
+    test('is the plain voyage quote for a parked ship', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock, MemoryStorage());
+      final target = c.planets.first;
+
+      expect(c.brakingCost, 0, reason: 'precondition');
+      expect(c.energyCostTo(target),
+          c.ship.engine.energyCostFor(c.distanceTo(target)));
+    });
+  });
 }

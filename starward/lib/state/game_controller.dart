@@ -452,10 +452,16 @@ class GameController extends ChangeNotifier {
     return (toPos - from).length;
   }
 
-  /// Energy this ship would burn to reach [target]. Read off the fitted
-  /// engine, so a refit changes the quote immediately.
+  /// Energy this ship would burn to reach [target] — the voyage's own fuel plus
+  /// whatever it costs to shed a drift first.
+  ///
+  /// This is the quote the player sees, so it is what the launch dialogs and
+  /// the "开始航行 · N EN" button read. It is deliberately *not* what
+  /// `Journey.energyCost` stores: that drives the burn curve and must stay
+  /// fuel-only. Parked, docked, or under power, [brakingCost] is 0 and this is
+  /// exactly the voyage quote it has always been.
   int energyCostTo(Planet target) =>
-      _ship.engine.energyCostFor(distanceTo(target));
+      _ship.engine.energyCostFor(distanceTo(target)) + brakingCost;
 
   /// How long this ship would take to reach [target].
   Duration travelDurationTo(Planet target) =>
@@ -768,8 +774,10 @@ class GameController extends ChangeNotifier {
     return (playerPosition3D - target).length;
   }
 
+  /// Energy this ship would burn to reach a star's arrival point — voyage fuel
+  /// plus the braking burn, matching [energyCostTo].
   int energyCostToStar(int hygId) =>
-      _ship.engine.energyCostFor(distanceToStar(hygId));
+      _ship.engine.energyCostFor(distanceToStar(hygId)) + brakingCost;
 
   /// Launches a journey to a *star* (used for stars with no planets — you drift
   /// in beside it). Mirrors [launchJourney] but the destination is a star.
