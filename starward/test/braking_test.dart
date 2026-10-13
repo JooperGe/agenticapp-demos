@@ -451,7 +451,50 @@ void main() {
         matching: find.byType(InkWell),
       ));
       expect(brake.onTap, isNull);
+
+      final changeCourse = tester.widget<InkWell>(find.ancestor(
+        of: find.text('改变航向'),
+        matching: find.byType(InkWell),
+      ));
+      expect(changeCourse.onTap, isNull,
+          reason: 'both exits cost the same, so both die together');
+
       expect(find.text('前往训练补充能量'), findsOneWidget);
+    });
+
+    testWidgets('changing course brakes once and lands on the star map',
+        (tester) async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _coasting(clock, MemoryStorage());
+      clock.advance(const Duration(hours: 1));
+
+      await tester.pumpWidget(
+        MaterialApp(home: GameScope(controller: c, child: const HomeShell())),
+      );
+      await tester.pump();
+      await tester.tap(find.text('航行'));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.text('改变航向'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('制动并改变航向'), findsOneWidget,
+          reason: 'the change-course dialog is distinct from the brake one');
+
+      await tester.tap(find.text('制动并去星图'));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(c.isCoasting, isFalse);
+      final braking =
+          c.energyLedger.where((t) => t.type == EnergyTxType.braking).toList();
+      expect(braking.length, 1,
+          reason: 'every exit from coasting charges exactly once');
+      expect(braking.single.amount, -100);
+      expect(c.energy, 200);
+      expect(
+        tester.widget<IndexedStack>(find.byType(IndexedStack)).index,
+        0,
+        reason: 'changing course lands the player on the star map',
+      );
     });
   });
 }

@@ -15,6 +15,18 @@ import '../widgets/planet_disc.dart';
 import '../widgets/starfield.dart';
 import 'drift_report_sheet.dart';
 
+/// Renders a drift's elapsed time as 天 / 小时 / 分钟.
+///
+/// The coasting panel and the brake confirmation read out the same drift, so
+/// they share one wording rather than each keeping their own copy that could
+/// drift apart.
+String _formatDriftDuration(Duration elapsed) {
+  final hours = elapsed.inHours;
+  return hours >= 24
+      ? '${(hours / 24).toStringAsFixed(1)} 天'
+      : (hours >= 1 ? '$hours 小时' : '${elapsed.inMinutes} 分钟');
+}
+
 /// Page 3 — the auto-journey / flight ambience screen. Always mounted inside
 /// the shell's [IndexedStack], so it must build while hidden and tear down its
 /// timer/ticker cleanly. It is a pure view over [GameController.activeJourney];
@@ -191,11 +203,7 @@ class _JourneyPageState extends State<JourneyPage>
   /// confirmation is the whole mitigation — there is deliberately no queued
   /// summary report.
   String _driftSummary(GameController c) {
-    final elapsed = c.driftElapsed;
-    final hours = elapsed.inHours;
-    final duration = hours >= 24
-        ? '${(hours / 24).toStringAsFixed(1)} 天'
-        : (hours >= 1 ? '$hours 小时' : '${elapsed.inMinutes} 分钟');
+    final duration = _formatDriftDuration(c.driftElapsed);
     return '$duration · ${c.driftDistanceLy.toStringAsFixed(1)} ly · '
         '途经 ${c.passedSystemsSoFar.count} 个恒星系';
   }
@@ -720,13 +728,7 @@ class _CoastDock extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = controller.playerPosition3D;
     final v = controller.driftVelocity;
-    final elapsed = controller.driftElapsed;
-    final hours = elapsed.inHours;
-    final duration = hours >= 24
-        ? '${(hours / 24).toStringAsFixed(1)} 天'
-        : (hours >= 1
-            ? '$hours 小时'
-            : '${elapsed.inMinutes} 分钟');
+    final duration = _formatDriftDuration(controller.driftElapsed);
     final braking = controller.brakingCost;
     final canBrake = controller.canBrake;
     return StarPanel(
