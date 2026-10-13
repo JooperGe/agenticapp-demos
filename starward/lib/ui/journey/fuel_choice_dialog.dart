@@ -8,9 +8,10 @@ import '../widgets/common.dart';
 /// Asks what to do about a voyage the ship cannot currently afford.
 ///
 /// Returns the chosen [FuelPolicy], or null if the player backed out. Only
-/// [FuelPolicy.halt] and [FuelPolicy.coast] are offered when there is fuel in
-/// the tank: an empty ship has nothing to burn, so giving up (or going to
-/// train) is the only honest answer.
+/// [FuelPolicy.halt] and [FuelPolicy.coast] are offered when the tank has a
+/// drop left after the braking burn: once the braking eats it all there is
+/// nothing to burn, so giving up (or going to train) is the only honest
+/// answer.
 Future<FuelPolicy?> showFuelChoiceDialog(
   BuildContext context, {
   required int energy,

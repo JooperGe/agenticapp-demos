@@ -355,19 +355,32 @@ class _PrimaryAction extends StatelessWidget {
 
     // 4) Launch a new voyage.
     final cost = controller.energyCostTo(planet);
+    final braking = controller.brakingCost;
     final canAfford = controller.energy >= cost;
     if (!canAfford) {
-      final hasFuel = controller.energy > 0;
+      // Under the halt/coast policies the voyage only needs a drop of fuel —
+      // but it has to be a drop left *after* the braking burn.
+      final hasFuel = controller.energy > braking;
       return Column(
         children: <Widget>[
           _Button(
             label: '能量不足（需 $cost EN · 现有 ${controller.energy} EN）',
             icon: Icons.bolt_rounded,
           ),
+          // A coasting ship owes a braking burn before it can go anywhere, so
+          // "the place is close, why am I short?" needs an answer on screen.
+          if (braking > 0) ...<Widget>[
+            const SizedBox(height: 6),
+            Text(
+              '其中先制动需要 $braking EN',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: StarColors.faint, fontSize: 11),
+            ),
+          ],
           const SizedBox(height: 10),
-          // With fuel in the tank the player gets a say in how the voyage
-          // ends; with none there is nothing to decide, so the only way
-          // forward is training.
+          // With a drop of fuel left after braking the player gets a say in
+          // how the voyage ends; with none there is nothing to decide, so the
+          // only way forward is training.
           _Button(
             label: '选择如何出发',
             icon: Icons.rocket_launch_rounded,

@@ -10,9 +10,11 @@ import 'package:starward/data/models/engine.dart';
 import 'package:starward/data/models/journey.dart';
 import 'package:starward/data/storage/storage_backend.dart';
 import 'package:starward/state/game_controller.dart';
+import 'package:starward/ui/galaxy/planet_details_sheet.dart';
 import 'package:starward/ui/game_scope.dart';
 import 'package:starward/ui/journey/fuel_choice_dialog.dart';
 import 'package:starward/ui/shell/home_shell.dart';
+import 'package:starward/ui/shell/shell_scope.dart';
 
 class FakeClock {
   FakeClock(this._now);
@@ -554,6 +556,46 @@ void main() {
       expect(find.textContaining('制动'), findsNothing);
       expect(find.textContaining('可以飞 60.0 ly'), findsOneWidget,
           reason: 'reachableLyFor(150) = 60.0 ly');
+    });
+  });
+
+  group('the details sheet with a drift to shed', () {
+    Future<void> showSheet(WidgetTester tester, GameController c) async {
+      final target = c.planets.first;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ShellScope(
+            goToTab: (_) {},
+            child: GameScope(
+              controller: c,
+              child: Scaffold(body: PlanetDetailsSheet(planetId: target.id)),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    testWidgets('names the braking burn when the tank cannot cover it',
+        (tester) async {
+      final clock = FakeClock(DateTime(2026));
+      // 50 EN: short of the 100 EN braking burn, whatever the voyage costs.
+      final c = await _coasting(clock, MemoryStorage(), energy: 50);
+
+      await showSheet(tester, c);
+
+      expect(find.textContaining('先制动需要 100 EN'), findsOneWidget);
+      expect(find.textContaining('能量不足'), findsOneWidget);
+    });
+
+    testWidgets('says nothing about braking for a parked ship', (tester) async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock, MemoryStorage());
+
+      await showSheet(tester, c);
+
+      expect(find.textContaining('先制动需要'), findsNothing);
     });
   });
 }
