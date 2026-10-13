@@ -198,9 +198,15 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
     final cost = _c.energyCostToStar(hygId);
     FuelPolicy? policy;
     if (_c.energy < cost) {
-      if (_c.energy <= 0) {
+      // Below the braking cost there is nothing the dialog could offer — not
+      // even running dry, since the ship cannot leave the drift at all.
+      if (_c.energy <= _c.brakingCost) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('能量不足，先去做一组训练吧')),
+          SnackBar(
+            content: Text(_c.brakingCost > 0
+                ? '能量不足，连制动都不够，先去做一组训练吧'
+                : '能量不足，先去做一组训练吧'),
+          ),
         );
         return;
       }
@@ -208,6 +214,7 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
         context,
         energy: _c.energy,
         cost: cost,
+        braking: _c.brakingCost,
         distanceLy: _c.distanceToStar(hygId),
         engine: _c.ship.engine,
       );

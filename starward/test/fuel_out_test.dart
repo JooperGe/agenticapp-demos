@@ -382,6 +382,7 @@ void main() {
                   context,
                   energy: energy,
                   cost: cost,
+                  braking: 0,
                   distanceLy: 100.0,
                   engine: Engine.standard,
                 ));

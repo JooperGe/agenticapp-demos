@@ -15,13 +15,17 @@ Future<FuelPolicy?> showFuelChoiceDialog(
   BuildContext context, {
   required int energy,
   required int cost,
+  required int braking,
   required double distanceLy,
   required Engine engine,
 }) {
-  final reach = engine.reachableLyFor(energy);
+  // The braking burn comes off the top, so what matters for the voyage is what
+  // is left after it — not the whole balance.
+  final reach = engine.reachableLyFor(energy - braking);
   return showModalBottomSheet<FuelPolicy>(
     context: context,
     backgroundColor: Colors.transparent,
+    isScrollControlled: true,
     builder: (sheetContext) => SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -40,8 +44,13 @@ Future<FuelPolicy?> showFuelChoiceDialog(
               ),
               const SizedBox(height: 10),
               Text(
-                '你只有 $energy EN，可以飞 ${reach.toStringAsFixed(1)} ly，'
-                '全程 ${distanceLy.toStringAsFixed(1)} ly。',
+                braking > 0
+                    ? '你只有 $energy EN，其中 $braking EN 要先用于制动。'
+                        '制动后剩 ${energy - braking} EN，'
+                        '可以飞 ${reach.toStringAsFixed(1)} ly，'
+                        '全程 ${distanceLy.toStringAsFixed(1)} ly。'
+                    : '你只有 $energy EN，可以飞 ${reach.toStringAsFixed(1)} ly，'
+                        '全程 ${distanceLy.toStringAsFixed(1)} ly。',
                 style: const TextStyle(
                   color: StarColors.muted,
                   fontSize: 13,
@@ -55,7 +64,10 @@ Future<FuelPolicy?> showFuelChoiceDialog(
                 icon: Icons.close_rounded,
                 onTap: () => Navigator.of(sheetContext).pop(),
               ),
-              if (energy > 0) ...<Widget>[
+              // The drop of fuel those policies need is the drop left *after*
+              // braking — with the tank at or below the braking cost there is
+              // nothing to decide.
+              if (energy > braking) ...<Widget>[
                 const SizedBox(height: 10),
                 _Choice(
                   label: '耗尽后停下',

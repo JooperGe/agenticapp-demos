@@ -424,6 +424,7 @@ class _PrimaryAction extends StatelessWidget {
       context,
       energy: controller.energy,
       cost: controller.energyCostTo(planet),
+      braking: controller.brakingCost,
       distanceLy: controller.distanceTo(planet),
       engine: controller.ship.engine,
     );

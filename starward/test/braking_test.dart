@@ -11,6 +11,7 @@ import 'package:starward/data/models/journey.dart';
 import 'package:starward/data/storage/storage_backend.dart';
 import 'package:starward/state/game_controller.dart';
 import 'package:starward/ui/game_scope.dart';
+import 'package:starward/ui/journey/fuel_choice_dialog.dart';
 import 'package:starward/ui/shell/home_shell.dart';
 
 class FakeClock {
@@ -495,6 +496,64 @@ void main() {
         0,
         reason: 'changing course lands the player on the star map',
       );
+    });
+  });
+
+  group('the fuel choice dialog with a braking burn', () {
+    Future<void> open(
+      WidgetTester tester, {
+      required int energy,
+      required int braking,
+    }) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showFuelChoiceDialog(
+                context,
+                // A 100 ly voyage: 250 EN of fuel.
+                energy: energy,
+                cost: 250 + braking,
+                braking: braking,
+                distanceLy: 100,
+                engine: Engine.standard,
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('reports the braking burn separately from the voyage fuel',
+        (tester) async {
+      await open(tester, energy: 150, braking: 100);
+
+      expect(find.textContaining('其中 100 EN 要先用于制动'), findsOneWidget);
+      expect(find.textContaining('制动后剩 50 EN'), findsOneWidget);
+      expect(find.textContaining('可以飞 20.0 ly'), findsOneWidget,
+          reason: 'reachableLyFor(150 - 100) = 50 / 2.5');
+      expect(find.text('耗尽后滑行'), findsOneWidget,
+          reason: '50 EN is still a drop of fuel, so running dry is on offer');
+    });
+
+    testWidgets('offers no running-dry choice when the braking eats it all',
+        (tester) async {
+      await open(tester, energy: 100, braking: 100);
+
+      expect(find.text('耗尽后滑行'), findsNothing);
+      expect(find.text('耗尽后停下'), findsNothing);
+    });
+
+    testWidgets('says nothing about braking for a ship that is not coasting',
+        (tester) async {
+      await open(tester, energy: 150, braking: 0);
+
+      expect(find.textContaining('制动'), findsNothing);
+      expect(find.textContaining('可以飞 60.0 ly'), findsOneWidget,
+          reason: 'reachableLyFor(150) = 60.0 ly');
     });
   });
 }
