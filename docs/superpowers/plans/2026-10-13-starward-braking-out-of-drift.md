@@ -838,7 +838,7 @@ cd starward
 git add lib/state/game_controller.dart test/braking_test.dart
 git commit -m "feat(starward): quote the braking burn in the player-facing total
 
-energyCostTo and energyCostToStar now include braking, so the eight UI
+energyCostTo and energyCostToStar now include braking, so the seven UI
 call sites that read them (star system sheet, planet details sheet, star
 map, journey page) report the real total without being touched one by one.
 Parked ships see brakingCost == 0 and therefore byte-identical quotes."

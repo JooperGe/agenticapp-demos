@@ -224,7 +224,7 @@ int energyCostTo(Planet target) =>
     _ship.engine.energyCostFor(distanceTo(target)) + brakingCost;
 ```
 
-这样 8 个 UI 引用点（`star_system_sheet.dart:30`、`:176`，`planet_details_sheet.dart:185`、`:357`、`:426`，`galaxy_map_3d_page.dart:198`，`journey_page.dart:788`）自动报出正确总额，不需要逐个改。
+这样 7 个 UI 引用点（`star_system_sheet.dart:30`、`:176`，`planet_details_sheet.dart:185`、`:357`、`:426`，`galaxy_map_3d_page.dart:198`，`journey_page.dart:788`）自动报出正确总额，不需要逐个改。
 
 **停靠行星、深空待泊、航行中时 `brakingCost == 0`，所以这些引用点与既有测试的语义逐位不变。**
 
