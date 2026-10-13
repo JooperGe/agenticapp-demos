@@ -53,4 +53,23 @@ void main() {
       ..clampPitch();
     expect(cam.pitch, greaterThan(-1.6));
   });
+
+  test('overview mode shares the orbit eye formula, so it sits outside the '
+      'volume it is looking at', () {
+    final cam = Camera3D(
+      target: const Vec3(0, 0, 0),
+      yaw: 0,
+      pitch: 0,
+      distance: 73584, // 2R — exactly inscribed at 60° / 800×600
+      mode: CameraMode.overview,
+    );
+    // eye = target − forward · distance = (0, 0, −73584)
+    expect(cam.eye.x, closeTo(0, 0.5));
+    expect(cam.eye.z, closeTo(-73584, 0.5));
+    // And the same projection serves it: the target lands at screen centre.
+    final p = cam.project(const Vec3(0, 0, 0), vp);
+    expect(p.visible, isTrue);
+    expect(p.screen.dx, closeTo(400, 0.5));
+    expect(p.screen.dy, closeTo(300, 0.5));
+  });
 }
