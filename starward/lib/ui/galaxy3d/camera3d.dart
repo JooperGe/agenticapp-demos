@@ -225,6 +225,29 @@ void placeCamera(
   }
 }
 
+/// Fraction of the viewport's short edge that a focused route spans.
+const double kRouteFrameFraction = 0.6;
+
+/// Frames the route [from]→[to] so it spans [kRouteFrameFraction] of
+/// [viewport]'s short edge, aiming the camera at the route's midpoint.
+///
+/// The floor keeps a degenerate (zero-length) route from collapsing the camera
+/// onto the target.
+void placeCameraForRoute(
+  Camera3D camera, {
+  required Vec3 from,
+  required Vec3 to,
+  required Size2 viewport,
+  required double fovDegrees,
+}) {
+  final lengthWorld = (to - from).length;
+  final focal = focalFor(viewport, fovDegrees);
+  final shortEdge = math.min(viewport.width, viewport.height);
+  camera.target = (from + to) * 0.5;
+  camera.distance = math.max(
+      lengthWorld * focal / (kRouteFrameFraction * shortEdge), kMinZoomDistance);
+}
+
 /// Zoom-in limit for every mode, in world units. Shared so the page's clamp and
 /// the route-focus framing cannot drift apart.
 const double kMinZoomDistance = 70;

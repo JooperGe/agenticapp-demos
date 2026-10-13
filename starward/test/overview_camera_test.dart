@@ -238,4 +238,24 @@ void main() {
       expect(cam.eye.z, closeTo(ship.z, 0.001));
     });
   });
+
+  group('placeCameraForRoute', () {
+    test('focus-route framing fits a 25.4 ly route to 60% of the short edge', () {
+      // 25.4 ly → 304.8 world units. At 400×800 the focal is 692.82 px, so the
+      // route needs 304.8 * 692.82 / (0.6 * 400) ≈ 880 world units of distance,
+      // and the camera aims at the route's midpoint.
+      final cam = Camera3D();
+      placeCameraForRoute(
+        cam,
+        from: const Vec3(0, 0, 0),
+        to: const Vec3(304.8, 0, 0),
+        viewport: portrait,
+        fovDegrees: fov,
+      );
+      expect(cam.distance, closeTo(880, 5));
+      expect(cam.target.x, closeTo(152.4, 0.01));
+      expect(cam.target.y, 0);
+      expect(cam.target.z, 0);
+    });
+  });
 }

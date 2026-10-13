@@ -307,6 +307,45 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
     });
   }
 
+  /// Frames the active voyage so it fills about 60% of the viewport's short
+  /// edge. At full framing the route is 0.15–3.4 px long — invisible — so this
+  /// is the only way to see it without giving up true scale.
+  void _focusRoute(Size2 vp) {
+    final j = _c.activeJourney;
+    final scene = _scene;
+    if (j == null || scene == null) return;
+    setState(() {
+      placeCameraForRoute(
+        _camera,
+        from: scene.positionOf(j.originPlanetId),
+        to: scene.positionOf(j.destinationPlanetId),
+        viewport: vp,
+        fovDegrees: _camera.fovDegrees,
+      );
+    });
+  }
+
+  /// The two endpoints of the active voyage, named via the controller (which
+  /// knows how to label star destinations and the deep-space pseudo-planet).
+  (String, String) _routeEndpoints() {
+    final j = _c.activeJourney;
+    if (j == null) return ('—', '—');
+    return (
+      _c.locationLabel(j.originPlanetId),
+      _c.locationLabel(j.destinationPlanetId),
+    );
+  }
+
+  /// Straight-line length of the active voyage, in light-years.
+  double _routeLengthLy() {
+    final j = _c.activeJourney;
+    final scene = _scene;
+    if (j == null || scene == null) return 0;
+    final from = scene.positionOf(j.originPlanetId);
+    final to = scene.positionOf(j.destinationPlanetId);
+    return (to - from).length / _worldScale;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -321,6 +360,7 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
             builder: (context, constraints) {
               final size = Size(constraints.maxWidth, constraints.maxHeight);
               final vp = Size2(size.width, size.height);
+              final endpoints = _routeEndpoints();
               return Stack(
                 fit: StackFit.expand,
                 children: <Widget>[
@@ -371,11 +411,22 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
                     onSelect: (m) => _setMode(m, vp),
                     onRecenter: () => _recenter(vp),
                   ),
-                  _BottomControls(
-                    sensorRange: _sensorRange,
-                    mode: _camera.mode,
-                    onSensorChanged: (v) => setState(() => _sensorRange = v),
-                  ),
+                  if (_camera.mode == CameraMode.overview)
+                    _OverviewReadout(
+                      radiusLy: _universeRadiusLy,
+                      shipDistanceLy: _shipPos.length / _worldScale,
+                      hasJourney: _c.activeJourney != null,
+                      routeLengthLy: _routeLengthLy(),
+                      originLabel: endpoints.$1,
+                      destinationLabel: endpoints.$2,
+                      onFocusRoute: () => _focusRoute(vp),
+                    )
+                  else
+                    _BottomControls(
+                      sensorRange: _sensorRange,
+                      mode: _camera.mode,
+                      onSensorChanged: (v) => setState(() => _sensorRange = v),
+                    ),
                 ],
               );
             },
@@ -686,4 +737,144 @@ class _CockpitPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_CockpitPainter oldDelegate) => false;
+}
+
+/// The universe-overview readout: the boundary radius, where the ship sits
+/// inside it, and — when a voyage is running — the route and a button to frame
+/// it. Replaces the sensor slider, whose 50–416 ly range is meaningless at this
+/// scale.
+class _OverviewReadout extends StatelessWidget {
+  const _OverviewReadout({
+    required this.radiusLy,
+    required this.shipDistanceLy,
+    required this.hasJourney,
+    required this.routeLengthLy,
+    required this.originLabel,
+    required this.destinationLabel,
+    required this.onFocusRoute,
+  });
+
+  final double radiusLy;
+  final double shipDistanceLy;
+  final bool hasJourney;
+  final double routeLengthLy;
+  final String originLabel;
+  final String destinationLabel;
+  final VoidCallback onFocusRoute;
+
+  @override
+  Widget build(BuildContext context) {
+    final toEdge = radiusLy - shipDistanceLy;
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: StarPanel(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    const Icon(Icons.blur_circular_rounded,
+                        color: StarColors.gold, size: 16),
+                    const SizedBox(width: 8),
+                    const Text('宇宙全览',
+                        style: TextStyle(
+                            color: StarColors.offWhite,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600)),
+                    const Spacer(),
+                    Text('R ${radiusLy.round()} ly',
+                        style: const TextStyle(
+                            color: StarColors.gold,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                _ReadoutRow(
+                  label: '飞船距球心',
+                  value: StarLabels.distance(shipDistanceLy),
+                ),
+                _ReadoutRow(
+                  label: '飞船距边界',
+                  // The ship can legitimately be outside the shell — the
+                  // synthetic galaxy SG-2 sits at 3400 ly and is a real
+                  // destination — so a negative reading must say so rather than
+                  // print a negative distance.
+                  value: toEdge >= 0
+                      ? StarLabels.distance(toEdge)
+                      : '壳外 ${StarLabels.distance(-toEdge)}',
+                ),
+                if (hasJourney) ...<Widget>[
+                  const SizedBox(height: 6),
+                  _ReadoutRow(
+                    label: '航线 $originLabel→$destinationLabel',
+                    value: StarLabels.distance(routeLengthLy),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: GestureDetector(
+                      onTap: onFocusRoute,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: panelDecoration(radius: 99),
+                        child: const Text('聚焦航线',
+                            style: TextStyle(
+                                color: StarColors.cyan,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 6),
+                const Text('拖动旋转 · 双指缩放',
+                    style: TextStyle(color: StarColors.faint, fontSize: 10.5)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A label/value line inside the readout panel.
+class _ReadoutRow extends StatelessWidget {
+  const _ReadoutRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: <Widget>[
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: StarColors.muted, fontSize: 11.5),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            value,
+            style: const TextStyle(
+                color: StarColors.offWhite,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
 }

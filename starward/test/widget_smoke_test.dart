@@ -54,6 +54,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('星图 · 寰宇'), findsOneWidget);
+    // The readout replaces the sensor slider, whose 50–416 ly range is
+    // meaningless at universe scale.
+    expect(find.text('宇宙全览'), findsOneWidget);
+    expect(find.text('飞行器传感器范围'), findsNothing);
     // The overview painter built without throwing — a smoke test cannot assert
     // what it drew, only that the whole subtree survived a real layout pass.
 
@@ -67,5 +71,31 @@ void main() {
     await tester.tap(find.text('座舱'));
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('星图 · 座舱视角'), findsOneWidget);
+  });
+
+  testWidgets('the overview readout reports the radius and the ship distance',
+      (tester) async {
+    final controller =
+        GameController(repository: GameRepository(MemoryStorage()));
+    await controller.init();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScope(controller: controller, child: const HomeShell()),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.text('寰宇'));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // The readout replaces the sensor slider and names the view.
+    expect(find.text('宇宙全览'), findsOneWidget);
+    expect(find.text('飞行器传感器范围'), findsNothing);
+    expect(find.text('飞船距球心'), findsOneWidget);
+    expect(find.text('飞船距边界'), findsOneWidget);
+
+    // With no active voyage there is no route row and no focus button.
+    expect(find.text('聚焦航线'), findsNothing);
   });
 }
