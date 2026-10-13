@@ -19,23 +19,30 @@ const int kShellMeridianSegments = 32;
 const int kShellParallelSegments = 48;
 
 /// The shell's graticule, split by which side of the centre plane each vertex
-/// falls on: a vertex is on the far side when `dot(P - centre, forward) < 0`.
+/// falls on: a vertex is on the far side when `dot(P - centre, forward) > 0`.
+///
+/// The camera looks along `+forward` from `eye = target - forward * distance`,
+/// i.e. from *behind* the centre. The distance from the eye to a surface point
+/// is `|P - eye|² = R² + d² + 2d·(P·forward)`, which *grows* with `P·forward` —
+/// so `dot(P - centre, forward) > 0` is the half farther from the eye, and the
+/// `< 0` half is the near one. (The eye formula makes this easy to invert.)
 class ShellLattice {
   const ShellLattice({required this.far, required this.near});
 
-  /// Polylines on the far side of the centre plane — drawn *before* the star
+  /// Polylines on the half *farther* from the eye — drawn *before* the star
   /// field, so the stars occlude them.
   final List<List<Vec3>> far;
 
-  /// Polylines on the near side — drawn *after* the star field, so they sit in
-  /// front of it. This two-pass split is what makes the globe read as hollow
-  /// rather than as a ball the stars are painted onto.
+  /// Polylines on the half *nearer* the eye — drawn *after* the star field, so
+  /// they sit in front of it. This two-pass split is what makes the globe read
+  /// as hollow rather than as a ball the stars are painted onto.
   final List<List<Vec3>> near;
 }
 
 /// Builds the meridian/parallel graticule of a sphere of [radius] centred on
 /// [centre], split into far and near halves by the plane through [centre]
-/// perpendicular to [forward].
+/// perpendicular to [forward]: the far half is the one *farther* from the eye
+/// (`dot(P - centre, forward) > 0`).
 ///
 /// The polar axis is [Vec3.up] (the catalogue's north celestial pole).
 ShellLattice buildShellLattice({
@@ -61,7 +68,7 @@ ShellLattice buildShellLattice({
     }
 
     for (final p in pts) {
-      final isFar = (p - centre).dot(forward) < 0;
+      final isFar = (p - centre).dot(forward) > 0;
       if (runFar != null && isFar != runFar) flush();
       runFar = isFar;
       run.add(p);

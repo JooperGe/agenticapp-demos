@@ -13,11 +13,29 @@ void main() {
   const double rWorld = 36792;
   const Vec3 centre = Vec3(0, 0, 0);
 
-  test('emits every generated vertex, split by the camera-facing plane', () {
+  test('files each vertex by which side of the sphere is nearer the eye', () {
+    // The camera sits behind the sphere's centre and looks at it:
+    //   eye = target − forward·d.
+    // With the centre at the origin, forward = +z and d = 25, the eye is at
+    // (0, 0, −25). The distance from the eye to a surface point P is
+    //   |P − eye|² = R² + d² + 2d·(P·forward),
+    // which *grows* with P·forward — so the vertex with negative P·forward is
+    // the near one. (The eye formula makes it easy to assume the opposite, and
+    // an inverted split silently reverses the shell's two-pass draw order.)
+    const Vec3 forward = Vec3(0, 0, 1);
+    const Vec3 eye = Vec3(0, 0, -25);
+    const double r = 10;
+
+    // The two poles of the split, worked by hand:
+    //   P_near = (0, 0, −10) → |P_near − eye| = 15, (P_near − C)·forward = −10
+    //   P_far  = (0, 0, +10) → |P_far  − eye| = 35, (P_far  − C)·forward = +10
+    expect((const Vec3(0, 0, -10) - eye).length, closeTo(15, 1e-9));
+    expect((const Vec3(0, 0, 10) - eye).length, closeTo(35, 1e-9));
+
     final lattice = buildShellLattice(
       centre: centre,
-      radius: rWorld,
-      forward: const Vec3(0, 0, 1),
+      radius: r,
+      forward: forward,
     );
 
     final far = <Vec3>[];
@@ -32,14 +50,37 @@ void main() {
     // 12 meridians × 33 points + 6 parallels × 49 points.
     expect(far.length + near.length, 12 * 33 + 6 * 49);
 
-    // Every vertex is on the side it was filed under. Forward is +z, so the
-    // far half is z < 0 and the near half is z >= 0.
-    for (final p in far) {
-      expect(p.z, lessThan(0));
+    // (0, 0, ∓10) are both generated vertices (the meridian through the ±z
+    // axis), so the split must file the closer one as near and the farther as
+    // far. Pinned as a distance comparison, not a raw sign, so re-inverting the
+    // predicate fails here instead of silently swapping the draw order.
+    final all = <Vec3>[...near, ...far];
+    var nearest = all.first;
+    var farthest = all.first;
+    for (final p in all) {
+      if ((p - eye).length < (nearest - eye).length) nearest = p;
+      if ((p - eye).length > (farthest - eye).length) farthest = p;
     }
+    expect(near, contains(nearest));
+    expect(far, contains(farthest));
+    expect((nearest - eye).length, closeTo(15, 1e-6));
+    expect((farthest - eye).length, closeTo(35, 1e-6));
+
+    // Every vertex filed as near is no farther from the eye than every vertex
+    // filed as far — the ordering the two-pass draw order depends on. The
+    // tolerance absorbs vertices sitting on the plane itself, whose side is
+    // decided by a floating-point sign rather than by geometry.
+    var maxNear = 0.0;
     for (final p in near) {
-      expect(p.z, greaterThanOrEqualTo(0));
+      final d = (p - eye).length;
+      if (d > maxNear) maxNear = d;
     }
+    var minFar = double.infinity;
+    for (final p in far) {
+      final d = (p - eye).length;
+      if (d < minFar) minFar = d;
+    }
+    expect(maxNear, lessThan(minFar + 1e-6));
   });
 
   test('a run never straddles the plane', () {
@@ -48,12 +89,14 @@ void main() {
       radius: rWorld,
       forward: const Vec3(0, 0, 1),
     );
+    // Forward is +z, so the eye is on the −z side: the near half is z <= 0 and
+    // the far half is z > 0.
     for (final run in lattice.far) {
-      expect(run.every((p) => p.z < 0), isTrue,
+      expect(run.every((p) => p.z > 0), isTrue,
           reason: 'a far run must be entirely on the far side');
     }
     for (final run in lattice.near) {
-      expect(run.every((p) => p.z >= 0), isTrue,
+      expect(run.every((p) => p.z <= 0), isTrue,
           reason: 'a near run must be entirely on the near side');
     }
   });
@@ -72,7 +115,8 @@ void main() {
   });
 
   test('rotating the camera moves the split with it', () {
-    // Forward along +x: the split is now the y/z plane at x = 0.
+    // Forward along +x, so the eye (target − forward·d) sits on the −x side and
+    // the split is the y/z plane at x = 0. The far half is x > 0.
     final lattice = buildShellLattice(
       centre: centre,
       radius: rWorld,
@@ -80,12 +124,12 @@ void main() {
     );
     for (final run in lattice.far) {
       for (final p in run) {
-        expect(p.x, lessThan(0));
+        expect(p.x, greaterThan(0));
       }
     }
     for (final run in lattice.near) {
       for (final p in run) {
-        expect(p.x, greaterThanOrEqualTo(0));
+        expect(p.x, lessThanOrEqualTo(0));
       }
     }
   });

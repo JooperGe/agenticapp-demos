@@ -947,7 +947,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
   - `ShellLattice buildShellLattice({required Vec3 centre, required double radius, required Vec3 forward, int meridians, int parallels})`
   - `class UniverseShell { UniverseShell({required Vec3 centre, required double radius, required Vec3 forward}); double limbRadius(Camera3D camera, Size2 viewport); void paintFarHalf(Canvas canvas, {required Camera3D camera, required Size2 viewport, required double fade}); void paintNearHalf(Canvas canvas, {required Camera3D camera, required Size2 viewport, required double fade}); }`
 
-**为什么是前后两半：** 星场必须夹在球壳的两半之间，恒星才读起来**在玻璃后面**，而不是贴在一个球上。划分平面由相机前向决定：`dot(P − C, f) < 0` 是远侧，`> 0` 是近侧。
+**为什么是前后两半：** 星场必须夹在球壳的两半之间，恒星才读起来**在玻璃后面**，而不是贴在一个球上。划分平面由相机前向决定：`dot(P − C, f) > 0` 是远侧，`< 0` 是近侧。**注意符号**——眼位是 `eye = target − f·d`（在球心后方），点到眼位的距离 `|P − eye|² = R² + d² + 2d·(P·f)` 随 `P·f` 增大而增大，所以 `> 0` 才离相机更远；写反会把正反面网画颠倒。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -988,13 +988,14 @@ void main() {
     // 12 meridians × 33 points + 6 parallels × 49 points.
     expect(far.length + near.length, 12 * 33 + 6 * 49);
 
-    // Every vertex is on the side it was filed under. Forward is +z, so the
-    // far half is z < 0 and the near half is z >= 0.
+    // Every vertex is on the side it was filed under. Forward is +z, so the eye
+    // (target − forward·d) is on the −z side: the far half is z > 0 and the near
+    // half is z <= 0.
     for (final p in far) {
-      expect(p.z, lessThan(0));
+      expect(p.z, greaterThan(0));
     }
     for (final p in near) {
-      expect(p.z, greaterThanOrEqualTo(0));
+      expect(p.z, lessThanOrEqualTo(0));
     }
   });
 
@@ -1005,11 +1006,11 @@ void main() {
       forward: const Vec3(0, 0, 1),
     );
     for (final run in lattice.far) {
-      expect(run.every((p) => p.z < 0), isTrue,
+      expect(run.every((p) => p.z > 0), isTrue,
           reason: 'a far run must be entirely on the far side');
     }
     for (final run in lattice.near) {
-      expect(run.every((p) => p.z >= 0), isTrue,
+      expect(run.every((p) => p.z <= 0), isTrue,
           reason: 'a near run must be entirely on the near side');
     }
   });
@@ -1028,7 +1029,8 @@ void main() {
   });
 
   test('rotating the camera moves the split with it', () {
-    // Forward along +x: the split is now the y/z plane at x = 0.
+    // Forward along +x, so the eye (target − forward·d) sits on the −x side and
+    // the split is the y/z plane at x = 0. The far half is x > 0.
     final lattice = buildShellLattice(
       centre: centre,
       radius: rWorld,
@@ -1036,12 +1038,12 @@ void main() {
     );
     for (final run in lattice.far) {
       for (final p in run) {
-        expect(p.x, lessThan(0));
+        expect(p.x, greaterThan(0));
       }
     }
     for (final run in lattice.near) {
       for (final p in run) {
-        expect(p.x, greaterThanOrEqualTo(0));
+        expect(p.x, lessThanOrEqualTo(0));
       }
     }
   });
@@ -1136,23 +1138,26 @@ const int kShellMeridianSegments = 32;
 const int kShellParallelSegments = 48;
 
 /// The shell's graticule, split by which side of the centre plane each vertex
-/// falls on: a vertex is on the far side when `dot(P - centre, forward) < 0`.
+/// falls on: a vertex is on the far side when `dot(P - centre, forward) > 0`
+/// (the eye is `target - forward·d`, behind the centre, so distance grows with
+/// `P·forward`).
 class ShellLattice {
   const ShellLattice({required this.far, required this.near});
 
-  /// Polylines on the far side of the centre plane — drawn *before* the star
+  /// Polylines on the half *farther* from the eye — drawn *before* the star
   /// field, so the stars occlude them.
   final List<List<Vec3>> far;
 
-  /// Polylines on the near side — drawn *after* the star field, so they sit in
-  /// front of it. This two-pass split is what makes the globe read as hollow
-  /// rather than as a ball the stars are painted onto.
+  /// Polylines on the half *nearer* the eye — drawn *after* the star field, so
+  /// they sit in front of it. This two-pass split is what makes the globe read
+  /// as hollow rather than as a ball the stars are painted onto.
   final List<List<Vec3>> near;
 }
 
 /// Builds the meridian/parallel graticule of a sphere of [radius] centred on
 /// [centre], split into far and near halves by the plane through [centre]
-/// perpendicular to [forward].
+/// perpendicular to [forward]: the far half is the one *farther* from the eye
+/// (`dot(P - centre, forward) > 0`).
 ///
 /// The polar axis is [Vec3.up] (the catalogue's north celestial pole).
 ShellLattice buildShellLattice({
@@ -1178,7 +1183,7 @@ ShellLattice buildShellLattice({
     }
 
     for (final p in pts) {
-      final isFar = (p - centre).dot(forward) < 0;
+      final isFar = (p - centre).dot(forward) > 0;
       if (runFar != null && isFar != runFar) flush();
       runFar = isFar;
       run.add(p);
