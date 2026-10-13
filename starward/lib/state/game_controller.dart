@@ -271,6 +271,14 @@ class GameController extends ChangeNotifier {
   /// parked ship has nowhere to be and nothing to report.
   bool get isCoasting => _player.driftVelocity.length > 0;
 
+  /// What it costs to bring the ship out of its current motion, in EN.
+  ///
+  /// Zero for a ship at rest — docked, parked in deep space, or under power.
+  /// Only a coasting ship has momentum to shed.
+  int get brakingCost => isCoasting
+      ? _ship.engine.brakingCostFor(_player.driftVelocity.length)
+      : 0;
+
   /// How long the current drift has been running, or zero when parked.
   Duration get driftElapsed => isCoasting
       ? _now().difference(_player.driftStartedAt)
@@ -368,7 +376,15 @@ class GameController extends ChangeNotifier {
   /// Every launch must do this: [_originPosOf] reads the anchor, so a coasting
   /// ship that launched without re-anchoring would plot its route from a stale
   /// coordinate and arrive somewhere it never was.
+  ///
+  /// This is also the one place a drift is billed. Putting the charge here
+  /// rather than on the "stop" button is what keeps the exits honest: the star
+  /// map is a way out of a drift, and if it were free the player would learn to
+  /// route around the paid button sitting next to it.
   void _anchorHere() {
+    // Read the price before the velocity is cleared — braking is quoted off the
+    // speed the ship is actually carrying.
+    final braking = brakingCost;
     final pos = playerPosition3D;
     _player = _player.copyWith(
       startX: pos.x,
@@ -376,15 +392,18 @@ class GameController extends ChangeNotifier {
       startZ: pos.z,
       driftVelocity: const Vec3(0, 0, 0),
     );
+    if (braking > 0) _settleBraking(braking);
   }
 
   /// The player's energy right now, in EN.
   ///
   /// While a voyage is in progress this is the fuel still aboard: the balance
-  /// minus what the engine has burned so far. Nothing is deducted at launch, so
-  /// this getter is the only place the burn is applied — which is what makes
-  /// the reading tick down in real time and still be correct after the app is
-  /// killed and restarted.
+  /// minus what the engine has burned so far. Voyage fuel is not deducted at
+  /// launch, so this getter is the only place the burn is applied — which is
+  /// what makes the reading tick down in real time and still be correct after
+  /// the app is killed and restarted. A braking burn is the exception: it is a
+  /// departure-time charge and is already out of `energyBalance` by the time
+  /// any of this runs.
   int get energy {
     final j = _activeJourney;
     if (j == null || j.status != JourneyStatus.inProgress) {
@@ -704,17 +723,22 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Validates and starts a journey to [target]. Energy is checked up front but
-  /// not deducted — the burn accrues in real time and is booked when the voyage
-  /// ends (see [_settleBurn]).
+  /// Validates and starts a journey to [target].
+  ///
+  /// The voyage's own fuel is checked up front but not deducted — it accrues in
+  /// real time and is booked when the voyage ends (see [_settleBurn]). The
+  /// braking burn is different: it is charged at departure, by [_anchorHere].
   Future<LaunchResult> launchJourney(
     Planet target, {
     FuelPolicy onEmpty = FuelPolicy.refuse,
   }) async {
     if (target.id == _player.currentPlanetId) return LaunchResult.alreadyHere;
     if (isTraveling) return LaunchResult.alreadyTraveling;
-    final cost = energyCostTo(target);
-    final gate = _launchGate(cost, onEmpty);
+    // The voyage's fuel only — deliberately not `energyCostTo`, which also
+    // carries the braking burn and would leak it into the burn curve below.
+    final voyageFuel = _ship.engine.energyCostFor(distanceTo(target));
+    final braking = brakingCost;
+    final gate = _launchGate(voyageFuel, braking, onEmpty);
     if (gate != null) return gate;
 
     _anchorHere();
@@ -727,7 +751,7 @@ class GameController extends ChangeNotifier {
       destinationPlanetId: target.id,
       departure: departure,
       arrival: arrival,
-      energyCost: cost,
+      energyCost: voyageFuel,
       status: JourneyStatus.inProgress,
       fuelPolicy: onEmpty,
     );
@@ -758,8 +782,9 @@ class GameController extends ChangeNotifier {
     if (isTraveling) return LaunchResult.alreadyTraveling;
     final dist = (playerPosition3D - target).length;
     if (dist < 0.5) return LaunchResult.alreadyHere;
-    final cost = _ship.engine.energyCostFor(dist);
-    final gate = _launchGate(cost, onEmpty);
+    final voyageFuel = _ship.engine.energyCostFor(dist);
+    final braking = brakingCost;
+    final gate = _launchGate(voyageFuel, braking, onEmpty);
     if (gate != null) return gate;
 
     _anchorHere();
@@ -772,7 +797,7 @@ class GameController extends ChangeNotifier {
       destinationPlanetId: _starDestId(hygId),
       departure: departure,
       arrival: arrival,
-      energyCost: cost,
+      energyCost: voyageFuel,
       status: JourneyStatus.inProgress,
       fuelPolicy: onEmpty,
     );
@@ -1017,19 +1042,26 @@ class GameController extends ChangeNotifier {
 
   // --- Energy helpers ------------------------------------------------------
 
-  /// Whether [cost] can be committed under [policy]. Null means yes.
+  /// Whether a voyage can be committed under [policy]. Null means yes.
   ///
   /// [FuelPolicy.refuse] demands the whole quote up front — the rule the game
   /// has always had. [FuelPolicy.halt] and [FuelPolicy.coast] only need a drop
-  /// of fuel, because the ship is explicitly allowed to run dry en route. A
-  /// completely empty tank moves nothing under any policy.
-  LaunchResult? _launchGate(int cost, FuelPolicy policy) {
+  /// of fuel, because the ship is explicitly allowed to run dry en route.
+  ///
+  /// [braking] is passed separately from [voyageFuel] because the two are not
+  /// the same kind of money: the voyage's fuel accrues over the route, while
+  /// the braking burn is charged at departure. Under the lenient policies the
+  /// drop of fuel the voyage needs is what is *left after* braking, so the bar
+  /// is `> braking` rather than `> 0`.
+  LaunchResult? _launchGate(int voyageFuel, int braking, FuelPolicy policy) {
     if (policy == FuelPolicy.refuse) {
-      return _player.energyBalance < cost
+      return _player.energyBalance < voyageFuel + braking
           ? LaunchResult.insufficientEnergy
           : null;
     }
-    return _player.energyBalance <= 0 ? LaunchResult.insufficientEnergy : null;
+    return _player.energyBalance <= braking
+        ? LaunchResult.insufficientEnergy
+        : null;
   }
 
   /// Books the fuel voyage [j] has burned up to [now], once, and returns it.
@@ -1056,6 +1088,24 @@ class GameController extends ChangeNotifier {
       relatedObjectId: j.id,
     ));
     return burned;
+  }
+
+  /// Bills the burn that brings a coasting ship to rest.
+  ///
+  /// Unlike a voyage's fuel, this is charged at the moment it is committed:
+  /// there is no curve to spread it over, and the gate has already established
+  /// that the balance covers it. The `braking > 0` guard at the call site is
+  /// what keeps a parked ship's anchor from writing a zero-amount entry.
+  void _settleBraking(int amount) {
+    _player = _player.copyWith(
+      energyBalance: math.max(0, _player.energyBalance - amount),
+    );
+    _energyLedger.add(EnergyTransaction(
+      id: _newId('en'),
+      type: EnergyTxType.braking,
+      amount: -amount,
+      createdAt: _now(),
+    ));
   }
 
   /// Bills the entire tank.

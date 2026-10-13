@@ -1,5 +1,5 @@
 /// Kinds of energy ledger entries.
-enum EnergyTxType { travelCost, trainingReward, explorationReward }
+enum EnergyTxType { travelCost, trainingReward, explorationReward, braking }
 
 EnergyTxType energyTxTypeFromName(String name) =>
     EnergyTxType.values.firstWhere((t) => t.name == name,
