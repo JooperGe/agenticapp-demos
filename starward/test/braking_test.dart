@@ -587,6 +587,15 @@ void main() {
 
       expect(find.textContaining('先制动需要 100 EN'), findsOneWidget);
       expect(find.textContaining('能量不足'), findsOneWidget);
+
+      // The gate is the load-bearing half of this task: a coasting ship with
+      // less than the braking burn must not be able to open the dialog, or it
+      // quotes a negative reach.
+      final button = tester.widget<InkWell>(find.ancestor(
+        of: find.text('选择如何出发'),
+        matching: find.byType(InkWell),
+      ));
+      expect(button.onTap, isNull);
     });
 
     testWidgets('says nothing about braking for a parked ship', (tester) async {
