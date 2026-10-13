@@ -261,4 +261,138 @@ void main() {
           c.ship.engine.energyCostFor(c.distanceTo(target)));
     });
   });
+
+  group('stopShip', () {
+    test('parks a coasting ship where the drift had carried it', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _coasting(clock, MemoryStorage());
+      clock.advance(const Duration(hours: 1));
+      final before = c.playerPosition3D;
+      expect(before.length, greaterThan(0),
+          reason: 'precondition: the drift has moved the ship off its anchor');
+
+      await c.stopShip();
+
+      expect(c.isCoasting, isFalse);
+      expect(c.driftVelocity.length, 0);
+      expect(c.inDeepSpace, isTrue);
+      final parked = c.playerPosition3D;
+      expect(parked.x, closeTo(before.x, 1e-9));
+      expect(parked.y, closeTo(before.y, 1e-9));
+      expect(parked.z, closeTo(before.z, 1e-9));
+
+      clock.advance(const Duration(days: 10));
+      expect(c.playerPosition3D.x, closeTo(parked.x, 1e-9),
+          reason: 'a stopped ship stays stopped');
+    });
+
+    test('bills the braking burn exactly once, however often it is called',
+        () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _coasting(clock, MemoryStorage());
+      expect(c.energy, 300, reason: 'precondition');
+
+      await c.stopShip();
+      await c.stopShip();
+
+      final braking =
+          c.energyLedger.where((t) => t.type == EnergyTxType.braking).toList();
+      expect(braking.length, 1);
+      expect(braking.single.amount, -100);
+      expect(c.energy, 200);
+    });
+
+    test('does nothing when the tank cannot pay for the braking', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _coasting(clock, MemoryStorage(), energy: 50);
+      expect(c.canBrake, isFalse, reason: 'precondition');
+
+      await c.stopShip();
+
+      expect(c.isCoasting, isTrue, reason: 'the ship keeps drifting');
+      expect(c.energy, 50);
+      expect(c.energyLedger, isEmpty);
+    });
+
+    test('does nothing for a parked ship', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock, MemoryStorage());
+      expect(c.canBrake, isTrue, reason: 'a ship at rest is always stoppable');
+
+      await c.stopShip();
+
+      expect(c.isCoasting, isFalse);
+      expect(c.energyLedger, isEmpty);
+    });
+
+    test('delegates to abortJourney while a voyage is in progress', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock, MemoryStorage());
+      final target = c.planets.first;
+      await c.launchJourney(target);
+      final journey = c.activeJourney!;
+      clock.advance(journey.totalDuration ~/ 2);
+      final burned = journey.burnedAt(clock());
+      expect(burned, greaterThan(0), reason: 'precondition');
+
+      await c.stopShip();
+
+      expect(c.activeJourney, isNull);
+      expect(c.isCoasting, isFalse);
+      expect(c.energyLedger.length, 1);
+      expect(c.energyLedger.single.type, EnergyTxType.travelCost);
+      expect(c.energyLedger.single.amount, -burned);
+      expect(c.energy, 300 - burned);
+    });
+
+    test('training is the way out of a drift that cannot afford to brake',
+        () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _coasting(clock, MemoryStorage(), energy: 0);
+      await c.stopShip();
+      expect(c.isCoasting, isTrue, reason: 'no energy, no braking');
+      expect(c.canBrake, isFalse);
+
+      // Training has no precondition, which is exactly why it is the escape
+      // hatch here: a stranded player must always have something to do.
+      // Real course ids and rewards, from `lib/ui/training/courses.dart`:
+      // cardio is 70 EN, walk is 40 EN.
+      final first = await c.startCourse('cardio');
+      await c.completeCourse(first.id, 70);
+      final second = await c.startCourse('walk');
+      await c.completeCourse(second.id, 40);
+      expect(c.energy, 110);
+      expect(c.canBrake, isTrue);
+
+      await c.stopShip();
+
+      expect(c.isCoasting, isFalse);
+      expect(c.energy, 10, reason: '110 EN earned, 100 EN spent braking');
+    });
+
+    test('a braked ship reloads parked, with its ledger intact', () async {
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      final c = await _coasting(clock, storage);
+      clock.advance(const Duration(hours: 1));
+      await c.stopShip();
+      final parked = c.playerPosition3D;
+
+      final reloaded = await _boot(clock, storage);
+
+      expect(reloaded.isCoasting, isFalse);
+      expect(reloaded.driftVelocity.length, 0);
+      expect(reloaded.energy, 200);
+      expect(reloaded.playerPosition3D.x, closeTo(parked.x, 1e-9));
+      expect(reloaded.playerPosition3D.y, closeTo(parked.y, 1e-9));
+      expect(reloaded.playerPosition3D.z, closeTo(parked.z, 1e-9));
+      expect(
+        reloaded.energyLedger
+            .where((t) => t.type == EnergyTxType.braking)
+            .length,
+        1,
+        reason: 'the new enum member has to survive energyTxTypeFromName',
+      );
+    });
+  });
 }

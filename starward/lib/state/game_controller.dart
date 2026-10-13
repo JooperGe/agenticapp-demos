@@ -885,6 +885,36 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Whether the ship can currently be brought out of its motion.
+  ///
+  /// False only for a coasting ship that cannot afford the braking burn — the
+  /// UI uses this to disable the brake rather than letting the tap do nothing.
+  bool get canBrake => !isCoasting || _player.energyBalance >= brakingCost;
+
+  /// Brings the ship to rest where it is, whatever is moving it.
+  ///
+  /// One entry point for the whole idea, so the UI does not have to know which
+  /// kind of motion the ship is in. A voyage in progress is billed for the fuel
+  /// it has burned and the ship parks at the point it had reached — see
+  /// [abortJourney]. A coasting ship must first shed its cruise velocity: that
+  /// braking burn is billed, and the ship then parks at the point the drift had
+  /// carried it to. A parked ship is left alone.
+  ///
+  /// Deliberately does *not* rebuild the nearby set: braking freezes the ship
+  /// where it already is, so the set is still correct. [abortJourney] does
+  /// rebuild, because that one does move the ship.
+  Future<void> stopShip() async {
+    final journey = _activeJourney;
+    if (journey != null && journey.status == JourneyStatus.inProgress) {
+      return abortJourney();
+    }
+    if (!isCoasting) return;
+    if (!canBrake) return;
+    _anchorHere();
+    await _persist();
+    notifyListeners();
+  }
+
   /// Turns the ship around mid-flight: launches a fresh journey from the point
   /// reached so far back to where the active journey departed from. The return
   /// quote is checked against the post-burn balance before the outbound leg is
