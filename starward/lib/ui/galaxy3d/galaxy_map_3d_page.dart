@@ -322,6 +322,13 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
         viewport: vp,
         fovDegrees: _camera.fovDegrees,
       );
+      // A route long enough to need more than `_maxDistance` (e.g. Sol→SG-2 at
+      // 3400 ly) would otherwise leave the camera past the zoom-out bound until
+      // the next pinch clamps it. The drag-zoom path and this one must agree on
+      // the valid range, so clamp here rather than teaching the pure framing
+      // helper about the universe radius.
+      _camera.distance =
+          _camera.distance.clamp(kMinZoomDistance, _maxDistance);
     });
   }
 
@@ -739,6 +746,17 @@ class _CockpitPainter extends CustomPainter {
   bool shouldRepaint(_CockpitPainter oldDelegate) => false;
 }
 
+/// How far the ship is from the universe boundary, for the overview readout.
+/// Negative distances mean the ship is outside the shell — a legal position,
+/// since the synthetic galaxy SG-2 sits at 3400 ly — so they read as
+/// 「壳外 X ly」 rather than as a negative distance.
+String boundaryLabel(double radiusLy, double shipDistanceLy) {
+  final toEdge = radiusLy - shipDistanceLy;
+  return toEdge >= 0
+      ? StarLabels.distance(toEdge)
+      : '壳外 ${StarLabels.distance(-toEdge)}';
+}
+
 /// The universe-overview readout: the boundary radius, where the ship sits
 /// inside it, and — when a voyage is running — the route and a button to frame
 /// it. Replaces the sensor slider, whose 50–416 ly range is meaningless at this
@@ -764,7 +782,6 @@ class _OverviewReadout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final toEdge = radiusLy - shipDistanceLy;
     return SafeArea(
       child: Align(
         alignment: Alignment.bottomCenter,
@@ -805,9 +822,7 @@ class _OverviewReadout extends StatelessWidget {
                   // synthetic galaxy SG-2 sits at 3400 ly and is a real
                   // destination — so a negative reading must say so rather than
                   // print a negative distance.
-                  value: toEdge >= 0
-                      ? StarLabels.distance(toEdge)
-                      : '壳外 ${StarLabels.distance(-toEdge)}',
+                  value: boundaryLabel(radiusLy, shipDistanceLy),
                 ),
                 if (hasJourney) ...<Widget>[
                   const SizedBox(height: 6),

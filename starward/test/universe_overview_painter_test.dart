@@ -93,8 +93,15 @@ void main() {
   // outside render lights up far more pixels.
   //
   // Measured: outside = 199696 px, inside = 11895 px (ratio ≈ 16.8×). The 5×
-  // bound sits far below that and far above 1×, so it cannot flip on a
-  // legitimate change; it fails only if the shell leaks into the inside render.
+  // bound sits far below that and far above 1×.
+  //
+  // What this establishes is the *coarse* contrast "shell drawn outside vs not
+  // drawn at all", not that nothing leaks inside: forcing shellFade to return 1
+  // still passes, because inside the sphere `limbRadius` is infinite so the fill
+  // and limb paths early-return and the leaked lattice strokes (~7k px of faint
+  // lines) stay under the 5× bound. The exact "inside draws nothing" claim is
+  // pinned by `test/universe_shell_test.dart`, which asserts zero opaque pixels
+  // for the same inside case.
   test('draws the shell outside the sphere and not inside it', () async {
     final outside = await opaquePixels(paintAt(cameraAt(2.3 * rWorld)));
     final inside = await opaquePixels(paintAt(cameraAt(880)));

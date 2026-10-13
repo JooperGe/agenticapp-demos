@@ -270,6 +270,12 @@ const double kOverviewMaxDistanceFactor = 5;
 /// A zero-radius universe (empty catalogue) must still yield a valid clamp
 /// range — `num.clamp` throws when the upper limit is below the lower one — so
 /// the result never drops below [kMinZoomDistance].
+///
+/// `5R` clears the viewport-dependent default framing (`1.15 · d_fit`) only
+/// while the aspect ratio `h/w ≲ 2.44`; a taller viewport would need a larger
+/// multiple, and at that point the default framing would again exceed the bound
+/// and re-create the §4.3 failure (camera clamped closer than the framing, shell
+/// sliced open). No real phone exceeds ~2.22, so the factor holds today.
 double maxDistanceFor(CameraMode mode, double universeRadiusWorld) {
   if (mode != CameraMode.overview) return kOrbitMaxDistance;
   return math.max(
