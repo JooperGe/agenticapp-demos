@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:starward/core/theme.dart';
 import 'package:starward/core/vec3.dart';
 import 'package:starward/data/game_repository.dart';
 import 'package:starward/data/models/energy_transaction.dart';
@@ -605,6 +606,44 @@ void main() {
       await showSheet(tester, c);
 
       expect(find.textContaining('先制动需要'), findsNothing);
+    });
+  });
+
+  group('the voyage tab badge', () {
+    /// The badge is a small gold dot in the nav bar; there is no text to find.
+    Finder badgeDot() => find.byWidgetPredicate((w) =>
+        w is Container &&
+        w.decoration is BoxDecoration &&
+        (w.decoration! as BoxDecoration).color == StarColors.gold);
+
+    testWidgets('lights up for a coasting ship, not just a live voyage',
+        (tester) async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _coasting(clock, MemoryStorage());
+      expect(c.activeJourney, isNull, reason: 'precondition: no voyage running');
+
+      await tester.pumpWidget(
+        MaterialApp(home: GameScope(controller: c, child: const HomeShell())),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(badgeDot(), findsOneWidget,
+          reason: 'switching to the training tab must not hide that the ship '
+              'is still drifting');
+    });
+
+    testWidgets('stays dark for a parked ship', (tester) async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock, MemoryStorage());
+
+      await tester.pumpWidget(
+        MaterialApp(home: GameScope(controller: c, child: const HomeShell())),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(badgeDot(), findsNothing);
     });
   });
 }

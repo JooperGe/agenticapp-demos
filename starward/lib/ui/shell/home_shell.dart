@@ -67,8 +67,11 @@ class _StarNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // The journey tab shows a live badge when a voyage is in progress/arrived.
-    final hasJourney = controller.activeJourney != null;
+    // A coasting ship has no active journey, but it is still moving and the
+    // player still has something waiting on the voyage tab — so the badge has
+    // to cover both, or switching to training hides the drift entirely.
+    final hasJourney =
+        controller.activeJourney != null || controller.isCoasting;
     return Container(
       decoration: const BoxDecoration(
         color: StarColors.panel,
