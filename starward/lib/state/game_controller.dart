@@ -594,8 +594,10 @@ class GameController extends ChangeNotifier {
     // it ended.
     final legSeconds =
         exhaustAt.difference(journey.departure).inMilliseconds / 1000;
+    final legFrom = _originPosOf(journey);
+    final legTo = _destPosOf(journey) ?? legFrom;
     final leg = DriftPath(
-      start: _originPosOf(journey),
+      start: legFrom,
       velocity: _cruiseVelocityOf(journey),
       bound: 1e12,
     );
@@ -608,7 +610,13 @@ class GameController extends ChangeNotifier {
       from: journey.departure,
       to: exhaustAt,
       elapsed: exhaustAt.difference(journey.departure),
-      distanceLy: leg.travelledBetween(0, legSeconds),
+      // Capped at the route length, because `_positionAlong` clamps there: a
+      // tank that empties while the ship waits out a rounded-up arrival time
+      // must not report a leg longer than the voyage it is part of.
+      distanceLy: math.min(
+        leg.travelledBetween(0, legSeconds),
+        (legTo - legFrom).length,
+      ),
       fromPos: leg.positionAt(0),
       toPos: pos,
       passedCount: passed.count,
@@ -633,14 +641,20 @@ class GameController extends ChangeNotifier {
     _rebuildNearby();
   }
 
-  /// Cruise speed along a voyage's route, in ly/s. Constant — a coasting ship
-  /// neither accelerates nor slows down.
+  /// Cruise velocity along a voyage's route, in ly/s. Constant — a coasting
+  /// ship neither accelerates nor slows down.
+  ///
+  /// The magnitude is the engine's own cruise speed rather than
+  /// `distance / duration`: the duration is rounded to whole seconds, so
+  /// recovering the speed from it would quote a marginally different drift —
+  /// and with it a marginally different braking cost — for every route length.
   Vec3 _cruiseVelocityOf(Journey j) {
     final from = _originPosOf(j);
     final to = _destPosOf(j) ?? from;
-    final seconds = j.totalDuration.inMilliseconds / 1000;
-    if (seconds <= 0) return const Vec3(0, 0, 0);
-    return (to - from) * (1 / seconds);
+    final delta = to - from;
+    final length = delta.length;
+    if (length <= 0) return const Vec3(0, 0, 0);
+    return delta * (_ship.engine.cruiseSpeedLyPerSec / length);
   }
 
   void _applyArrival(Journey journey) {
@@ -851,13 +865,26 @@ class GameController extends ChangeNotifier {
     return _universe.planetById(id)?.pos;
   }
 
-  /// The ship's current 3D position partway along [j] at [now], by linear
-  /// interpolation between origin and destination. Matches the timestamp-driven
-  /// progress model, so there is no stored position to drift out of sync.
+  /// The ship's current 3D position partway along [j] at [now], flying at the
+  /// engine's cruise speed. Derived from the clock, so there is no stored
+  /// position to drift out of sync.
+  ///
+  /// Flown at the engine's speed rather than interpolated by `progressAt`,
+  /// because `totalDuration` is rounded to whole seconds: a position taken from
+  /// it would imply a marginally different speed than the ship actually has —
+  /// and the fuel-out report, which measures the leg with the engine's speed,
+  /// would then disagree with the position it reports. Clamped at the
+  /// destination so a ship that reaches it before the booked arrival time waits
+  /// there instead of overshooting.
   Vec3 _positionAlong(Journey j, DateTime now) {
     final from = _originPosOf(j);
     final to = _destPosOf(j) ?? from;
-    return from + (to - from) * j.progressAt(now);
+    final delta = to - from;
+    final length = delta.length;
+    if (length <= 0) return from;
+    final elapsed = now.difference(j.departure).inMilliseconds / 1000;
+    final travelled = _ship.engine.cruiseSpeedLyPerSec * math.max(0, elapsed);
+    return from + delta * (math.min(travelled, length) / length);
   }
 
   /// Aborts an in-progress journey, leaving the ship drifting at the point it

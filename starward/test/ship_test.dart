@@ -17,7 +17,7 @@ const Engine _thrifty = Engine(
   id: 'engine.thrifty',
   name: '节能引擎',
   energyPerLy: 1.5,
-  travelSecondsPerLy: 50,
+  cruiseSpeedLyPerSec: 1 / 50,
   brakingDistanceLy: 40,
   minEnergyCost: 1,
   minTravelSeconds: 15,
@@ -90,6 +90,20 @@ void main() {
           lessThan(Engine.standard.energyCostFor(10)));
       expect(_thrifty.secondsFor(10), greaterThan(Engine.standard.secondsFor(10)));
     });
+
+    test('an engine saved before speed became a field migrates to a speed', () {
+      final json = Engine.standard.toJson()
+        ..remove('cruiseSpeedLyPerSec')
+        ..['travelSecondsPerLy'] = 50.0;
+      expect(json.containsKey('cruiseSpeedLyPerSec'), isFalse,
+          reason: 'precondition: this is what an old save looks like');
+
+      final back = Engine.fromJson(json);
+      // The old key was a pace; the field is a speed. Inverting it recovers
+      // the engine exactly, so an old save flies as it always did.
+      expect(back.cruiseSpeedLyPerSec, 1 / 50);
+      expect(back.secondsFor(10), 500, reason: 'the old pace, recovered exactly');
+    });
   });
 
   group('Ship', () {
@@ -120,8 +134,8 @@ void main() {
       final restored = GameSave.fromJson(json);
       expect(restored.ship.id, Ship.standard.id);
       expect(restored.ship.engine.energyPerLy, Engine.standard.energyPerLy);
-      expect(restored.ship.engine.travelSecondsPerLy,
-          Engine.standard.travelSecondsPerLy);
+      expect(restored.ship.engine.cruiseSpeedLyPerSec,
+          Engine.standard.cruiseSpeedLyPerSec);
     });
   });
 

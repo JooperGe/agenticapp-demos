@@ -282,11 +282,8 @@ void main() {
   group('coast', () {
     test('keeps moving at cruise speed and burns nothing more', () async {
       final clock = FakeClock(DateTime(2026));
-      final (c, far) = await _doomed(clock, FuelPolicy.coast);
+      final (c, _) = await _doomed(clock, FuelPolicy.coast);
       final journey = c.activeJourney!;
-      final origin = c.planetById(journey.originPlanetId)!.pos;
-      final distance = (far.pos - origin).length;
-      final seconds = journey.totalDuration.inMilliseconds / 1000;
 
       clock.advance(c.fuelExhaustTime(journey).difference(clock()) +
           const Duration(seconds: 1));
@@ -297,9 +294,12 @@ void main() {
       expect(c.energy, 0);
       final v = c.driftVelocity;
       expect(v.length, greaterThan(0));
-      // Cruise speed is distance over duration — the same number the engine
-      // would have flown at, so a coasting ship does not slow down.
-      expect(v.length, closeTo(distance / seconds, 1e-6));
+      // The engine's own cruise speed, not `distance / duration`. The duration
+      // is rounded to whole seconds, so a speed recovered from it would differ
+      // per route — and the braking quote, a ratio of that speed, with it. The
+      // tolerance covers the round trip through `Vec3.length` (a few ulps);
+      // the derivation it replaces is off by ~1e-7, so this still has teeth.
+      expect(v.length, closeTo(c.ship.engine.cruiseSpeedLyPerSec, 1e-12));
 
       final entries = c.energyLedger.length;
       final atStart = c.playerPosition3D;

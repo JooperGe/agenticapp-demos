@@ -147,7 +147,7 @@ void main() {
         id: 'test.greedy',
         name: '测试引擎',
         energyPerLy: 1000,
-        travelSecondsPerLy: 37.5,
+        cruiseSpeedLyPerSec: 1 / 37.5,
         brakingDistanceLy: 40,
         minEnergyCost: 1,
         minTravelSeconds: 15,

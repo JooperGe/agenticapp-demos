@@ -82,8 +82,8 @@ void main() {
   group('Engine braking', () {
     test('a full cruise burn costs what flying the braking distance costs', () {
       const e = Engine.standard;
-      expect(e.travelSecondsPerLy, 37.5, reason: 'the pinned reference engine');
-      expect(e.cruiseSpeedLyPerSec, closeTo(0.0266667, 1e-7));
+      expect(e.cruiseSpeedLyPerSec, 1 / 37.5,
+          reason: 'the pinned reference engine — exact, not a rounded literal');
       expect(e.brakingDistanceLy, 40);
       expect(e.energyCostFor(40), 100, reason: 'the quote this all rests on');
       expect(e.brakingCostFor(e.cruiseSpeedLyPerSec), 100);
@@ -92,6 +92,18 @@ void main() {
     test('half a cruise speed costs half as much', () {
       const e = Engine.standard;
       expect(e.brakingCostFor(e.cruiseSpeedLyPerSec / 2), 50);
+    });
+
+    test('a speed recovered from a rounded duration mis-quotes the burn', () {
+      const e = Engine.standard;
+      // Why the speed is a field and not `distance / duration`. A 1 ly voyage
+      // rounds its duration to 38 s, so the old derivation gave 1/38 rather
+      // than 1/37.5 — and the quote fell to 99 EN. The shortest route in the
+      // catalogue (1.0472 ly) rounds the other way and came out at 101. Either
+      // way the quote moved with the route, for a burn that is meant to be the
+      // engine's own property.
+      expect(e.brakingCostFor(1 / 38), 99);
+      expect(e.brakingCostFor(e.cruiseSpeedLyPerSec), 100);
     });
 
     test('a ship at rest is quoted nothing, not the minEnergyCost floor', () {

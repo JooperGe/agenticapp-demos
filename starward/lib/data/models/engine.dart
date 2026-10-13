@@ -13,7 +13,7 @@ class Engine {
     required this.id,
     required this.name,
     required this.energyPerLy,
-    required this.travelSecondsPerLy,
+    required this.cruiseSpeedLyPerSec,
     required this.brakingDistanceLy,
     required this.minEnergyCost,
     required this.minTravelSeconds,
@@ -26,8 +26,16 @@ class Engine {
   /// tiers — so a short hop is quick and cheap while a long haul is neither.
   final double energyPerLy;
 
-  /// Seconds of flight per light-year.
-  final double travelSecondsPerLy;
+  /// The speed a voyage settles at, in ly/s.
+  ///
+  /// Speed rather than pace (seconds per light-year) because speed is what the
+  /// rest of the game reasons about: a drift continues at it, and the braking
+  /// quote is a ratio of it. Storing one of the two and deriving the other —
+  /// rather than recovering speed from `distance / duration` at each use — is
+  /// what keeps the braking quote exactly constant. A duration is rounded to
+  /// whole seconds, so a speed recovered from it would differ from route to
+  /// route and drag the quote along with it.
+  final double cruiseSpeedLyPerSec;
 
   /// Distance the engine needs to shed one cruise speed's worth of velocity.
   /// Braking from a full cruise burn costs what flying this far costs.
@@ -48,7 +56,7 @@ class Engine {
 
   /// Flight time for [distanceLy] light-years.
   int secondsFor(double distanceLy) =>
-      math.max(minTravelSeconds, (distanceLy * travelSecondsPerLy).round());
+      math.max(minTravelSeconds, (distanceLy / cruiseSpeedLyPerSec).round());
 
   /// How far [energy] will carry this engine, in light-years.
   ///
@@ -57,9 +65,6 @@ class Engine {
   /// 100.0 ly trip"), so it lives on the engine rather than being recomputed
   /// wherever it is displayed.
   double reachableLyFor(int energy) => energy / energyPerLy;
-
-  /// The speed a voyage settles at, in ly/s.
-  double get cruiseSpeedLyPerSec => 1 / travelSecondsPerLy;
 
   /// Energy to shed [speedLyPerSec], in EN.
   ///
@@ -83,7 +88,7 @@ class Engine {
     id: 'engine.standard',
     name: '标准聚变引擎',
     energyPerLy: 2.5,
-    travelSecondsPerLy: 37.5,
+    cruiseSpeedLyPerSec: 1 / 37.5,
     brakingDistanceLy: 40,
     minEnergyCost: 1,
     minTravelSeconds: 15,
@@ -93,7 +98,11 @@ class Engine {
         id: json['id'] as String,
         name: json['name'] as String,
         energyPerLy: (json['energyPerLy'] as num).toDouble(),
-        travelSecondsPerLy: (json['travelSecondsPerLy'] as num).toDouble(),
+        // Saves written before speed became a field carry `travelSecondsPerLy`
+        // instead. Read the old key rather than bumping `_saveKey` and costing
+        // the player their game.
+        cruiseSpeedLyPerSec: (json['cruiseSpeedLyPerSec'] as num?)?.toDouble() ??
+            1 / (json['travelSecondsPerLy'] as num).toDouble(),
         // Saves written after the engine refactor carry a `ship.engine` object
         // with no `brakingDistanceLy`; reading it with `as double` would throw
         // and cost the player their game. Fall back rather than bump the key.
@@ -107,7 +116,7 @@ class Engine {
         'id': id,
         'name': name,
         'energyPerLy': energyPerLy,
-        'travelSecondsPerLy': travelSecondsPerLy,
+        'cruiseSpeedLyPerSec': cruiseSpeedLyPerSec,
         'brakingDistanceLy': brakingDistanceLy,
         'minEnergyCost': minEnergyCost,
         'minTravelSeconds': minTravelSeconds,
