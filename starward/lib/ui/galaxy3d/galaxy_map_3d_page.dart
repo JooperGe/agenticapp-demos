@@ -88,15 +88,14 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
         extraGalaxies: _c.universe.extraGalaxies,
       );
 
-  /// The ship's 3D world position: its planet when docked, otherwise the
-  /// randomised deep-space drift coordinate (scaled into world units).
-  Vec3 get _shipPos {
-    final origin = _c.deepSpaceOrigin3D;
-    if (origin != null) return origin * _worldScale;
-    final planet = _c.currentPlanet;
-    if (planet == null) return const Vec3(0, 0, 0);
-    return planet.pos * _worldScale;
-  }
+  /// The ship's 3D world position: its planet when docked, otherwise its live
+  /// deep-space position (scaled into world units).
+  ///
+  /// This must be [GameController.playerPosition3D], not the deep-space
+  /// *anchor*: the anchor only moves on a launch or an arrival, so a coasting
+  /// ship would leave the marker — and every reading derived from it, the
+  /// universe-overview "飞船距球心" among them — frozen for the whole coast.
+  Vec3 get _shipPos => _c.playerPosition3D * _worldScale;
 
   void _initCamera() {
     _initedCamera = true;
