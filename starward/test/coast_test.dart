@@ -154,7 +154,7 @@ void main() {
       // The farthest star in HYG + SG-1 + SG-2, measured 2026-10-13.
       // If this drifts, the star catalogue or the galaxy generator changed —
       // and the shell is no longer the sphere the overview draws.
-      expect(u.universeRadius, closeTo(3948.5, 30));
+      expect(u.universeRadius, closeTo(3947.5, 30));
     });
 
     test('the shell holds every star in the catalogue', () async {

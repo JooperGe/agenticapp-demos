@@ -188,7 +188,7 @@ class Universe {
   ///
   /// Derived from the catalogue rather than hard-coded, so dropping in another
   /// galaxy widens the shell on its own and nobody has to remember a magic
-  /// number. Measured 2026-10-13 over 120,601 stars: 3948.5 ly.
+  /// number. Measured 2026-10-13 over 120,601 stars: 3947.5 ly.
   ///
   /// **This was p95 (3066 ly) until 2026-10-13.** The percentile was chosen
   /// because a coasting ship is confined to this shell, so the shell has to sit
