@@ -212,21 +212,69 @@ Add the migration fallback to `fromJson` and the key to `toJson`:
       };
 ```
 
+- [ ] **Step 3b: Add the field to the four test engines that build `Engine(...)` literally**
+
+`brakingDistanceLy` is required, so these stop compiling until they name it. Use `40` — the same value as the standard engine. These engines vary *fuel economy* (`_greedy` at 1000 EN/ly, `_thrifty` at 1.5 EN/ly), not braking, and none of the tests that use them coast, so the value is behaviourally inert; anything else would invent game balance the spec did not ask for.
+
+`starward/test/flight_panel_test.dart:258` and `starward/test/drift_report_test.dart:55` (both `_greedy`) — add one line after `travelSecondsPerLy`:
+
+```dart
+const _greedy = Engine(
+  id: 'test.greedy',
+  name: '测试引擎',
+  energyPerLy: 1000,
+  travelSecondsPerLy: 37.5,
+  brakingDistanceLy: 40,
+  minEnergyCost: 1,
+  minTravelSeconds: 15,
+);
+```
+
+`starward/test/ship_test.dart:16` (`_thrifty`) — same insertion:
+
+```dart
+const Engine _thrifty = Engine(
+  id: 'engine.thrifty',
+  name: '节能引擎',
+  energyPerLy: 1.5,
+  travelSecondsPerLy: 50,
+  brakingDistanceLy: 40,
+  minEnergyCost: 1,
+  minTravelSeconds: 15,
+);
+```
+
+`starward/test/return_to_origin_test.dart:146` (inline) — same insertion:
+
+```dart
+      await c.installEngine(const Engine(
+        id: 'test.greedy',
+        name: '测试引擎',
+        energyPerLy: 1000,
+        travelSecondsPerLy: 37.5,
+        brakingDistanceLy: 40,
+        minEnergyCost: 1,
+        minTravelSeconds: 15,
+      ));
+```
+
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `cd starward && flutter test test/braking_test.dart`
 Expected: PASS — 5 tests.
 
-Then confirm nothing else broke, because `Engine` gained a required constructor parameter:
+Then confirm nothing else broke, because `Engine` gained a required constructor parameter. `Engine.standard` is the only construction site in `lib/`; the four test constructions handled in Step 3b are the only others in the repo:
 
 Run: `cd starward && flutter analyze && flutter test`
-Expected: `No issues found!` and all tests green. (`Engine.standard` is the only construction site in `lib/`; tests construct engines via `Engine.standard` or `Engine.fromJson`.)
+Expected: `No issues found!` and all tests green.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 cd starward
-git add lib/data/models/engine.dart test/braking_test.dart
+git add lib/data/models/engine.dart test/braking_test.dart \
+        test/flight_panel_test.dart test/drift_report_test.dart \
+        test/ship_test.dart test/return_to_origin_test.dart
 git commit -m "feat(starward): give the engine a braking distance and a quote for it
 
 A coasting ship has momentum and nothing in the model prices shedding it.
@@ -1602,7 +1650,7 @@ and change the gate on the halt/coast choices from `energy > 0` to:
             if (energy > braking) ...<Widget>[
 ```
 
-- [ ] **Step 4: Update both call sites**
+- [ ] **Step 4: Update all three call sites**
 
 In `starward/lib/ui/galaxy/planet_details_sheet.dart`, in `_launchWithChoice` (currently around `:423`), add the parameter:
 
@@ -1645,6 +1693,19 @@ In `starward/lib/ui/galaxy3d/galaxy_map_3d_page.dart`, in `_launchToStar` (curre
     }
 ```
 
+There is a **third** call site the two above do not cover: `starward/test/fuel_out_test.dart:381`, inside that file's local `open()` helper. `braking` being required stops the file compiling until it is named. Pass `0` rather than adding a parameter to the helper — that keeps the whole group byte-identical, because `reachableLyFor(energy - 0)` is `reachableLyFor(energy)`, `energy > 0` is `energy > braking`, and the copy takes the `braking > 0 ? … : …` else-branch, which is the original string. Task 6's tests in `braking_test.dart` are what cover the non-zero case, so an unused helper parameter would be YAGNI.
+
+```dart
+                picked.complete(await showFuelChoiceDialog(
+                  context,
+                  energy: energy,
+                  cost: cost,
+                  braking: 0,
+                  distanceLy: 100.0,
+                  engine: Engine.standard,
+                ));
+```
+
 - [ ] **Step 5: Run the tests to verify they pass**
 
 Run: `cd starward && flutter test test/braking_test.dart`
@@ -1659,7 +1720,7 @@ Expected: green. The dialog's signature changed, so `flutter analyze` is what ca
 
 ```bash
 cd starward
-git add lib/ui/journey/fuel_choice_dialog.dart lib/ui/galaxy/planet_details_sheet.dart lib/ui/galaxy3d/galaxy_map_3d_page.dart test/braking_test.dart
+git add lib/ui/journey/fuel_choice_dialog.dart lib/ui/galaxy/planet_details_sheet.dart lib/ui/galaxy3d/galaxy_map_3d_page.dart test/braking_test.dart test/fuel_out_test.dart
 git commit -m "feat(starward): show the braking burn as its own line in the fuel dialog
 
 The dialog computed how far the tank would carry with reachableLyFor(energy)
