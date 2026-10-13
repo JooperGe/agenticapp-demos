@@ -115,13 +115,11 @@ class Camera3D {
     final camX = rel.dot(right);
     final camY = rel.dot(camUp);
 
-    final focal = (viewport.height / 2) / math.tan(_fovRadians / 2);
+    final focal = focalFor(viewport, fovDegrees);
     final sx = viewport.width / 2 + camX / camZ * focal;
     final sy = viewport.height / 2 - camY / camZ * focal;
     return Projected(Offset(sx, sy), camZ, focal / camZ, true);
   }
-
-  double get _fovRadians => fovDegrees * math.pi / 180;
 }
 
 /// Tiny size holder so the camera stays free of Flutter painting imports
@@ -225,4 +223,32 @@ void placeCamera(
     case CameraMode.cockpit:
       camera.eyeOverride = shipPosition;
   }
+}
+
+/// Zoom-in limit for every mode, in world units. Shared so the page's clamp and
+/// the route-focus framing cannot drift apart.
+const double kMinZoomDistance = 70;
+
+/// Zoom-out limit for [CameraMode.orbit] and [CameraMode.cockpit].
+const double kOrbitMaxDistance = 1800;
+
+/// The overview zoom-out limit is this multiple of the universe radius.
+const double kOverviewMaxDistanceFactor = 5;
+
+/// Zoom-out limit for [mode], in world units — the upper end of the page's
+/// drag-zoom clamp.
+///
+/// Overview is bounded by the framing distance, which is viewport-dependent: a
+/// landscape viewport frames the sphere at 2.3R and a portrait one at 4.15R. A
+/// bound picked by eye for landscape would sit *inside* the portrait framing
+/// distance, so entering the mode on a phone would clamp the camera closer than
+/// the framing and slice the shell open. Deriving it from R is the fix.
+///
+/// A zero-radius universe (empty catalogue) must still yield a valid clamp
+/// range — `num.clamp` throws when the upper limit is below the lower one — so
+/// the result never drops below [kMinZoomDistance].
+double maxDistanceFor(CameraMode mode, double universeRadiusWorld) {
+  if (mode != CameraMode.overview) return kOrbitMaxDistance;
+  return math.max(
+      kMinZoomDistance, kOverviewMaxDistanceFactor * universeRadiusWorld);
 }

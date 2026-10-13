@@ -163,10 +163,28 @@ void main() {
       expect(landscapeDefault, closeTo(2.3 * rWorld, 1));
       expect(portraitDefault, closeTo(4.146384 * rWorld, 1));
     });
+  });
 
-    test('the orbit bound is unchanged at 1800', () {
-      // Regression: the overview bound must not leak into the orbit mode.
-      expect(1800.0, lessThan(5 * rWorld));
+  group('maxDistanceFor', () {
+    test('overview is bounded at 5R, orbit and cockpit stay at 1800', () {
+      expect(maxDistanceFor(CameraMode.overview, rWorld), closeTo(5 * rWorld, 1));
+      expect(maxDistanceFor(CameraMode.orbit, rWorld), 1800.0);
+      expect(maxDistanceFor(CameraMode.cockpit, rWorld), 1800.0);
+    });
+
+    test('an empty catalogue still yields a valid clamp range', () {
+      // Universe.universeRadius returns 0 with no stars; clamp(70, 0) throws.
+      expect(maxDistanceFor(CameraMode.overview, 0), kMinZoomDistance);
+    });
+
+    test('the bound clears the default framing in both orientations', () {
+      // The regression §4.3 names: d_default is viewport-dependent, so a bound
+      // picked by eye for landscape would clamp the camera closer than the
+      // framing on a phone and cut the shell open on entry.
+      for (final vp in <Size2>[landscape, portrait]) {
+        expect(1.15 * fitDistanceForSphere(radius: rWorld, viewport: vp, fovDegrees: fov),
+            lessThan(maxDistanceFor(CameraMode.overview, rWorld)));
+      }
     });
   });
 
