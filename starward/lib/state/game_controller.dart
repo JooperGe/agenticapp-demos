@@ -900,9 +900,11 @@ class GameController extends ChangeNotifier {
   /// braking burn is billed, and the ship then parks at the point the drift had
   /// carried it to. A parked ship is left alone.
   ///
-  /// Deliberately does *not* rebuild the nearby set: braking freezes the ship
-  /// where it already is, so the set is still correct. [abortJourney] does
-  /// rebuild, because that one does move the ship.
+  /// Deliberately does *not* rebuild the nearby set. While coasting that set is
+  /// refreshed only every [_nearbyRescanLy] ly, so braking can leave it that far
+  /// out of date — harmless, because quotes are recomputed from
+  /// [playerPosition3D] rather than read off the set. [abortJourney] does
+  /// rebuild, because that one moves the ship to a point it never scanned from.
   Future<void> stopShip() async {
     final journey = _activeJourney;
     if (journey != null && journey.status == JourneyStatus.inProgress) {

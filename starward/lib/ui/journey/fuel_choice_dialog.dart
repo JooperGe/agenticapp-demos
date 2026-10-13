@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
@@ -21,8 +23,11 @@ Future<FuelPolicy?> showFuelChoiceDialog(
   required Engine engine,
 }) {
   // The braking burn comes off the top, so what matters for the voyage is what
-  // is left after it — not the whole balance.
-  final reach = engine.reachableLyFor(energy - braking);
+  // is left after it — not the whole balance. Both call sites gate on
+  // `energy > braking`; clamping here keeps a caller that forgets from putting
+  // a negative tank and a negative reach in front of the player.
+  final afterBraking = math.max(0, energy - braking);
+  final reach = engine.reachableLyFor(afterBraking);
   return showModalBottomSheet<FuelPolicy>(
     context: context,
     backgroundColor: Colors.transparent,
@@ -47,7 +52,7 @@ Future<FuelPolicy?> showFuelChoiceDialog(
               Text(
                 braking > 0
                     ? '你只有 $energy EN，其中 $braking EN 要先用于制动。'
-                        '制动后剩 ${energy - braking} EN，'
+                        '制动后剩 $afterBraking EN，'
                         '可以飞 ${reach.toStringAsFixed(1)} ly，'
                         '全程 ${distanceLy.toStringAsFixed(1)} ly。'
                     : '你只有 $energy EN，可以飞 ${reach.toStringAsFixed(1)} ly，'

@@ -156,6 +156,38 @@ void main() {
       expect(c.energy, 100000 - 100);
     });
 
+    test('a launch to a star from a drift books it once, too', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _coasting(clock, MemoryStorage(), energy: 100000);
+      // The nearest planetless star — a star with planets has different
+      // arrival semantics, so pick one without. Same house idiom as
+      // `drift_report_test.dart`.
+      int? star;
+      var best = double.infinity;
+      for (var i = 0; i < c.stars.count; i++) {
+        final id = c.stars.starId[i];
+        if (c.universe.planetsAtStar(id).isNotEmpty) continue;
+        final d = c.distanceToStar(id);
+        if (d < best) {
+          best = d;
+          star = id;
+        }
+      }
+      expect(star, isNotNull, reason: 'expected some planetless star');
+      final hygId = star!;
+      final voyageFuel = c.ship.engine.energyCostFor(c.distanceToStar(hygId));
+      expect(voyageFuel, greaterThan(0), reason: 'precondition');
+
+      expect(await c.launchToStar(hygId), LaunchResult.success);
+
+      final braking =
+          c.energyLedger.where((t) => t.type == EnergyTxType.braking).toList();
+      expect(braking.length, 1);
+      expect(braking.single.amount, -100);
+      expect(c.isCoasting, isFalse);
+      expect(c.energy, 100000 - 100);
+    });
+
     test('keeps the braking burn out of the voyage quote', () async {
       final clock = FakeClock(DateTime(2026));
       final storage = MemoryStorage();
@@ -557,6 +589,21 @@ void main() {
       expect(find.textContaining('制动'), findsNothing);
       expect(find.textContaining('可以飞 60.0 ly'), findsOneWidget,
           reason: 'reachableLyFor(150) = 60.0 ly');
+    });
+
+    testWidgets('clamps a tank below the braking burn to zero, not negative',
+        (tester) async {
+      // Both real call sites gate on `energy > braking`, but the function is
+      // public: a future caller that forgets must not put a negative tank and
+      // a negative reach in front of the player.
+      expect(Engine.standard.reachableLyFor(0), 0.0,
+          reason: 'precondition: the real value reachableLyFor(0) returns');
+      await open(tester, energy: 50, braking: 100);
+
+      expect(find.textContaining('制动后剩 0 EN'), findsOneWidget);
+      expect(find.textContaining('可以飞 0.0 ly'), findsOneWidget);
+      expect(find.textContaining('-'), findsNothing,
+          reason: 'no negative number may reach the player');
     });
   });
 
