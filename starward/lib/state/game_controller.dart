@@ -282,8 +282,10 @@ class GameController extends ChangeNotifier {
 
   /// The path the current drift follows, or null when the ship is parked.
   ///
-  /// `bound` is `max(universeRadius, |start|)` so a ship that spawned outside
-  /// the shell keeps its own radius instead of being teleported inward.
+  /// `bound` is `max(universeRadius, |start|)`: the shell is the catalogue's
+  /// bounding radius, so `|start| > bound` cannot happen for a star-spawned
+  /// ship — but the max keeps the definition honest if it ever does, instead of
+  /// teleporting the ship inward.
   DriftPath? get driftPath {
     if (!isCoasting) return null;
     final start = Vec3(_player.startX, _player.startY, _player.startZ);

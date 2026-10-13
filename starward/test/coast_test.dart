@@ -147,24 +147,44 @@ void main() {
     // The real catalogue is a bundled asset; loading it needs the binding.
     setUpAll(TestWidgetsFlutterBinding.ensureInitialized);
 
-    test('pins the measured 95th-percentile radius', () async {
+    test('pins the catalogue bounding radius', () async {
       final hyg = await HygCatalog.load();
       expect(hyg, isNotNull);
       final u = Universe(hyg!, extraGalaxies: SyntheticGalaxy.all());
-      // Measured 2026-10-12 over 120,601 stars (HYG + SG-1 + SG-2).
+      // The farthest star in HYG + SG-1 + SG-2, measured 2026-10-13.
       // If this drifts, the star catalogue or the galaxy generator changed —
-      // and the shell is no longer where the density study put it.
-      expect(u.universeRadius, closeTo(3066, 30));
+      // and the shell is no longer the sphere the overview draws.
+      expect(u.universeRadius, closeTo(3948.5, 30));
     });
 
-    test('the shell is somewhere with stars to reach', () async {
+    test('the shell holds every star in the catalogue', () async {
       final hyg = await HygCatalog.load();
       final u = Universe(hyg!, extraGalaxies: SyntheticGalaxy.all());
       final r = u.universeRadius;
-      // A point on the shell must still see a healthy neighbourhood: the
-      // nearby search reaches 960 ly, and its target is 10 planets.
-      final onShell = Vec3(r, 0, 0);
-      expect(u.planetsNear(onShell, 960).length, greaterThanOrEqualTo(10));
+
+      // The contract the universe-overview camera draws: the glass sphere is
+      // the catalogue's bounding sphere, so nothing — SG-2 included — hangs
+      // outside it. This replaced "the shell is somewhere with stars to reach"
+      // on 2026-10-13; the trade that was accepted is written up on
+      // `universeRadius`. Both halves are needed: containment alone would pass
+      // if the radius were simply made enormous.
+      var farthest = 0.0;
+      void scan(List<double> xyz, int count) {
+        for (var i = 0; i < count; i++) {
+          final x = xyz[i * 3], y = xyz[i * 3 + 1], z = xyz[i * 3 + 2];
+          final d = math.sqrt(x * x + y * y + z * z);
+          if (d > farthest) farthest = d;
+        }
+      }
+
+      scan(u.stars.xyz, u.stars.count);
+      for (final g in u.extraGalaxies) {
+        scan(g.xyz, g.count);
+      }
+      expect(farthest, lessThanOrEqualTo(r),
+          reason: 'no star may sit outside the drawn shell');
+      expect(r, closeTo(farthest, 0.001),
+          reason: 'the shell is tight — it touches the farthest star');
     });
 
     test('nearestPlanets finds somewhere to go from the middle of nowhere',

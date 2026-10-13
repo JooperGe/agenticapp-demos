@@ -183,17 +183,29 @@ class Universe {
 
   double? _universeRadius;
 
-  /// The radius of the bounded-but-edgeless universe: the smallest sphere that
-  /// holds 95% of every star we know about, in light-years.
+  /// The radius of the universe: the smallest sphere centred on Sol that holds
+  /// **every** star we know about, in light-years.
   ///
   /// Derived from the catalogue rather than hard-coded, so dropping in another
   /// galaxy widens the shell on its own and nobody has to remember a magic
-  /// number. The *fraction* is the interesting choice: a coasting ship is
-  /// confined to this shell, so the shell has to sit where the stars are.
-  /// Measured 2026-10-12 over 120,601 stars: 3066 ly. Every point sampled on
-  /// that shell has at least 35 stars within the 960 ly the nearby search
-  /// reaches; putting the shell at the catalogue's true edge (3948 ly) instead
-  /// leaves it in vacuum — the exact dead end the shell exists to prevent.
+  /// number. Measured 2026-10-13 over 120,601 stars: 3948.5 ly.
+  ///
+  /// **This was p95 (3066 ly) until 2026-10-13.** The percentile was chosen
+  /// because a coasting ship is confined to this shell, so the shell has to sit
+  /// where stars are dense: at p95 every sampled point on it had at least 33
+  /// stars within the 960 ly the nearby search reaches. What changed is that
+  /// the shell is *also* the sphere the universe-overview camera draws, and at
+  /// p95 the synthetic galaxy SG-2 (centred at 3400 ly, spanning 2877–3948) hung
+  /// visibly outside it. SG-2 is 5% of the catalogue and almost all of the
+  /// outer 5%, so nudging the galaxy inward just drags the p95 along with it —
+  /// raising the quantile was the only lever that contains it.
+  ///
+  /// The cost is real and was accepted deliberately: 8.6% of points on this
+  /// shell have **no** star within 960 ly, where at p95 the minimum was 33. A
+  /// ship coasting into one of those patches passes nothing until it slides
+  /// clear. `_rebuildNearby` still expands its search radius and falls back to
+  /// `nearestPlanets`, so the player is never stuck — but the neighbourhood is
+  /// thin, and the shell no longer means "somewhere with stars to reach".
   /// See docs/superpowers/specs/2026-10-12-starward-voyage-energy-and-drift-design.md §5.
   ///
   /// Computed once on first use and cached; the scan is ~120k square roots.
@@ -218,7 +230,9 @@ class Universe {
     if (distances.isEmpty) return 0;
 
     distances.sort();
-    final r = distances[((distances.length - 1) * 0.95).round()];
+    // The bounding radius, so the invariant is "no star lies outside" — which
+    // is what the overview's glass sphere needs to be true.
+    final r = distances.last;
     _universeRadius = r;
     return r;
   }

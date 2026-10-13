@@ -5,7 +5,9 @@ import 'package:starward/ui/galaxy3d/camera3d.dart';
 /// derived by hand in the spec (§4.2, §5.2) and pinned so a refactor that
 /// changes the framing is caught rather than shipped.
 void main() {
-  // The measured universe radius, in world units (3066 ly × worldScale 12).
+  // A sample radius in world units (3066 ly × worldScale 12). Everything below
+  // is radius-agnostic — the framing maths never sees the catalogue — so this
+  // stands in for whatever `Universe.universeRadius` happens to yield.
   const double rWorld = 36792;
   const double fov = 60;
   const Size2 landscape = Size2(800, 600);

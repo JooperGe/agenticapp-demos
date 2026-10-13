@@ -747,9 +747,14 @@ class _CockpitPainter extends CustomPainter {
 }
 
 /// How far the ship is from the universe boundary, for the overview readout.
-/// Negative distances mean the ship is outside the shell — a legal position,
-/// since the synthetic galaxy SG-2 sits at 3400 ly — so they read as
-/// 「壳外 X ly」 rather than as a negative distance.
+/// Negative distances read as 「壳外 X ly」 rather than as a negative distance.
+///
+/// That branch is defensive now. When the radius was the 95th percentile of
+/// star distances it fired for real — SG-2 sits at 3400 ly, outside a 3066 ly
+/// shell — but the shell became the catalogue's bounding radius on 2026-10-13,
+/// so a star-spawned ship can no longer be outside it. It survives for the
+/// degenerate cases: an empty catalogue (radius 0) puts everything outside, and
+/// it is the visible symptom if the containment invariant ever breaks.
 String boundaryLabel(double radiusLy, double shipDistanceLy) {
   final toEdge = radiusLy - shipDistanceLy;
   return toEdge >= 0
@@ -818,10 +823,10 @@ class _OverviewReadout extends StatelessWidget {
                 ),
                 _ReadoutRow(
                   label: '飞船距边界',
-                  // The ship can legitimately be outside the shell — the
-                  // synthetic galaxy SG-2 sits at 3400 ly and is a real
-                  // destination — so a negative reading must say so rather than
-                  // print a negative distance.
+                  // A negative reading must say so rather than print a negative
+                  // distance. It is defensive: since the shell became the
+                  // catalogue's bounding radius no star-spawned ship can be
+                  // outside it, so only an empty catalogue reaches this branch.
                   value: boundaryLabel(radiusLy, shipDistanceLy),
                 ),
                 if (hasJourney) ...<Widget>[

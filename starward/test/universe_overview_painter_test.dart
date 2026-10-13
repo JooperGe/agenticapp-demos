@@ -14,6 +14,9 @@ import 'package:starward/ui/galaxy3d/universe_overview_painter.dart';
 /// silhouette — and that it paints something.
 void main() {
   const double ws = 12;
+  // A sample radius, not the catalogue's current bounding radius: the painter
+  // is driven by whatever `universeRadiusLy` the page passes it, so these
+  // thresholds pin behaviour at a representative scale rather than a live value.
   const double rWorld = 36792;
   const double rLy = 3066;
 
