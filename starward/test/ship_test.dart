@@ -18,6 +18,7 @@ const Engine _thrifty = Engine(
   name: '节能引擎',
   energyPerLy: 1.5,
   travelSecondsPerLy: 50,
+  brakingDistanceLy: 40,
   minEnergyCost: 1,
   minTravelSeconds: 15,
 );

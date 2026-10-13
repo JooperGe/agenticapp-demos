@@ -14,6 +14,7 @@ class Engine {
     required this.name,
     required this.energyPerLy,
     required this.travelSecondsPerLy,
+    required this.brakingDistanceLy,
     required this.minEnergyCost,
     required this.minTravelSeconds,
   });
@@ -27,6 +28,14 @@ class Engine {
 
   /// Seconds of flight per light-year.
   final double travelSecondsPerLy;
+
+  /// Distance the engine needs to shed one cruise speed's worth of velocity.
+  /// Braking from a full cruise burn costs what flying this far costs.
+  ///
+  /// A distance rather than a flat EN price, because "how much does this engine
+  /// need to cancel its own speed" is a property of the engine — a refit that
+  /// brakes harder should not have to also edit a global cost table.
+  final double brakingDistanceLy;
 
   /// Floors so even a jump to a close neighbour still takes a beat and costs a
   /// little, and never resolves to 0 EN / 0 s.
@@ -49,6 +58,23 @@ class Engine {
   /// wherever it is displayed.
   double reachableLyFor(int energy) => energy / energyPerLy;
 
+  /// The speed a voyage settles at, in ly/s.
+  double get cruiseSpeedLyPerSec => 1 / travelSecondsPerLy;
+
+  /// Energy to shed [speedLyPerSec], in EN.
+  ///
+  /// Written as a ratio of the cruise speed rather than as a flat price so that
+  /// a partly-spent drift is automatically cheaper, and so the rule still holds
+  /// if a future engine's drift speed stops being constant.
+  ///
+  /// Zero for a ship already at rest — [energyCostFor] floors at
+  /// [minEnergyCost], so without this guard a stationary ship would be quoted
+  /// 1 EN to not move.
+  int brakingCostFor(double speedLyPerSec) {
+    if (speedLyPerSec <= 0) return 0;
+    return energyCostFor(brakingDistanceLy * speedLyPerSec / cruiseSpeedLyPerSec);
+  }
+
   /// The engine every new ship is fitted with.
   ///
   /// These are the numbers the game has always used, so a standard ship flies
@@ -58,6 +84,7 @@ class Engine {
     name: '标准聚变引擎',
     energyPerLy: 2.5,
     travelSecondsPerLy: 37.5,
+    brakingDistanceLy: 40,
     minEnergyCost: 1,
     minTravelSeconds: 15,
   );
@@ -67,6 +94,11 @@ class Engine {
         name: json['name'] as String,
         energyPerLy: (json['energyPerLy'] as num).toDouble(),
         travelSecondsPerLy: (json['travelSecondsPerLy'] as num).toDouble(),
+        // Saves written after the engine refactor carry a `ship.engine` object
+        // with no `brakingDistanceLy`; reading it with `as double` would throw
+        // and cost the player their game. Fall back rather than bump the key.
+        brakingDistanceLy: (json['brakingDistanceLy'] as num?)?.toDouble() ??
+            Engine.standard.brakingDistanceLy,
         minEnergyCost: json['minEnergyCost'] as int,
         minTravelSeconds: json['minTravelSeconds'] as int,
       );
@@ -76,6 +108,7 @@ class Engine {
         'name': name,
         'energyPerLy': energyPerLy,
         'travelSecondsPerLy': travelSecondsPerLy,
+        'brakingDistanceLy': brakingDistanceLy,
         'minEnergyCost': minEnergyCost,
         'minTravelSeconds': minTravelSeconds,
       };
