@@ -322,11 +322,11 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
         viewport: vp,
         fovDegrees: _camera.fovDegrees,
       );
-      // A route long enough to need more than `_maxDistance` (e.g. Sol→SG-2 at
-      // 3400 ly) would otherwise leave the camera past the zoom-out bound until
-      // the next pinch clamps it. The drag-zoom path and this one must agree on
-      // the valid range, so clamp here rather than teaching the pure framing
-      // helper about the universe radius.
+      // A route can be long enough — or the viewport tall enough — that the
+      // framing distance needs more than `_maxDistance`, which would leave the
+      // camera past the zoom-out bound until the next pinch clamps it. The
+      // drag-zoom path and this one must agree on the valid range, so clamp here
+      // rather than teaching the pure framing helper about the universe radius.
       _camera.distance =
           _camera.distance.clamp(kMinZoomDistance, _maxDistance);
     });
