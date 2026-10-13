@@ -10,6 +10,14 @@ import 'camera3d.dart';
 /// 1 / ln(10) — converts natural logs to base-10 for the magnitude rescale.
 const double _invLn10 = 0.4342944819032518;
 
+/// The magnitude rescale shared by the hot loop and [apparentMagnitude].
+///
+/// Takes precomputed squared distances rather than a star, so the hot loop can
+/// call it without allocating — it iterates up to 109k packed stars.
+double _rescaledMagnitude(double magnitude, double distEye2, double distSol2) =>
+    magnitude +
+    2.5 * _invLn10 * math.log((distEye2 + 1e-12) / (distSol2 + 1e-12));
+
 /// Allocation-free render of a packed star field (the real HYG catalogue or a
 /// synthetic galaxy). Precomputes the camera basis once, then iterates with
 /// inline projection. Stars are pre-sorted brightest-first, so [maxDraw] keeps
@@ -79,8 +87,7 @@ void drawStarField(
     if (distanceScaled) {
       final distEye2 = relx * relx + rely * rely + relz * relz;
       final distSol2 = wx * wx + wy * wy + wz * wz;
-      m = mag[i] +
-          2.5 * _invLn10 * math.log((distEye2 + 1e-12) / (distSol2 + 1e-12));
+      m = _rescaledMagnitude(mag[i], distEye2, distSol2);
     } else {
       m = mag[i];
     }
@@ -114,10 +121,7 @@ double apparentMagnitude({
   if (!distanceScaled) return n.magnitude;
   final posW = n.position * worldScale;
   final rel = posW - camera.eye;
-  final distEye2 = rel.dot(rel);
-  final distSol2 = posW.dot(posW);
-  return n.magnitude +
-      2.5 * _invLn10 * math.log((distEye2 + 1e-12) / (distSol2 + 1e-12));
+  return _rescaledMagnitude(n.magnitude, rel.dot(rel), posW.dot(posW));
 }
 
 /// Labels only the brightest named stars, so famous landmarks (Sirius, Vega,
