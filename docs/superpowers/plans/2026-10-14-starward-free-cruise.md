@@ -3556,8 +3556,19 @@ void main() {
     });
 
     test('puts a point off to the right of centre, and one above it above', () {
+      // Which world direction is "screen right" is a property of the camera
+      // basis, and it is not the one you would guess. `Camera3D.project` builds
+      // `right = forward × up`, which for a forward of +Z is **−X** — so world
+      // −X is screen-right here, and +X lands left of centre. Verified by
+      // projecting both: `(10, 0, 100)` → `dx = 130.72`, `(−10, 0, 100)` →
+      // `dx = 269.28`, against a centre of 200.
+      //
+      // Pinned here because nothing else pins it: the existing
+      // `galaxy3d_projection_test.dart` asserts only `|dx − centre| > 1`, which
+      // leaves the sign unstated, and the HUD's markers and the scene painter
+      // have to agree on it.
       final right = hudMarkerPoint(
-          camera: _lookingForward(), world: const Vec3(10, 0, 100), viewport: _vp);
+          camera: _lookingForward(), world: const Vec3(-10, 0, 100), viewport: _vp);
       final up = hudMarkerPoint(
           camera: _lookingForward(), world: const Vec3(0, 10, 100), viewport: _vp);
       expect(right!.dx, greaterThan(200));
@@ -3569,10 +3580,11 @@ void main() {
 
     test('projects through the real perspective divide, not a flat scale', () {
       // At 60° FOV over an 800 px tall viewport, `focal = 400 / tan(30°)`.
-      // A point 10 units right at 100 units deep is `focal * 0.1` px right of
-      // centre: `400 / tan(30°) * 0.1 = 69.282...`.
+      // A point 10 units off-axis at 100 units deep is `focal * 0.1` px from
+      // centre: `400 / tan(30°) * 0.1 = 69.282...`. Off-axis is −X on screen,
+      // per the convention above, so the centre is displaced the other way.
       final at = hudMarkerPoint(
-          camera: _lookingForward(), world: const Vec3(10, 0, 100), viewport: _vp);
+          camera: _lookingForward(), world: const Vec3(-10, 0, 100), viewport: _vp);
       expect(at!.dx, closeTo(200 + 69.2820323, 1e-4));
     });
 
