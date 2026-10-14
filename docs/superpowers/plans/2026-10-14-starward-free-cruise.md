@@ -1461,32 +1461,35 @@ Append to `starward/test/cruise_test.dart` (add `import 'package:starward/data/m
 
 ```dart
   group('running the tank dry mid-cruise', () {
-    /// Ignites with a full tank and runs the cruise to its exhaustion point.
-    Future<GameController> exhausted(
+    /// Ignites [c] with a full tank and runs the cruise to its exhaustion point.
+    ///
+    /// Takes the controller rather than building one. `_boot` makes a fresh
+    /// `MemoryStorage` on every call, so two boots are two controllers over two
+    /// separate saves — a helper that booted its own would leave the caller
+    /// asserting against a ship that never moved.
+    Future<void> exhausted(
+      GameController c,
       FakeClock clock,
       FuelPolicy policy,
     ) async {
-      final c = await _boot(clock);
       await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: policy);
       // 300 EN less the 100 EN reserve is 200 EN, which is exactly 3000 s.
       clock.advance(const Duration(seconds: 3000));
       c.tick();
-      return c;
     }
 
     test('halt stops the ship exactly at the quoted 80 ly', () async {
       final clock = FakeClock(DateTime(2026));
       final c = await _boot(clock);
       final start = c.playerPosition3D;
-      final c2 = await exhausted(clock, FuelPolicy.halt);
+      await exhausted(c, clock, FuelPolicy.halt);
 
-      expect(identical(c, c2), isTrue, reason: 'precondition: same controller');
       expect(c.hasMomentum, isFalse, reason: 'halt parks the ship');
       expect(c.energy, 100, reason: 'the reserve is kept, not burned');
       expect(c.isDormant, isTrue, reason: 'the tank is out of spendable energy');
       // 3000 s at 1/37.5 ly/s. The exhaustion check compares *seconds*, not
-      // energy: `burnForSeconds(elapsed) >= 200` trips at 2992 s and lands 0.2 ly
-      // short of this.
+      // energy: `burnForSeconds(elapsed) >= 200` first reaches 200 at 2992.5 s
+      // and lands 0.2 ly short of this.
       expect((c.playerPosition3D - start).length, closeTo(80.0, 0.01));
     });
 
@@ -1494,7 +1497,7 @@ Append to `starward/test/cruise_test.dart` (add `import 'package:starward/data/m
       final clock = FakeClock(DateTime(2026));
       final c = await _boot(clock);
       final start = c.playerPosition3D;
-      await exhausted(clock, FuelPolicy.coast);
+      await exhausted(c, clock, FuelPolicy.coast);
 
       expect(c.hasMomentum, isTrue);
       expect(c.isCoasting, isTrue, reason: 'out of power, still moving');
@@ -1513,7 +1516,8 @@ Append to `starward/test/cruise_test.dart` (add `import 'package:starward/data/m
 
     test('the whole spendable budget is booked, exactly once', () async {
       final clock = FakeClock(DateTime(2026));
-      final c = await exhausted(clock, FuelPolicy.halt);
+      final c = await _boot(clock);
+      await exhausted(c, clock, FuelPolicy.halt);
       expect(c.energyLedger, hasLength(1));
       expect(c.energyLedger.first.type, EnergyTxType.cruiseCost);
       expect(c.energyLedger.first.amount, -200);
@@ -1552,7 +1556,8 @@ Append to `starward/test/cruise_test.dart` (add `import 'package:starward/data/m
 
     test('a fuel-out report is queued for the leg that just ended', () async {
       final clock = FakeClock(DateTime(2026));
-      final c = await exhausted(clock, FuelPolicy.coast);
+      final c = await _boot(clock);
+      await exhausted(c, clock, FuelPolicy.coast);
       final report = c.pendingDriftReport;
       expect(report, isNotNull);
       expect(report!.kind, DriftReportKind.fuelOut);
