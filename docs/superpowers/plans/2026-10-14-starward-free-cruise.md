@@ -1985,13 +1985,20 @@ Expected: FAIL — `isDormant` is always false, so `_exhaustedCruise`'s precondi
 In `starward/lib/state/game_controller.dart`, add after `_settleCruise`:
 
 ```dart
-  /// The single definition of "the tank is dry": the engine shuts down.
+  /// Shuts the engine down when a settlement has left the tank empty.
   ///
   /// Called at the end of every settlement, so no rule can spend the last drop
   /// without the shutdown following. Deliberately *not* called from `_addEnergy`:
   /// training refills the tank but does not restart the engine — that is what
   /// [activate] is for, and it is the difference between a setback and a free
   /// recovery.
+  ///
+  /// Not the only way to become dormant, despite the name: a cruise that runs
+  /// dry stops on its *spendable budget* (`balance - cruiseReserve`) and keeps
+  /// its braking reserve, so `_reconcileCruise` sets the flag itself with 100 EN
+  /// still in the tank — this predicate would read that tank as full and leave
+  /// the engine running. Do not "unify" the two: routing `_reconcileCruise`
+  /// through here silently un-dormants every exhausted cruise.
   void _syncDormancy() {
     if (_player.engineDormant) return;
     if (_player.energyBalance > 0) return;
