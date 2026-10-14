@@ -1011,16 +1011,16 @@ Add after `stopShip` (around line 945):
     if (!_player.inDeepSpace) return LaunchResult.alreadyHere;
     if (_player.energyBalance <= 0) return LaunchResult.insufficientEnergy;
 
-    final pos = playerPosition3D;
-    _player = _player.copyWith(
-      driftVelocity: direction * _ship.engine.cruiseSpeedLyPerSec,
-      driftPowered: true,
-      cruisePolicy: onEmpty,
-      startX: pos.x,
-      startY: pos.y,
-      startZ: pos.z,
-      driftStartedAt: _now(),
-    );
+    // `_repinLeg` must come first, while the ship is still parked: it reads
+    // `playerPosition3D` before overwriting the anchor, and that read is the
+    // ship's current position only while its velocity is still zero. Setting the
+    // velocity first would make the helper read a point along the *new* course
+    // from the *old* anchor and teleport the ship. It is also why this is not
+    // one `copyWith`: routing the repair through the helper is what keeps
+    // `_repinLeg` referenced, and an unreferenced private method is an
+    // `unused_element` that fails `flutter analyze`.
+    _repinLeg(velocity: direction * _ship.engine.cruiseSpeedLyPerSec);
+    _player = _player.copyWith(driftPowered: true, cruisePolicy: onEmpty);
     await _persist();
     notifyListeners();
     return LaunchResult.success;
@@ -1076,7 +1076,7 @@ Append to `starward/test/cruise_test.dart`:
       expect(c.energy, 297);
 
       clock.advance(const Duration(seconds: 1462, milliseconds: 500));
-      expect(c.energy, 180, reason: '1500 s is 40 ly is 100 EN');
+      expect(c.energy, 200, reason: '1500 s is 40 ly is 100 EN');
     });
 
     test('a coast does not drain anything', () async {
