@@ -6187,8 +6187,13 @@ rewording, **stop and report** rather than changing behaviour.
 at `6b9a842`, and Tasks 18-21 have all inserted lines into `galaxy_map_3d_page.dart` and the test
 files since. The test-file numbers are still accurate (every insertion was below them), but the two
 `lib/` sites have moved: at the time of writing, L11's `_aimCockpit` doc is at `:443-453` and L12's
-`_recenter` comment at `:475-480`, not at `:407` and `:437-439`. L13's `cockpit_hud.dart:37` is still
-correct. Verify each before editing; do not retarget silently.
+`_recenter` comment at `:475-480`, not at `:407` and `:437-439`. **L13 has moved too, for a different
+reason, and its *stated reason* drifted with it:** Task 19 added `import '../../core/theme.dart';` at
+`cockpit_hud.dart:5` for the triangle's `StarColors.cyan` default, which pushed the doc link down one
+line to `:38` and left the row's "imports only `dart:math`, `package:flutter/widgets.dart` and
+`camera3d.dart`" list one import short. It is the only row whose supporting claim, not just its line
+number, went stale — re-derive it in full rather than only renumbering it. Verify each before editing;
+do not retarget silently.
 
 | # | Site | The claim | Why it is false | Make it true |
 |---|---|---|---|---|
@@ -6202,7 +6207,7 @@ correct. Verify each before editing; do not retarget silently.
 | L10 | `cruise_test.dart:655` | "The explored planet is still the nearest candidate, so without the guard it would simply be recommended again" | the rule is **featured first, then nearest** (`game_controller.dart:988-991`), so distance is not what decides the winner and a non-featured planet is never recommended while any featured candidate is in range. Whether `rec0` would win absent the guard therefore depends on the fixture, which this comment does not establish | state the rule rather than the distance: "Without the guard the rule would be free to return the explored planet again — it excludes nothing else that would stop it." If the fixture has a featured candidate, say what the assertion really pins instead, and if that leaves the assertion pinning nothing, **report it rather than inventing a justification** |
 | L11 | `galaxy_map_3d_page.dart`, `_aimCockpit`'s doc (was `:407`) | the cruising aim is the current heading, "exactly" | `aimCameraAt` ends with `camera.clampPitch()` (`camera3d.dart:268`), which pins the pitch to `±(π/2 − 0.05)` (`:80`), so the aim is the precise inverse only for a heading more than `0.05 rad = 2.865°` from a pole. Unreachable through the cockpit's own ignition path — the drag clamp is the same one, so `driftVelocity` cannot land there — but false as written | keep the "precise inverse" sentence, which is true of the unclamped path, and qualify the "exactly": "up to the pole clamp `aimCameraAt` shares with every other aim" |
 | L12 | `galaxy_map_3d_page.dart`, `_recenter`'s comment (was `:437-439`) | it says what the button means "depends on whether the ship is **under way**" | a coasting ship is under way — it has momentum — and `_aimCockpit` gives it the galactic centre, not its heading. The predicate the code actually branches on is `isCruising`, and the very next clause enumerates the two cases correctly, so only the name is wrong | name the predicate instead of a synonym for it: "depends on whether the ship is **cruising**". Do not touch `_aimCockpit`, which is right |
-| L13 | `cockpit_hud.dart:37` | the doc link `[GameController.turnAngleTo]` | `cockpit_hud.dart` imports only `dart:math`, `package:flutter/widgets.dart` and `camera3d.dart` (`:1-5`), so the reference has nothing to resolve to. `comment_references` is off, so `flutter analyze` stays clean — this is a dead link, not a false claim | drop the brackets to a plain code span. Importing the controller into a painter-helper file to satisfy a comment is not worth the dependency; do not change `turnAngleTo`'s own doc |
+| L13 | `cockpit_hud.dart:38` | the doc link `[GameController.turnAngleTo]` | `cockpit_hud.dart`'s imports are `dart:math`, `package:flutter/widgets.dart`, `../../core/theme.dart` and `camera3d.dart` (`:1-6`) — Task 19 added the third for `StarColors.cyan` — and `game_controller.dart` is not among them, so the reference has nothing to resolve to. `comment_references` is off, so `flutter analyze` stays clean — this is a dead link, not a false claim | drop the brackets to a plain code span. Importing the controller into a painter-helper file to satisfy a comment is not worth the dependency; do not change `turnAngleTo`'s own doc |
 
 Also fix the plan's own three stale claims, all in
 `docs/superpowers/plans/2026-10-14-starward-free-cruise.md` rather than in code:
