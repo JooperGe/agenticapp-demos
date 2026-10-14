@@ -4529,9 +4529,15 @@ real price, the brake hint) now that the reticle no longer starts on the origin.
     expect(find.descendant(of: cockpit, matching: find.textContaining('90°')),
         findsOneWidget,
         reason: 'the reticle bearing is the current heading');
-    // And the reticle is *on* it: a 0° deviation priced at the engine's floor.
-    expect(inCockpit('1 EN'), findsOneWidget,
-        reason: 'energyCostFor(0) is minEnergyCost, and the deviation is 0');
+    // And the reticle is *on* it. The turn costs 0 EN, not the engine's 1 EN
+    // floor: `turnCostFor` opens with `if (radians <= 0) return 0;`, so the
+    // floor never applies to a zero-angle turn. The angle really is zero here,
+    // not merely small — `aimCameraAt` sets `yaw = atan2(1.0, 0.0)` and
+    // `pitch = asin(0.0)`, so `forward` comes back `(1.0, 0.0, 6.123e-17)` and
+    // its dot product with `(1.0, 0.0, 0.0)` is exactly 1.0, giving
+    // `acos(1.0) == 0.0`. Matches the plan's own table: `turnCostFor(0°)` = 0.
+    expect(inCockpit('0 EN'), findsOneWidget,
+        reason: 'a zero-angle turn is free, by turnCostFor\'s own guard');
     expect(c.driftVelocity.x, greaterThan(0), reason: 'precondition');
   });
 
@@ -4543,19 +4549,26 @@ real price, the brake hint) now that the reticle no longer starts on the origin.
     clock.advance(const Duration(seconds: 1500));
     await _pumpStarMap(tester, c);
     await _enterCockpit(tester);
-    expect(inCockpit('1 EN'), findsOneWidget, reason: 'precondition: on heading');
+    expect(inCockpit('0 EN'), findsOneWidget, reason: 'precondition: on heading');
 
     // Swing the reticle right round. The cockpit's look factor is
     // `0.006 * (fov / 60)` and the default fov is 60, so a horizontal drag of
-    // `-π / 0.006 ≈ -523.6 px` turns the view by exactly 180°: from +X to −X.
+    // `-π / 0.006 ≈ -523.6 px` asks for a 180° turn: from +X to −X.
     await tester.dragFrom(const Offset(600, 300), const Offset(-523.6, 0));
     await tester.pump(const Duration(milliseconds: 100));
 
-    // 180° from +X. `turnCostFor(π)` is `energyCostFor(80)`, i.e. 200 EN, which
-    // is more than the 100 EN a stop costs — so the cheap option must be offered.
-    expect(find.descendant(of: cockpit, matching: find.text('200 EN')),
-        findsOneWidget);
-    expect(inCockpit('制动停下只需 100 EN'), findsOneWidget);
+    // `round(200·sin(θ/2))` is 200 for every θ ≥ ~172°, so the price is exact
+    // however many pixels the drag actually delivered — which is the claim that
+    // matters. The *angle* is whatever the drag delivered, and how
+    // `ScaleGestureRecognizer` splits the 20 px touch slop across its updates is
+    // Flutter's business, so the degrees are matched by shape here. The exact
+    // angles are pinned elsewhere and without a drag: `headingDeviationDegrees`'
+    // own unit test, and the on-heading test above (0°).
+    expect(inCockpit('200 EN'), findsOneWidget,
+        reason: 'a turn this wide costs more than the 100 EN a stop costs');
+    expect(inCockpit('制动停下只需 100 EN'), findsOneWidget,
+        reason: 'the cheap option must be offered next to the dear one');
+    expect(find.textContaining(RegExp(r'偏离 \d+° · 200 EN')), findsOneWidget);
 
     await tester.tap(inCockpit('修正航向'));
     await tester.pump(const Duration(milliseconds: 100));
@@ -4578,11 +4591,11 @@ real price, the brake hint) now that the reticle no longer starts on the origin.
 
     await tester.dragFrom(const Offset(600, 300), const Offset(-120, 0));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(inCockpit('1 EN'), findsNothing, reason: 'the drag moved it off');
+    expect(inCockpit('0 EN'), findsNothing, reason: 'the drag moved it off');
 
     await tester.tap(find.text('对准当前航向'));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(inCockpit('1 EN'), findsOneWidget, reason: 'back on the heading');
+    expect(inCockpit('0 EN'), findsOneWidget, reason: 'back on the heading');
   });
 ```
 
@@ -4593,8 +4606,8 @@ galactic centre, so it is unaffected until Task 18.
 
 Run: `cd starward && flutter test test/cruise_ui_test.dart`
 Expected: the first and third FAIL — the cockpit aims at the origin, so the bearing is not 90° and
-the cost is not 1 EN. The second FAILS too (the reticle starts 180° off, so the precondition
-`inCockpit('1 EN')` finds nothing).
+the cost is not 0 EN. The second FAILS too (the reticle starts 180° off, so the precondition
+`inCockpit('0 EN')` finds nothing).
 
 - [ ] **Step 7: Aim by state**
 
@@ -4744,10 +4757,14 @@ step (shown after them).
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    // §5.3's copy, verbatim.
+    // §5.3's copy. The price is exact — `round(200·sin(θ/2))` is 200 for every
+    // θ ≥ ~172°, whatever the drag delivered — while the angle is matched by
+    // shape for the same reason as Task 17's drag test: the delivered
+    // displacement is `ScaleGestureRecognizer`'s business, not this test's.
     expect(find.text('修正航向'), findsNWidgets(2),
         reason: 'the bar button and the dialog title');
-    expect(find.text('飞船将从当前航向偏转 180°，消耗 200 EN。'), findsOneWidget);
+    expect(find.textContaining(RegExp(r'飞船将从当前航向偏转 \d+°，消耗 200 EN。')),
+        findsOneWidget);
     expect(c.energy, before, reason: 'nothing is spent until 修正 is tapped');
 
     await tester.tap(find.text('取消'));
@@ -5310,15 +5327,17 @@ In `_HeadingBar.build`, the moving branch's `detail` becomes the deviation and t
 - [ ] **Step 8: Update the tests that pinned the old detail**
 
 In `starward/test/cruise_ui_test.dart`:
-- `'the cockpit opens on the current heading while cruising'` (Task 17): `inCockpit('1 EN')` → `inCockpit('0° · 1 EN')`, and add
-  `expect(find.text('偏离 0° · 1 EN'), findsOneWidget);`
-- `'dragging off the heading quotes a real turn and the brake hint'` (Task 17): `inCockpit('1 EN')` →
-  `inCockpit('0° · 1 EN')` for the precondition, and `find.text('200 EN')` → `find.text('180° · 200 EN')`;
-  add `expect(find.text('偏离 180° · 200 EN'), findsOneWidget);`
-- `'recentering in the cockpit returns to the current heading'` (Task 17): both `inCockpit('1 EN')`
-  occurrences → `inCockpit('0° · 1 EN')`.
-- `'correcting course confirms before spending'` (Task 18): its dialog copy already reads
-  `180°`, so it is unaffected.
+- `'the cockpit opens on the current heading while cruising'` (Task 17): `inCockpit('0 EN')` →
+  `inCockpit('0° · 0 EN')`, and add `expect(find.text('偏离 0° · 0 EN'), findsOneWidget);`
+- `'dragging off the heading quotes a real turn and the brake hint'` (Task 17): `inCockpit('0 EN')` →
+  `inCockpit('0° · 0 EN')` for the precondition. Its two price assertions need no change:
+  `inCockpit('200 EN')` stays `inCockpit('200 EN')`, and the readout's
+  `RegExp(r'偏离 \d+° · 200 EN')` still matches. Do **not** tighten that regex to `180°` — the
+  delivered drag displacement is `ScaleGestureRecognizer`'s business, not this test's.
+- `'recentering in the cockpit returns to the current heading'` (Task 17): both `inCockpit('0 EN')`
+  occurrences → `inCockpit('0° · 0 EN')`.
+- `'correcting course confirms before spending'` (Task 18): its dialog copy is matched by
+  `RegExp(r'偏转 \d+°，消耗 200 EN。')`, so it is unaffected.
 
 Add one test pinning that the marker layer carries the course:
 
