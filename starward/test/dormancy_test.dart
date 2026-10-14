@@ -103,16 +103,13 @@ void main() {
 
     test('a voyage resolving against an already-empty tank still shuts down',
         () async {
-      // The state under test — a voyage still `inProgress` with an empty tank —
-      // is deliberately constructed, because play cannot produce it:
-      // `_launchGate` leaves every launched voyage a positive tank, nothing
-      // decrements the balance mid-voyage, and every settlement that empties it
-      // also ends the voyage. So this is a defensive branch — and the only
-      // settlement that syncs dormancy without booking anything — that must not
-      // depend on having had something to drain. Resolution is left to `init()`
-      // rather than a `tick()` because reopening the save is what the `init()`
-      // constraint protects. The `_doomed` test above cannot reach
-      // `drained == 0`: its tank still holds the 1 EN it launched with.
+      // The input has to be hand-built: `_setEnergy(storage, 0)` edits a dry
+      // tank into the save while a voyage is under way, so that the reload's
+      // `_settleTank` sees `drained == 0` and takes the branch that only syncs
+      // dormancy. Resolution is left to `init()` rather than a `tick()` because
+      // reopening the save is what the `init()` constraint protects. The
+      // `_doomed` test above cannot reach `drained == 0`: its tank still holds
+      // the 1 EN it launched with.
       final clock = FakeClock(DateTime(2026));
       final storage = MemoryStorage();
       final c = await _boot(clock, storage: storage);
