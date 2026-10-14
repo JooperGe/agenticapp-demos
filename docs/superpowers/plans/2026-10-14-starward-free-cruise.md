@@ -4559,16 +4559,15 @@ real price, the brake hint) now that the reticle no longer starts on the origin.
 
     // `round(200·sin(θ/2))` is 200 for every θ ≥ ~172°, so the price is exact
     // however many pixels the drag actually delivered — which is the claim that
-    // matters. The *angle* is whatever the drag delivered, and how
-    // `ScaleGestureRecognizer` splits the 20 px touch slop across its updates is
-    // Flutter's business, so the degrees are matched by shape here. The exact
-    // angles are pinned elsewhere and without a drag: `headingDeviationDegrees`'
-    // own unit test, and the on-heading test above (0°).
+    // matters. The exact angle is pinned elsewhere and without a drag:
+    // `headingDeviationDegrees`' own unit test, and the on-heading test above
+    // (0°). Task 19 adds a `偏离 N°` readout for the degrees to be matched
+    // against by shape; it does not exist yet in Task 17, so do not assert it
+    // here.
     expect(inCockpit('200 EN'), findsOneWidget,
         reason: 'a turn this wide costs more than the 100 EN a stop costs');
     expect(inCockpit('制动停下只需 100 EN'), findsOneWidget,
         reason: 'the cheap option must be offered next to the dear one');
-    expect(find.textContaining(RegExp(r'偏离 \d+° · 200 EN')), findsOneWidget);
 
     await tester.tap(inCockpit('修正航向'));
     await tester.pump(const Duration(milliseconds: 100));
@@ -4593,7 +4592,12 @@ real price, the brake hint) now that the reticle no longer starts on the origin.
     await tester.pump(const Duration(milliseconds: 100));
     expect(inCockpit('0 EN'), findsNothing, reason: 'the drag moved it off');
 
-    await tester.tap(find.text('对准当前航向'));
+    // Tap the button, not its label. At the 800×600 test viewport the side
+    // controls sit at the vertical centre and the heading bar's panel reaches up
+    // to y ≈ 396, covering the label's centre (y ≈ 403) — so a tap on the label
+    // lands on the panel and never reaches this button. The icon (y ≈ 369) is
+    // clear of it, and it is the same `_RoundButton` gesture target.
+    await tester.tap(find.byIcon(Icons.my_location_rounded));
     await tester.pump(const Duration(milliseconds: 100));
     expect(inCockpit('0 EN'), findsOneWidget, reason: 'back on the heading');
   });
@@ -5334,10 +5338,14 @@ In `starward/test/cruise_ui_test.dart`:
 - `'the cockpit opens on the current heading while cruising'` (Task 17): `inCockpit('0 EN')` →
   `inCockpit('0° · 0 EN')`, and add `expect(find.text('偏离 0° · 0 EN'), findsOneWidget);`
 - `'dragging off the heading quotes a real turn and the brake hint'` (Task 17): `inCockpit('0 EN')` →
-  `inCockpit('0° · 0 EN')` for the precondition. Its two price assertions need no change:
-  `inCockpit('200 EN')` stays `inCockpit('200 EN')`, and the readout's
-  `RegExp(r'偏离 \d+° · 200 EN')` still matches. Do **not** tighten that regex to `180°` — the
-  delivered drag displacement is `ScaleGestureRecognizer`'s business, not this test's.
+  `inCockpit('0° · 0 EN')` for the precondition, and **add** the readout assertion — the `偏离 N°`
+  readout is this task's deliverable, so it does not exist before now:
+  `expect(find.textContaining(RegExp(r'偏离 \d+° · 200 EN')), findsOneWidget);`
+  Keep the degrees by shape. Do **not** tighten that regex to `180°`: the drag delivers **173°**, not
+  180° — `ScaleGestureRecognizer` absorbs ~20 px of touch slop, so 503.6 px × 0.006 = 3.0216 rad.
+  The price is unaffected (`round(200·sin(86.5°))` = 200), which is why it is the assertion.
+  Its two price assertions need no change: `inCockpit('200 EN')` stays, and
+  `inCockpit('制动停下只需 100 EN')` stays.
 - `'recentering in the cockpit returns to the current heading'` (Task 17): both `inCockpit('0 EN')`
   occurrences → `inCockpit('0° · 0 EN')`.
 - `'correcting course confirms before spending'` (Task 18): its dialog copy is matched by
