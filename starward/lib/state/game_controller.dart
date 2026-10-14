@@ -1238,11 +1238,11 @@ class GameController extends ChangeNotifier {
 
   /// Energy a cruise keeps in the tank so it can buy its own stop.
   ///
-  /// Held back by the *exhaustion rule*, which bills at most `balance -
-  /// cruiseReserve` — and by that rule alone. The rules that spend outside it are
+  /// Held back by the *exhaustion rule*, which bills `max(0, balance -
+  /// cruiseReserve)` — and by that rule alone. The rules that spend outside it are
   /// not capped: [correctHeading] prices a turn against the whole tank, and
-  /// [_settleCruise] bills the raw elapsed burn, so either can spend into the
-  /// reserve and leave the ship unable to brake. That is recorded as 已知取舍 #2
+  /// [_settleCruise] bills the raw elapsed burn, so either can leave the tank
+  /// below the reserve. That is recorded as 已知取舍 #2
   /// in the plan and as its deviation 7.
   ///
   /// State-independent on purpose: it is a property of the engine and the speed
