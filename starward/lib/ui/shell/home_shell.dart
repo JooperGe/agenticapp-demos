@@ -153,6 +153,7 @@ class _NavItem extends StatelessWidget {
                     right: -3,
                     top: -2,
                     child: Container(
+                      key: const Key('voyage-tab-badge'),
                       width: 8,
                       height: 8,
                       decoration: const BoxDecoration(

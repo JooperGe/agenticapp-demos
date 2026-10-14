@@ -108,4 +108,62 @@ void main() {
         reason: 'a coast has no burn left to run out of');
     expect(find.text('改变航向'), findsOneWidget);
   });
+
+  testWidgets('the ticker resolves a cruise that runs dry while on screen',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.coast);
+    await _pumpVoyage(tester, c);
+    expect(find.text('巡航中'), findsNWidgets(2));
+
+    // 200 EN of spendable budget at 1/15 EN/s is 3000 s; past it the tank is
+    // down to the 100 EN braking reserve and the cruise has to resolve.
+    clock.advance(const Duration(seconds: 3100));
+    // Let the voyage screen's one-second ticker call tick(), which is what
+    // resolves the burn. Nothing else in the app calls it.
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(c.isCoasting, isTrue,
+        reason: "only this screen's ticker calls tick(), which resolves the "
+            'burn — without it the ship cruises on forever');
+    expect(find.text('滑行中'), findsNWidgets(2));
+    expect(find.text('巡航中'), findsNothing);
+  });
+
+  testWidgets('the voyage tab badge lights for a cruising ship', (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+    await _pumpVoyage(tester, c);
+
+    expect(find.byKey(const Key('voyage-tab-badge')), findsOneWidget,
+        reason: 'a cruise is motion the voyage tab has to advertise');
+  });
+
+  testWidgets('the voyage tab badge stays dark for a parked ship',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await _pumpVoyage(tester, c);
+
+    expect(find.byKey(const Key('voyage-tab-badge')), findsNothing);
+  });
+
+  testWidgets('braking a cruise is confirmed as a cruise, not a coast',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+    clock.advance(const Duration(seconds: 1500));
+    await _pumpVoyage(tester, c);
+
+    await tester.tap(find.text('制动停下'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('停止巡航'), findsOneWidget);
+    expect(find.textContaining('本次巡航'), findsOneWidget);
+    expect(find.text('停止滑行'), findsNothing);
+  });
 }

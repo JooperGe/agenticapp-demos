@@ -199,9 +199,13 @@ class _JourneyPageState extends State<JourneyPage>
 
   /// Sends the player to the star map's cockpit, asking it to open there.
   ///
-  /// The cockpit is the one place a heading is chosen: the reticle *is* the
-  /// direction, and both igniting and turning are quoted from it. Putting
-  /// direction-picking in two screens would mean two answers to "which way".
+  /// Direction-picking belongs in one place, and the cockpit is where it is
+  /// headed: the reticle at the centre of the screen is meant to *be* the
+  /// heading, with ignition and turning both quoted from it. Putting it in two
+  /// screens would mean two answers to "which way".
+  ///
+  /// This only raises the request — whichever screen consumes it decides what
+  /// to do with it.
   void _steerFromCockpit(GameController c) {
     c.requestCockpit();
     ShellScope.go(context, 0);
@@ -224,9 +228,9 @@ class _JourneyPageState extends State<JourneyPage>
     final summary = _driftSummary(c);
     final braking = c.brakingCost;
     final ok = await _confirm(
-      title: '停止滑行',
+      title: c.isCruising ? '停止巡航' : '停止滑行',
       message: '飞船将制动停下，漂浮于深空。\n\n'
-          '本次滑行 $summary\n'
+          '${c.isCruising ? '本次巡航' : '本次滑行'} $summary\n'
           '制动消耗 $braking EN，制动后剩余 ${c.energy - braking} EN。',
       confirmLabel: '制动',
       danger: true,
@@ -734,9 +738,10 @@ class _DriftDock extends StatelessWidget {
   }
 }
 
-/// Shown in the standby state while the ship is coasting: where it is, how
-/// fast it is going, how far it has come since the tank emptied, and — the
-/// part that used to be missing — how to make it stop.
+/// Shown in the standby state while the ship is drifting — coasting with the
+/// engine off, or cruising under power: where it is, how fast it is going, how
+/// far this leg has carried it, and how to make it stop. A cruise also reads
+/// out its burn and how much longer the tank can sustain it.
 class _CoastDock extends StatelessWidget {
   const _CoastDock({
     required this.controller,
