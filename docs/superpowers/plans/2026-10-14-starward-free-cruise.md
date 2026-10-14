@@ -4374,3 +4374,1437 @@ Which approach?
 
 
 
+
+---
+---
+
+# Phase 5 — the spec's UI requirements the first sixteen tasks never reached
+
+**Why this phase exists.** The final whole-branch review found six player-facing requirements in
+the spec that no task in Phases 1–4 implements, and that the plan's Self-Review wrongly claimed
+were covered: §4.2's ignition dialog (H1), §5.3's current-heading marker and deviation readout
+(H2), §5.3's turn confirmation (H3), §5.3's disabled button states (M1), §5.3/§9.4's "aim at the
+current heading" (M2), and §9.1/§9.3's dormant dock panel and `_EnginePanel` (M3). All six are
+confirmed against the code and all six are in scope. **The spec is the binding authority for this
+phase**, exactly as it was for Phases 1–4.
+
+The infrastructure is already in place and must be *used*, not rebuilt: `PlayerState.cruisePolicy`,
+`HudMarker`, `CockpitHudPainter`, `headingLabel`, and `aimCameraAt` all exist. `aimCameraAt` is the
+tell — a tested function with no production caller is a task that was planned and then lost.
+
+**Task order is load-bearing.** M2 changes where the cockpit opens, which changes what the existing
+turn test sees; H1 and H3 then change what tapping the buttons does. So the aiming lands first
+(Task 17), then the dialogs (Task 18), then the readout that displays the aim (Task 19). Writing
+them in the other order means rewriting the same two tests three times.
+
+**A ruling that overrides Phase 4's own code comment.** `galaxy_map_3d_page.dart:210-213` argues the
+cockpit's ignition should hardcode `FuelPolicy.coast`, because a destination-less cruise already
+expresses the player's intent. **That argument is superseded.** The user ruled that ignition asks,
+per spec §4.2. `halt` becomes reachable in play for the first time, which is what deviation 5 was
+written for.
+
+**The tests Phase 5 has to rewrite, named up front.** These are pre-existing and Phase 5 breaks them
+by design:
+
+| Test | Broken by | Why |
+|---|---|---|
+| `cruise_ui_test.dart` `'a parked ship is offered ignition from the cockpit'` | Task 18 | ignition now opens a dialog, so `isCruising` is not true after the first pump |
+| `cruise_ui_test.dart` `'a cruising ship is quoted the turn and can take it'` | Task 17, then Task 18 | the cockpit now opens *on* the heading, so the reticle starts at 0° deviation; and the turn then confirms |
+| `cruise_ui_test.dart` `'the cockpit reads the heading the reticle is pointing at'` | nothing | it is parked, so its `'对准银心'` assertion still holds |
+
+---
+
+### Task 17: 座舱进入时对准当前航向
+
+Implements spec §5.3's 「进入时的朝向」 table and §9.4's `_setMode` / `_recenter` rows (finding M2).
+
+**Files:**
+- Modify: `starward/lib/ui/galaxy3d/cockpit_hud.dart`
+- Modify: `starward/lib/ui/galaxy3d/galaxy_map_3d_page.dart`
+- Test: `starward/test/cockpit_hud_test.dart`, `starward/test/cruise_ui_test.dart`
+
+**Interfaces:**
+- Consumes: `GameController.isCruising` → `bool` (`game_controller.dart:293`); `GameController.driftVelocity` → `Vec3` (`:256`); `Camera3D.forward` → `Vec3` (`camera3d.dart:83`); `aimCameraAt(Camera3D, Vec3) → void` (`camera3d.dart:262`); `Vec3.normalized`, `Vec3.dot`, `Vec3.length`.
+- Produces: `int headingDeviationDegrees({required Vec3 current, required Vec3 proposed})` in `cockpit_hud.dart`; the private `_aimCockpit()`; `_SideControls.recenterLabel`.
+
+- [ ] **Step 1: Write the failing unit test**
+
+Append to `starward/test/cockpit_hud_test.dart`, inside `main()`:
+
+```dart
+  test('headingDeviationDegrees is the angle the turn is priced on', () {
+    // A level quarter turn: +Z to +X.
+    expect(
+      headingDeviationDegrees(
+          current: const Vec3(0, 0, 1), proposed: const Vec3(1, 0, 0)),
+      90,
+    );
+    // Lengths are irrelevant — the helper normalises both sides, which is what
+    // `turnAngleTo` does before pricing.
+    expect(
+      headingDeviationDegrees(
+          current: const Vec3(0, 0, 3), proposed: const Vec3(7, 0, 0)),
+      90,
+    );
+    expect(
+      headingDeviationDegrees(
+          current: const Vec3(1, 0, 0), proposed: const Vec3(1, 0, 0)),
+      0,
+    );
+    expect(
+      headingDeviationDegrees(
+          current: const Vec3(1, 0, 0), proposed: const Vec3(-1, 0, 0)),
+      180,
+    );
+    // A parked ship has no course to deviate from. `turnAngleTo` returns 0 for
+    // it, and the readout has to agree with the price.
+    expect(
+      headingDeviationDegrees(
+          current: const Vec3(0, 0, 0), proposed: const Vec3(1, 0, 0)),
+      0,
+    );
+  });
+```
+
+- [ ] **Step 2: Run it to verify it fails**
+
+Run: `cd starward && flutter test test/cockpit_hud_test.dart`
+Expected: FAIL — `headingDeviationDegrees` is not defined.
+
+- [ ] **Step 3: Implement the helper**
+
+In `starward/lib/ui/galaxy3d/cockpit_hud.dart`, below `headingLabel`:
+
+```dart
+/// The angle between the ship's current course and a proposed heading, in whole
+/// degrees.
+///
+/// The same angle [GameController.turnAngleTo] prices the turn on — same
+/// normalisation, same `acos` of the clamped dot product — so the number the
+/// readout shows and the number the fee is computed from cannot drift apart.
+///
+/// Whole degrees because it is a readout, not a measurement: the fee is a step
+/// function of the angle, so quoting `36.87°` next to a `63 EN` price invites
+/// the reader to check arithmetic that does not exist.
+///
+/// A zero-length [current] means the ship has no course (it is parked), which
+/// `turnAngleTo` reads as 0; a zero-length [proposed] means the caller has no
+/// heading to offer. Both are 0.
+int headingDeviationDegrees({
+  required Vec3 current,
+  required Vec3 proposed,
+}) {
+  final from = current.normalized;
+  final to = proposed.normalized;
+  if (from.length <= 0 || to.length <= 0) return 0;
+  return (math.acos(from.dot(to).clamp(-1.0, 1.0)) * 180 / math.pi).round();
+}
+```
+
+- [ ] **Step 4: Run it to verify it passes**
+
+Run: `cd starward && flutter test test/cockpit_hud_test.dart`
+Expected: PASS.
+
+- [ ] **Step 5: Rewrite the affected widget test, and add the aiming tests**
+
+In `starward/test/cruise_ui_test.dart`, **replace** `'a cruising ship is quoted the turn and can take it'`
+with these two tests. The first is Task 17's claim; the second preserves the old test's coverage (a
+real price, the brake hint) now that the reticle no longer starts on the origin.
+
+```dart
+  testWidgets('the cockpit opens on the current heading while cruising',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+    clock.advance(const Duration(seconds: 1500));
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    // §5.3: cruising → the cockpit opens on the current heading, so the player
+    // starts where the ship is actually going instead of hunting for it.
+    // `driftVelocity` is +X, whose bearing is 90°, and `aimCameraAt` sets the
+    // pitch exactly, so the elevation reads +0°.
+    expect(find.descendant(of: cockpit, matching: find.textContaining('90°')),
+        findsOneWidget,
+        reason: 'the reticle bearing is the current heading');
+    // And the reticle is *on* it: a 0° deviation priced at the engine's floor.
+    expect(inCockpit('1 EN'), findsOneWidget,
+        reason: 'energyCostFor(0) is minEnergyCost, and the deviation is 0');
+    expect(c.driftVelocity.x, greaterThan(0), reason: 'precondition');
+  });
+
+  testWidgets('dragging off the heading quotes a real turn and the brake hint',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+    clock.advance(const Duration(seconds: 1500));
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+    expect(inCockpit('1 EN'), findsOneWidget, reason: 'precondition: on heading');
+
+    // Swing the reticle right round. The cockpit's look factor is
+    // `0.006 * (fov / 60)` and the default fov is 60, so a horizontal drag of
+    // `-π / 0.006 ≈ -523.6 px` turns the view by exactly 180°: from +X to −X.
+    await tester.dragFrom(const Offset(600, 300), const Offset(-523.6, 0));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // 180° from +X. `turnCostFor(π)` is `energyCostFor(80)`, i.e. 200 EN, which
+    // is more than the 100 EN a stop costs — so the cheap option must be offered.
+    expect(find.descendant(of: cockpit, matching: find.text('200 EN')),
+        findsOneWidget);
+    expect(inCockpit('制动停下只需 100 EN'), findsOneWidget);
+
+    await tester.tap(inCockpit('修正航向'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(c.energy, 0, reason: '300 − 100 burned − 200 turned');
+    expect(c.driftVelocity.x, lessThan(0), reason: 'now flying the other way');
+  });
+
+  testWidgets('recentering in the cockpit returns to the current heading',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+    clock.advance(const Duration(seconds: 1500));
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    // The label follows what the button will actually do. Saying 对准银心 while
+    // it aims at the heading would be a false claim on a control.
+    expect(find.text('对准当前航向'), findsOneWidget);
+
+    await tester.dragFrom(const Offset(600, 300), const Offset(-120, 0));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(inCockpit('1 EN'), findsNothing, reason: 'the drag moved it off');
+
+    await tester.tap(find.text('对准当前航向'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(inCockpit('1 EN'), findsOneWidget, reason: 'back on the heading');
+  });
+```
+
+Leave `'a parked ship is offered ignition from the cockpit'` alone — a parked ship still aims at the
+galactic centre, so it is unaffected until Task 18.
+
+- [ ] **Step 6: Run them to verify they fail**
+
+Run: `cd starward && flutter test test/cruise_ui_test.dart`
+Expected: the first and third FAIL — the cockpit aims at the origin, so the bearing is not 90° and
+the cost is not 1 EN. The second FAILS too (the reticle starts 180° off, so the precondition
+`inCockpit('1 EN')` finds nothing).
+
+- [ ] **Step 7: Aim by state**
+
+In `starward/lib/ui/galaxy3d/galaxy_map_3d_page.dart`, add `_aimCockpit()` beside
+`_aimCockpitAtOrigin` and make both callers use it:
+
+```dart
+  /// Points the cockpit where it should open.
+  ///
+  /// While cruising that is the current heading, exactly: `aimCameraAt` is the
+  /// precise inverse of [Camera3D.forward], which is what the reticle's
+  /// deviation reading is measured against. A decorative flattening here would
+  /// make Task 19's number disagree with the price it sits beside.
+  ///
+  /// Parked or coasting it stays the origin aim, whose `* 0.6` pitch flattening
+  /// is deliberate — it keeps the galactic plane visible.
+  void _aimCockpit() {
+    if (_c.isCruising) {
+      aimCameraAt(_camera, _c.driftVelocity);
+      return;
+    }
+    _aimCockpitAtOrigin();
+  }
+```
+
+Then:
+- `_setMode`'s cockpit branch: `if (mode == CameraMode.cockpit) _aimCockpitAtOrigin();` → `_aimCockpit();`
+- `_recenter`'s cockpit branch: `_aimCockpitAtOrigin();` → `_aimCockpit();`, and extend its comment:
+  `/// somewhere known" — and what is known depends on whether the ship is`
+  `/// under way: its own heading while cruising, the galactic centre otherwise.`
+
+- [ ] **Step 8: Make the recenter label tell the truth**
+
+`_SideControls` gains a `required String recenterLabel`, replacing its own
+`mode == CameraMode.cockpit ? '对准银心' : '居中'` expression at `:683`. At the page's construction
+site (`:552`):
+
+```dart
+                    recenterLabel: _camera.mode == CameraMode.cockpit
+                        ? (_c.isCruising ? '对准当前航向' : '对准银心')
+                        : '居中',
+```
+
+The widget becomes presentation-only, which is the file's existing style for `_TopBar` and
+`_HeadingBar`.
+
+- [ ] **Step 9: Run them to verify they pass**
+
+Run: `cd starward && flutter test test/cruise_ui_test.dart test/cockpit_hud_test.dart`
+Expected: PASS.
+
+- [ ] **Step 10: Full suite, analyze, commit**
+
+```bash
+cd starward && flutter analyze && flutter test
+git add starward/lib/ui/galaxy3d/cockpit_hud.dart starward/lib/ui/galaxy3d/galaxy_map_3d_page.dart starward/test/cockpit_hud_test.dart starward/test/cruise_ui_test.dart
+git commit -m "feat(starward): open the cockpit on the current heading while cruising
+
+Co-Authored-By: Claude Code <noreply@anthropic.com>"
+```
+
+---
+
+### Task 18: 座舱的两次询问
+
+Implements spec §4.2's ignition dialog (H1) and §5.3's turn confirmation (H3).
+
+**Files:**
+- Modify: `starward/lib/ui/journey/fuel_choice_dialog.dart`
+- Modify: `starward/lib/ui/galaxy3d/galaxy_map_3d_page.dart`
+- Test: `starward/test/cruise_ui_test.dart`
+
+**Interfaces:**
+- Consumes: `GameController.igniteCruise(Vec3, {required FuelPolicy onEmpty}) → Future<LaunchResult>` (`game_controller.dart:1298`); `GameController.correctHeading(Vec3) → Future<bool>` (`:1350`); `GameController.turnCostTo(Vec3) → int` (`:1339`); `GameController.energy` → `int` (`:456`); `GameController.brakingCost` → `int` (`:303`); `GameController.ship.engine` → `Engine`; `Engine.reachableLyFor(int)`; `_launchMessage(LaunchResult)`; `headingDeviationDegrees` (Task 17); `_Choice` (private, same file); `StarPanel`, `StarColors.offWhite` / `.muted` / `.faint` / `.cyan` / `.deepNavy`.
+- Produces: `showCruiseFuelChoiceDialog(BuildContext, {required int energy, required int braking, required Engine engine}) → Future<FuelPolicy?>`.
+
+- [ ] **Step 1: Write the failing tests**
+
+In `starward/test/cruise_ui_test.dart`, **replace** `'a parked ship is offered ignition from the cockpit'`
+with the first test below, and add the other two. In the drag test from Task 17, insert the confirm
+step (shown after them).
+
+```dart
+  testWidgets('ignition asks how the cruise should end', (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    expect(inCockpit('点火巡航'), findsOneWidget, reason: 'precondition');
+
+    await tester.tap(inCockpit('点火巡航'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // §4.2: the choice cannot be deferred — by the time the tank is dry the ship
+    // has no energy to brake with — so `halt` is only available as a decision
+    // made now.
+    expect(find.text('耗尽后停下'), findsOneWidget);
+    expect(find.text('耗尽后滑行'), findsOneWidget);
+    // §4.2 offers no `refuse` on a cruise: refusing means "I cannot afford this
+    // whole trip", and a cruise has no whole trip.
+    expect(find.text('放弃航行'), findsNothing);
+    expect(c.isCruising, isFalse, reason: 'nothing happens until a policy is chosen');
+
+    await tester.tap(find.text('耗尽后停下'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(c.isCruising, isTrue);
+    expect(c.hasMomentum, isTrue);
+    expect(c.cruisePolicy, FuelPolicy.halt,
+        reason: 'the chosen policy is stored, not defaulted');
+  });
+
+  testWidgets('backing out of the ignition dialog does not ignite',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    await tester.tap(inCockpit('点火巡航'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('取消点火'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(c.isCruising, isFalse);
+    expect(c.hasMomentum, isFalse);
+    expect(c.energy, 300, reason: 'ignition is free, and nothing was spent');
+  });
+
+  testWidgets('correcting course confirms before spending', (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+    clock.advance(const Duration(seconds: 1500));
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+    await tester.dragFrom(const Offset(600, 300), const Offset(-523.6, 0));
+    await tester.pump(const Duration(milliseconds: 100));
+    final before = c.energy;
+
+    await tester.tap(inCockpit('修正航向'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // §5.3's copy, verbatim.
+    expect(find.text('修正航向'), findsNWidgets(2),
+        reason: 'the bar button and the dialog title');
+    expect(find.text('飞船将从当前航向偏转 180°，消耗 200 EN。'), findsOneWidget);
+    expect(c.energy, before, reason: 'nothing is spent until 修正 is tapped');
+
+    await tester.tap(find.text('取消'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(c.energy, before, reason: 'cancelling spends nothing');
+    expect(c.driftVelocity.x, greaterThan(0), reason: 'still on the old course');
+  });
+```
+
+Then in Task 17's `'dragging off the heading quotes a real turn and the brake hint'`, replace the
+final tap-and-assert block with the confirmed sequence:
+
+```dart
+    await tester.tap(inCockpit('修正航向'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('修正'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(c.energy, 0, reason: '300 − 100 burned − 200 turned');
+    expect(c.driftVelocity.x, lessThan(0), reason: 'now flying the other way');
+```
+
+- [ ] **Step 2: Run them to verify they fail**
+
+Run: `cd starward && flutter test test/cruise_ui_test.dart`
+Expected: FAIL — no dialog appears (`find.text('耗尽后停下')` finds nothing) and the turn spends
+immediately, so `c.energy` is already 0 when the confirm test checks `before`.
+
+- [ ] **Step 3: Add the cruise variant of the dialog**
+
+In `starward/lib/ui/journey/fuel_choice_dialog.dart`, add a second top-level function. It reuses the
+private `_Choice` and the two option **labels** verbatim, because §4.2 says to reuse the dialog's
+「措辞与选项形状」; what changes is the pruning condition and the two details, which now describe the
+cruise's reserve rule.
+
+```dart
+/// Asks what a destination-less cruise should do when the tank runs dry.
+///
+/// A second function rather than a flag on [showFuelChoiceDialog]: that one opens
+/// 「能量不足以飞完全程」 and reports a reach against a distance, and a cruise has
+/// neither — there is no whole trip to fail to afford. What survives is the
+/// sheet's shape and the halt/coast pair, which is what §4.2 asks to reuse.
+///
+/// No `FuelPolicy.refuse`, per §4.2: refusing means "I cannot afford this trip",
+/// and there is no trip. Backing out is [Navigator.pop] with null, which the
+/// caller reads as "do not ignite".
+Future<FuelPolicy?> showCruiseFuelChoiceDialog(
+  BuildContext context, {
+  required int energy,
+  required int braking,
+  required Engine engine,
+}) {
+  // The same rule as the voyage dialog: the braking burn comes off the top, so
+  // what the cruise can spend is what is left after it.
+  final budget = math.max(0, energy - braking);
+  final reach = engine.reachableLyFor(budget);
+  return showModalBottomSheet<FuelPolicy>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (sheetContext) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: StarPanel(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              const Text(
+                '电量耗尽时怎么办',
+                style: TextStyle(
+                  color: StarColors.offWhite,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                '你只有 $energy EN，其中 $braking EN 是制动储备，'
+                '巡航可用 $budget EN，可以飞 ${reach.toStringAsFixed(1)} ly。'
+                '两条路都在这里耗尽并进入休眠，区别只在耗尽的那一刻。',
+                style: const TextStyle(
+                  color: StarColors.muted,
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 18),
+              _Choice(
+                label: '耗尽后停下',
+                detail: '电量耗尽前引擎先制动停下，保留 100 EN 的制动储备',
+                icon: Icons.anchor_rounded,
+                onTap: () => Navigator.of(sheetContext).pop(FuelPolicy.halt),
+              ),
+              const SizedBox(height: 10),
+              _Choice(
+                label: '耗尽后滑行',
+                detail: '电量耗尽后飞船以巡航速度继续滑行',
+                icon: Icons.explore_rounded,
+                onTap: () => Navigator.of(sheetContext).pop(FuelPolicy.coast),
+              ),
+              const SizedBox(height: 10),
+              _Choice(
+                label: '取消点火',
+                detail: '不点火，留在原地',
+                icon: Icons.close_rounded,
+                onTap: () => Navigator.of(sheetContext).pop(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+```
+
+The body says the one thing that surprises people: **both policies reach the same distance**, because
+deviation 5 gives both the same budget (`energy - braking`). The choice is about the moment of
+exhaustion, not the range.
+
+- [ ] **Step 4: Route the cockpit's ignition through it**
+
+Replace `_igniteFromCockpit` and its comment in `starward/lib/ui/galaxy3d/galaxy_map_3d_page.dart`:
+
+```dart
+  /// Lights the engine along whatever the reticle is on, after asking what the
+  /// cruise should do when the tank runs dry.
+  ///
+  /// It asks because the choice cannot be deferred: by the time the tank is dry
+  /// the ship has no energy to brake with, so `halt` is only available as a
+  /// decision made *now*. That is also why the policy is a stored field.
+  Future<void> _igniteFromCockpit() async {
+    final policy = await showCruiseFuelChoiceDialog(
+      context,
+      energy: _c.energy,
+      braking: _c.brakingCost,
+      engine: _c.ship.engine,
+    );
+    if (policy == null || !mounted) return;
+    final result = await _c.igniteCruise(_camera.forward, onEmpty: policy);
+    if (!mounted) return;
+    if (result != LaunchResult.success) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(_launchMessage(result))));
+    }
+  }
+```
+
+Add `import '../journey/fuel_choice_dialog.dart';` if it is not already present.
+
+- [ ] **Step 5: Confirm the turn**
+
+`_confirm` is a private method on `_JourneyPageState` and is not reachable from here, so build the
+dialog inline in the shape `journey_page.dart:274-302` uses. Replace `_correctFromCockpit`:
+
+```dart
+  /// Turns the ship, after confirming — the action is priced up to 200 EN and
+  /// cannot be undone, so it asks for the same reason the dock's brake does.
+  Future<void> _correctFromCockpit() async {
+    final heading = _camera.forward;
+    final cost = _c.turnCostTo(heading);
+    final degrees = headingDeviationDegrees(
+      current: _c.driftVelocity,
+      proposed: heading,
+    );
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: StarColors.deepNavy,
+        title: const Text('修正航向',
+            style: TextStyle(color: StarColors.offWhite)),
+        content: Text('飞船将从当前航向偏转 $degrees°，消耗 $cost EN。',
+            style: const TextStyle(color: StarColors.muted, height: 1.5)),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child:
+                const Text('取消', style: TextStyle(color: StarColors.faint)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('修正',
+                style: TextStyle(
+                    color: StarColors.cyan, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final turned = await _c.correctHeading(heading);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(turned ? '航向已修正（$cost EN）' : '能量不足，无法修正航向'),
+    ));
+  }
+```
+
+- [ ] **Step 6: Run them to verify they pass**
+
+Run: `cd starward && flutter test test/cruise_ui_test.dart`
+Expected: PASS.
+
+- [ ] **Step 7: Full suite, analyze, commit**
+
+```bash
+cd starward && flutter analyze && flutter test
+git add starward/lib/ui/journey/fuel_choice_dialog.dart starward/lib/ui/galaxy3d/galaxy_map_3d_page.dart starward/test/cruise_ui_test.dart
+git commit -m "feat(starward): ask how a cruise should end, and confirm the turn
+
+Co-Authored-By: Claude Code <noreply@anthropic.com>"
+```
+
+---
+
+### Task 19: HUD 的当前航向三角与偏离读数
+
+Implements spec §5.3's HUD diagram and its 「读数」 (finding H2), plus the `· 37° · 63 EN` half of
+its button table.
+
+**Files:**
+- Modify: `starward/lib/ui/galaxy3d/cockpit_hud.dart`
+- Modify: `starward/lib/ui/galaxy3d/galaxy_map_3d_page.dart`
+- Test: `starward/test/cockpit_hud_test.dart`, `starward/test/cruise_ui_test.dart`
+
+**Interfaces:**
+- Consumes: `headingDeviationDegrees` (Task 17); `GameController.isCruising`, `.driftVelocity`, `.turnCostTo(Vec3)`; `Camera3D.forward`, `.eye` (`camera3d.dart:89`), `.project`; `hudMarkerPoint`, `HudMarker`, `CockpitHudPainter`; `Size2`.
+- Produces: `({Offset at, bool offScreen}) clampHudPoint(Offset at, Size2 size)`; `Offset? headingMarkerPoint({required Camera3D camera, required Vec3 heading, required Size2 viewport})`; `CockpitHudPainter.heading` / `.headingColor`.
+
+**Two rulings that move §9.4's letter, both for testability.**
+
+1. **The triangle goes in the public `CockpitHudPainter`, not the private `_CockpitPainter`.** §9.4
+   assigns the triangle to `_CockpitPainter` and says its `shouldRepaint` must stop being constant.
+   But that painter's real inputs are a fixed frame and a centre-screen reticle — nothing varies, so
+   `shouldRepaint => false` is *true* there, and the spec's instruction to change it would replace a
+   correct constant with a wasteful one. `CockpitHudPainter` already takes the camera, already
+   returns `true` from `shouldRepaint`, and already owns the clamp-and-chevron logic the triangle
+   needs. Putting it there makes the projection unit-testable and leaves the other constant honest.
+2. **The readout is a real `Text` in the overlay, not a canvas string.** A string painted onto a
+   canvas cannot be asserted by any widget test, so the spec's two headline numbers would ship
+   unverifiable. The repo's convention is the opposite — `cruise_ui_test.dart` asserts the bar's
+   `'200 EN'` through `find.text`. The overlay is a full-screen `IgnorePointer` stack in the same
+   layer, so the visual result is identical.
+
+*Cost if either ruling is wrong:* the triangle lives one painter over from where §9.4 put it, and the
+readout is one widget higher in the tree.
+
+- [ ] **Step 1: Write the failing unit tests**
+
+Append to `starward/test/cockpit_hud_test.dart`. `_lookingForward()` and `_vp = Size2(400, 800)`
+already exist at the top of the file; the centre of that viewport is `(200, 400)` and the safe area
+is `dx ∈ [26, 374]`, `dy ∈ [74, 668]`.
+
+```dart
+  group('clampHudPoint', () {
+    test('leaves a point inside the safe area alone', () {
+      final r = clampHudPoint(const Offset(200, 400), _vp);
+      expect(r.at, const Offset(200, 400));
+      expect(r.offScreen, isFalse);
+    });
+
+    test('pins each edge at the frame and bottom-panel margin', () {
+      // 26 clear of the sides, 74 below the top strut, 132 above the bottom.
+      expect(clampHudPoint(const Offset(-40, 400), _vp).at, const Offset(26, 400));
+      expect(clampHudPoint(const Offset(900, 400), _vp).at, const Offset(374, 400));
+      expect(clampHudPoint(const Offset(200, -10), _vp).at, const Offset(200, 74));
+      expect(clampHudPoint(const Offset(200, 900), _vp).at, const Offset(200, 668));
+    });
+
+    test('reports whether it had to move', () {
+      expect(clampHudPoint(const Offset(-40, 400), _vp).offScreen, isTrue);
+      expect(clampHudPoint(const Offset(26, 400), _vp).offScreen, isFalse);
+    });
+  });
+
+  group('headingMarkerPoint', () {
+    test('sits on the reticle when the course is the aim', () {
+      final at = headingMarkerPoint(
+        camera: _lookingForward(),
+        heading: const Vec3(0, 0, 1),
+        viewport: _vp,
+      )!;
+      expect(at.dx, moreOrLessEquals(200, epsilon: 0.5));
+      expect(at.dy, moreOrLessEquals(400, epsilon: 0.5));
+    });
+
+    test('pins to the side edge for a course abeam', () {
+      // The whole reason for the forward nudge: at exactly 90° the raw point has
+      // `camZ == 0` and `project` culls it, so without the nudge an 89.9° course
+      // would pin to the right edge and a 90.0° one would vanish.
+      final at = headingMarkerPoint(
+        camera: _lookingForward(),
+        heading: const Vec3(1, 0, 0),
+        viewport: _vp,
+      )!;
+      expect(at, const Offset(374, 400));
+    });
+
+    test('pins to the top edge for a course straight up', () {
+      final at = headingMarkerPoint(
+        camera: _lookingForward(),
+        heading: const Vec3(0, 1, 0),
+        viewport: _vp,
+      )!;
+      expect(at, const Offset(200, 74));
+    });
+
+    test('pins to the bottom edge for a course dead astern', () {
+      final at = headingMarkerPoint(
+        camera: _lookingForward(),
+        heading: const Vec3(0, 0, -1),
+        viewport: _vp,
+      )!;
+      expect(at, const Offset(200, 668));
+    });
+
+    test('has no position without a course', () {
+      expect(
+        headingMarkerPoint(
+            camera: _lookingForward(),
+            heading: const Vec3(0, 0, 0),
+            viewport: _vp),
+        isNull,
+      );
+    });
+  });
+```
+
+- [ ] **Step 2: Run them to verify they fail**
+
+Run: `cd starward && flutter test test/cockpit_hud_test.dart`
+Expected: FAIL — neither function is defined.
+
+- [ ] **Step 3: Extract the clamp and add the marker point**
+
+In `starward/lib/ui/galaxy3d/cockpit_hud.dart`. `clampHudPoint` is the existing inline clamp lifted
+out of `CockpitHudPainter.paint` (`:90-93`) unchanged, so `CockpitHudPainter` must be rewritten to
+call it — otherwise the numbers exist twice and will drift.
+
+```dart
+/// How far the marker's world point sits ahead of the eye. Only the direction
+/// matters for where it lands — the screen offset is `focal · tan(angle)`,
+/// independent of distance — but the point has to be beyond the near plane.
+const double _headingMarkerDistance = 400;
+
+/// Nudges the marked direction toward the aim so a course exactly abeam still
+/// has a forward component to project. Without it `camZ == 0` at 90° and
+/// `Camera3D.project` culls the point, so an 89.9° course would pin to the side
+/// edge and a 90.0° one would disappear.
+const double _headingMarkerForwardNudge = 0.25;
+
+/// Where a HUD point lands once it is kept clear of the cockpit frame and the
+/// bottom control panel, plus whether it had to move.
+///
+/// The clamp is the point: [hudMarkerPoint] returns null only at or behind the
+/// near plane, so a point in front of the camera but outside the field of view
+/// projects to coordinates outside the canvas, where drawing is invisible. A
+/// clamped point still answers "which way", which is the question the player is
+/// asking.
+///
+/// Shared by every HUD layer so the two painters cannot disagree about the safe
+/// area. `_CockpitPainter` insets its window by 14 on the sides and a further
+/// 48 / 40 at the top and bottom; `_BottomControls` is pinned below 132.
+({Offset at, bool offScreen}) clampHudPoint(Offset at, Size2 size) {
+  final clamped = Offset(
+    at.dx.clamp(26.0, size.width - 26.0),
+    at.dy.clamp(74.0, size.height - 132.0),
+  );
+  return (at: clamped, offScreen: clamped != at);
+}
+
+/// Where the current-heading triangle sits, or null when there is no course to
+/// mark.
+///
+/// A heading that survives the nudge still projects behind the near plane only
+/// when the ship is pointing within ~15° of dead astern; that case is pinned to
+/// the bottom edge, the conventional "behind you" position. The readout beside
+/// it carries the exact angle, so nothing is lost that the player needs.
+Offset? headingMarkerPoint({
+  required Camera3D camera,
+  required Vec3 heading,
+  required Size2 viewport,
+}) {
+  final h = heading.normalized;
+  if (h.length <= 0) return null;
+  final nudged = (h + camera.forward * _headingMarkerForwardNudge).normalized;
+  final at = hudMarkerPoint(
+    camera: camera,
+    world: camera.eye + nudged * _headingMarkerDistance,
+    viewport: viewport,
+  );
+  if (at == null) {
+    return clampHudPoint(Offset(viewport.width / 2, viewport.height), viewport).at;
+  }
+  return clampHudPoint(at, viewport).at;
+}
+```
+
+- [ ] **Step 4: Run them to verify they pass**
+
+Run: `cd starward && flutter test test/cockpit_hud_test.dart`
+Expected: PASS.
+
+- [ ] **Step 5: Draw the triangle**
+
+Give `CockpitHudPainter` a heading and a colour, and rewrite its clamp to use `clampHudPoint`:
+
+```dart
+class CockpitHudPainter extends CustomPainter {
+  const CockpitHudPainter({
+    required this.camera,
+    required this.markers,
+    this.heading,
+    this.headingColor = StarColors.cyan,
+  });
+
+  final Camera3D camera;
+  final List<HudMarker> markers;
+
+  /// The ship's current course, marked with a filled triangle. Null when the
+  /// ship has no course — parked, or coasting with the engine off and the bar
+  /// offering a brake rather than a turn.
+  final Vec3? heading;
+  final Color headingColor;
+```
+
+In `paint`, replace the inline clamp with `final c = clampHudPoint(at, vp); final offScreen = c.offScreen;` and use `c.at` where `clamped` was used. Then, after the marker loop:
+
+```dart
+    final h = heading?.normalized;
+    if (h != null && h.length > 0) {
+      final at = headingMarkerPoint(camera: camera, heading: h, viewport: vp);
+      if (at != null) {
+        final offScreen = clampHudPoint(at, vp).offScreen;
+        final paint = Paint()
+          ..color = headingColor.withValues(alpha: offScreen ? 0.45 : 0.9);
+        // A filled triangle, deliberately unlike the ring markers: the current
+        // course must never read as a destination.
+        canvas.drawPath(
+          Path()
+            ..moveTo(at.dx, at.dy - 9)
+            ..lineTo(at.dx - 7.5, at.dy + 5.5)
+            ..lineTo(at.dx + 7.5, at.dy + 5.5)
+            ..close(),
+          paint,
+        );
+      }
+    }
+```
+
+`shouldRepaint` stays `true`, for the reason its existing comment already gives.
+
+- [ ] **Step 6: Parameterise the overlay, and give the marker layer its heading**
+
+The two cockpit layers stay two layers. `_CockpitOverlay` (`:812`, the frame and reticle) and the
+`CockpitHudPainter` `CustomPaint` mounted just below it (`:541-548`) are separate `Positioned.fill` +
+`IgnorePointer` siblings, and `cruise_ui_test.dart` asserts there is exactly one `CustomPaint` whose
+painter is a `CockpitHudPainter`. Merging them into one `CustomPaint` with a `foregroundPainter`
+would break that assertion and the marker tests with it.
+
+`_CockpitOverlay` gains the readout and therefore stops being `const`:
+
+```dart
+class _CockpitOverlay extends StatelessWidget {
+  const _CockpitOverlay({
+    required this.deviationDegrees,
+    required this.turnCost,
+    required this.hasCourse,
+  });
+
+  /// The angle between the ship's course and the reticle, and what the turn
+  /// would cost — the two numbers §5.3 calls the only ones the player needs.
+  final int deviationDegrees;
+  final int turnCost;
+
+  /// False when the ship has no course to deviate from (parked, or coasting
+  /// with the bar offering a brake), in which case there is no readout.
+  final bool hasCourse;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        CustomPaint(size: Size.infinite, painter: _CockpitPainter()),
+        if (hasCourse)
+          Align(
+            alignment: const Alignment(0, 0.18),
+            child: Text(
+              '偏离 $deviationDegrees° · $turnCost EN',
+              style: const TextStyle(
+                color: StarColors.gold,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+```
+
+At its mount site, drop the `const` and pass the values; at the marker layer just below, pass the
+heading:
+
+```dart
+                  if (_camera.mode == CameraMode.cockpit) ...<Widget>[
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: _CockpitOverlay(
+                          deviationDegrees: headingDeviationDegrees(
+                            current: _c.driftVelocity,
+                            proposed: _camera.forward,
+                          ),
+                          turnCost: _c.turnCostTo(_camera.forward),
+                          hasCourse: _c.isCruising,
+                        ),
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: CustomPaint(
+                          size: Size.infinite,
+                          painter: CockpitHudPainter(
+                            camera: _camera,
+                            markers: _hudMarkers(scene),
+                            heading: _c.isCruising ? _c.driftVelocity : null,
+                            headingColor: StarColors.gold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+```
+
+The heading is passed only while cruising: the bar offers a coasting ship a brake rather than a
+turn, and a turn readout beside a brake button would offer something the button cannot do.
+
+- [ ] **Step 7: Put the two numbers on the button**
+
+In `_HeadingBar.build`, the moving branch's `detail` becomes the deviation and the price:
+
+```dart
+    final deviation = headingDeviationDegrees(
+      current: controller.driftVelocity,
+      proposed: heading,
+    );
+    ...
+                  _HudButton(
+                    label: '修正航向',
+                    detail: '$deviation° · $turnCost EN',
+                    icon: Icons.alt_route_rounded,
+                    onPressed: onCorrect,
+                  ),
+```
+
+- [ ] **Step 8: Update the tests that pinned the old detail**
+
+In `starward/test/cruise_ui_test.dart`:
+- `'the cockpit opens on the current heading while cruising'` (Task 17): `inCockpit('1 EN')` → `inCockpit('0° · 1 EN')`, and add
+  `expect(find.text('偏离 0° · 1 EN'), findsOneWidget);`
+- `'dragging off the heading quotes a real turn and the brake hint'` (Task 17): `inCockpit('1 EN')` →
+  `inCockpit('0° · 1 EN')` for the precondition, and `find.text('200 EN')` → `find.text('180° · 200 EN')`;
+  add `expect(find.text('偏离 180° · 200 EN'), findsOneWidget);`
+- `'recentering in the cockpit returns to the current heading'` (Task 17): both `inCockpit('1 EN')`
+  occurrences → `inCockpit('0° · 1 EN')`.
+- `'correcting course confirms before spending'` (Task 18): its dialog copy already reads
+  `180°`, so it is unaffected.
+
+Add one test pinning that the marker layer carries the course:
+
+```dart
+  testWidgets('the cockpit marks the current heading on the HUD', (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+    clock.advance(const Duration(seconds: 1500));
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    final painter = tester
+        .widgetList<CustomPaint>(find.byWidgetPredicate(
+            (w) => w is CustomPaint && w.painter is CockpitHudPainter))
+        .single
+        .painter! as CockpitHudPainter;
+    expect(painter.heading, isNotNull, reason: 'cruising has a course to mark');
+    expect(painter.heading!.normalized.x, closeTo(1.0, 1e-9),
+        reason: 'driftVelocity is +X');
+  });
+```
+
+- [ ] **Step 9: Run the tests to verify they pass**
+
+Run: `cd starward && flutter test test/cockpit_hud_test.dart test/cruise_ui_test.dart`
+Expected: PASS.
+
+- [ ] **Step 10: Full suite, analyze, commit**
+
+```bash
+cd starward && flutter analyze && flutter test
+git add starward/lib/ui/galaxy3d/cockpit_hud.dart starward/lib/ui/galaxy3d/galaxy_map_3d_page.dart starward/test/cockpit_hud_test.dart starward/test/cruise_ui_test.dart
+git commit -m "feat(starward): mark the current heading and read out the deviation
+
+Co-Authored-By: Claude Code <noreply@anthropic.com>"
+```
+
+---
+
+### Task 20: 座舱按钮的禁用态与训练入口
+
+Implements spec §5.3's 「禁用时」 column and its 指引 sentence (finding M1). §4.3 gives the
+predicate: 「能量不足时的指引沿用 `journey_page.dart:822` 的既有做法：禁用按钮 + 「前往训练补充能量」」.
+
+**Files:**
+- Modify: `starward/lib/ui/galaxy3d/galaxy_map_3d_page.dart`
+- Test: `starward/test/cruise_ui_test.dart`
+
+**Interfaces:**
+- Consumes: `GameController.energy`, `.brakingCost`, `.canBrake` (`game_controller.dart:983`, `!hasMomentum || energyBalance >= brakingCost`), `.turnCostTo`, `.ship.engine.activationCost`; `ShellScope.go(BuildContext, int)` (`lib/ui/shell/shell_scope.dart:15`); `TrainingPage` (`lib/ui/training/training_page.dart:18`).
+- Produces: `_HudButton.enabled` / `.disabledDetail`.
+
+**The two predicates are the controller's own, not new ones.** `activate()` requires
+`energyBalance > activationCost` **strictly** (§4.3 says so, so the tank never sits awake at zero) and
+`correctHeading` requires `energy >= cost` (`game_controller.dart:1356`). The buttons must be gated on
+exactly those, or a button will offer an action that then refuses.
+
+- [ ] **Step 1: Write the failing tests**
+
+```dart
+  testWidgets('a turn the ship cannot afford is disabled, not a silent no-op',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+    clock.advance(const Duration(seconds: 2400));
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+    // 300 − energyCostFor(2400 / 37.5 = 64 ly) = 300 − 160.
+    expect(c.energy, 140, reason: 'precondition');
+
+    await tester.dragFrom(const Offset(600, 300), const Offset(-523.6, 0));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(inCockpit('需要 200 EN（现有 140 EN）'), findsOneWidget);
+    expect(find.text('前往训练补充能量'), findsOneWidget);
+
+    await tester.tap(inCockpit('修正航向'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(c.energy, 140, reason: 'nothing was spent');
+    expect(c.driftVelocity.x, greaterThan(0), reason: 'still on the old course');
+  });
+
+  testWidgets('a dormant engine that cannot pay for activation says so',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.coast);
+    clock.advance(const Duration(seconds: 3000));
+    c.tick();
+    // Braking is not blocked by dormancy (§4.3), so this reaches a parked,
+    // dormant, empty ship — the only state where the activation button is short.
+    await c.stopShip();
+    await c.acknowledgeDriftReport();
+    expect(c.isDormant, isTrue, reason: 'precondition');
+    expect(c.energy, 0, reason: '300 − 200 burned − 100 braked');
+
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    expect(inCockpit('激活引擎'), findsOneWidget);
+    expect(inCockpit('需要 5 EN（现有 0 EN）'), findsOneWidget);
+    expect(find.text('前往训练补充能量'), findsOneWidget);
+  });
+
+  testWidgets('the training shortcut switches to the training tab',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.coast);
+    clock.advance(const Duration(seconds: 3000));
+    c.tick();
+    await c.stopShip();
+    await c.acknowledgeDriftReport();
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    await tester.tap(find.text('前往训练补充能量'));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // `TrainingPage` is an `IndexedStack` child, so the default finder sees it
+    // only while its tab is the selected one.
+    expect(find.byType(TrainingPage), findsOneWidget);
+  });
+```
+
+Add `import 'package:starward/ui/training/training_page.dart';` to the test file.
+
+- [ ] **Step 2: Run them to verify they fail**
+
+Run: `cd starward && flutter test test/cruise_ui_test.dart`
+Expected: FAIL — `需要 200 EN（现有 140 EN）` and `前往训练补充能量` do not exist, and the first test's
+tap spends nothing only because the drag produced a cost of 200 against 140 EN, so
+`correctHeading` refuses and the snackbar fires instead.
+
+- [ ] **Step 3: Give the button a disabled state**
+
+```dart
+class _HudButton extends StatelessWidget {
+  const _HudButton({
+    required this.label,
+    required this.detail,
+    required this.icon,
+    required this.onPressed,
+    this.enabled = true,
+    this.disabledDetail,
+  });
+
+  final String label;
+  final String detail;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  /// False when the action is not available. A disabled button does not fire
+  /// [onPressed] at all: a tap that silently does nothing reads as a broken
+  /// control, and the detail line is where the reason goes.
+  final bool enabled;
+
+  /// What the detail line says instead when [enabled] is false. Defaults to
+  /// [detail] for an action that is off for a reason the detail already states.
+  final String? disabledDetail;
+
+  @override
+  Widget build(BuildContext context) {
+    final on = enabled;
+    return GestureDetector(
+      onTap: on ? onPressed : null,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: panelDecoration(radius: 12, color: StarColors.panelLight),
+        child: Row(
+          children: <Widget>[
+            Icon(icon,
+                color: on ? StarColors.cyan : StarColors.faint, size: 18),
+            const SizedBox(width: 10),
+            Text(label,
+                style: TextStyle(
+                    color: on ? StarColors.offWhite : StarColors.faint,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700)),
+            const Spacer(),
+            Text(on ? detail : (disabledDetail ?? detail),
+                style: TextStyle(
+                    color: on ? StarColors.gold : StarColors.danger,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+```
+
+- [ ] **Step 4: Gate each button on the controller's own predicate**
+
+In `_HeadingBar.build`:
+
+```dart
+    final energy = controller.energy;
+    final activationCost = controller.ship.engine.activationCost;
+    // `activate()` needs the balance to be *strictly* greater than the fee, so
+    // that waking the engine never leaves it awake on an empty tank (§4.3).
+    final canActivate = energy > activationCost;
+    // `correctHeading` refuses when `energy < cost`, so the button may offer a
+    // turn that spends the last drop — but not one that cannot be paid for.
+    final canTurn = energy >= turnCost;
+```
+
+Then:
+- dormant branch: `_HudButton(label: '激活引擎', detail: '$activationCost EN', enabled: canActivate, disabledDetail: '需要 $activationCost EN（现有 $energy EN）', …)`
+- `!moving` branch: unchanged (`点火巡航` is free; the dormant case never reaches it).
+- moving branch: `enabled: canTurn, disabledDetail: '需要 $turnCost EN（现有 $energy EN）'`
+
+And the brake hint must not offer something the ship cannot take either:
+
+```dart
+    final turningIsDearer = moving && !dormant && turnCost > braking;
+    // The hint is an offer, so it obeys the same rule as the button: a broke
+    // ship is not told to brake instead when it cannot brake either.
+    final showBrakeHint = turningIsDearer && controller.canBrake;
+```
+
+Replace `if (turningIsDearer)` with `if (showBrakeHint)`.
+
+- [ ] **Step 5: Add the training shortcut**
+
+Below the button (and below the brake hint when it is showing), in the same `Column`:
+
+```dart
+                if (!dormant ? !canTurn && moving : !canActivate) ...<Widget>[
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () => ShellScope.go(context, 3),
+                    behavior: HitTestBehavior.opaque,
+                    child: const Text('前往训练补充能量',
+                        style: TextStyle(
+                            color: StarColors.cyan,
+                            fontSize: 11,
+                            decoration: TextDecoration.underline)),
+                  ),
+                ],
+```
+
+Write it as a named local instead of that nested conditional if it reads better:
+
+```dart
+    // The same escape hatch the voyage dock offers when a button is short.
+    final shortOfEnergy = dormant ? !canActivate : (moving && !canTurn);
+```
+
+and `if (shortOfEnergy) ...<Widget>[ … ]`.
+
+- [ ] **Step 6: Run them to verify they pass**
+
+Run: `cd starward && flutter test test/cruise_ui_test.dart`
+Expected: PASS.
+
+- [ ] **Step 7: Full suite, analyze, commit**
+
+```bash
+cd starward && flutter analyze && flutter test
+git add starward/lib/ui/galaxy3d/galaxy_map_3d_page.dart starward/test/cruise_ui_test.dart
+git commit -m "feat(starward): say why a cockpit button is disabled, and offer the training tab
+
+Co-Authored-By: Claude Code <noreply@anthropic.com>"
+```
+
+---
+
+### Task 21: 航行页的休眠面板与 `_EnginePanel`
+
+Implements spec §9.1's dormant panel and §9.3's extraction (finding M3).
+
+**Files:**
+- Modify: `starward/lib/ui/journey/journey_page.dart`
+- Test: `starward/test/cruise_ui_test.dart`
+
+**Interfaces:**
+- Consumes: `GameController.isDormant`, `.energy`, `.ship.engine.activationCost`, `.activate()` (`game_controller.dart:1215`, `Future<bool>`); `ShellScope.go`; `TrainingPage`; `StarPanel`, `StarColors`, `_ActionButton` (`journey_page.dart:1030` is `_FlightPanel`; `_ActionButton` is the dock's button).
+- Produces: `_EnginePanel({required GameController controller, required VoidCallback onActivate})`; `_DriftDock.onActivate`; `_CoastDock.onActivate`.
+
+- [ ] **Step 1: Write the failing test**
+
+```dart
+  testWidgets('a dormant parked ship gets an activation panel on the voyage tab',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.coast);
+    clock.advance(const Duration(seconds: 3000));
+    c.tick();
+    // Braking is not blocked by dormancy (§4.3), so this reaches a parked,
+    // dormant, empty ship on the voyage tab's standby dock.
+    await c.stopShip();
+    await c.acknowledgeDriftReport();
+    expect(c.isDormant, isTrue, reason: 'precondition');
+    expect(c.hasMomentum, isFalse, reason: 'precondition: parked');
+    expect(c.energy, 0, reason: '300 − 200 burned − 100 braked');
+
+    await _pumpVoyage(tester, c);
+
+    expect(find.text('引擎休眠中 · 生命维持与照明已停止'), findsOneWidget);
+    expect(find.text('需要 5 EN 激活'), findsOneWidget);
+    expect(find.text('激活引擎'), findsOneWidget);
+    // Short of the fee, so the button is off and the escape hatch is offered.
+    expect(find.text('前往训练补充能量'), findsOneWidget);
+  });
+
+  testWidgets('activating from the voyage panel wakes the engine',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.coast);
+    clock.advance(const Duration(seconds: 3000));
+    c.tick();
+    await c.acknowledgeDriftReport();
+    expect(c.isDormant, isTrue, reason: 'precondition');
+    expect(c.hasMomentum, isTrue, reason: 'still coasting, so 100 EN is left');
+
+    await _pumpVoyage(tester, c);
+    expect(find.text('激活引擎'), findsOneWidget);
+
+    await tester.tap(find.text('激活引擎'));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(c.isDormant, isFalse);
+    expect(c.energy, 95, reason: '100 − activationCost');
+  });
+```
+
+- [ ] **Step 2: Run it to verify it fails**
+
+Run: `cd starward && flutter test test/cruise_ui_test.dart`
+Expected: FAIL — the voyage tab shows only `当前坐标 · 深空` and `点火巡航`; no dormant panel exists.
+
+- [ ] **Step 3: Write `_EnginePanel`**
+
+Add it beside `_DriftDock` in `starward/lib/ui/journey/journey_page.dart`:
+
+```dart
+/// The dormant engine's panel: what happened, what it costs to undo, and the
+/// button that does it.
+///
+/// Shared by both standby docks — `_DriftDock` (parked) and `_CoastDock`
+/// (drifting) can both be dormant, and §9.3 asks for one component rather than
+/// the same activation entry written twice.
+///
+/// The gate is `energy > activationCost`, strictly: `activate()` refuses at
+/// `energy == activationCost`, because waking the engine must not leave it awake
+/// on an empty tank.
+class _EnginePanel extends StatelessWidget {
+  const _EnginePanel({required this.controller, required this.onActivate});
+
+  final GameController controller;
+  final VoidCallback onActivate;
+
+  @override
+  Widget build(BuildContext context) {
+    final cost = controller.ship.engine.activationCost;
+    final energy = controller.energy;
+    final canActivate = energy > cost;
+    return StarPanel(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          const Text('引擎休眠中 · 生命维持与照明已停止',
+              style: TextStyle(
+                  color: StarColors.offWhite,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text(canActivate ? '需要 $cost EN 激活' : '需要 $cost EN（现有 $energy EN）',
+              style: const TextStyle(color: StarColors.faint, fontSize: 11)),
+          const SizedBox(height: 12),
+          _ActionButton(
+            label: '激活引擎',
+            icon: Icons.power_settings_new_rounded,
+            onPressed: canActivate ? onActivate : null,
+          ),
+          if (!canActivate) ...<Widget>[
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => ShellScope.go(context, 3),
+              behavior: HitTestBehavior.opaque,
+              child: const Text('前往训练补充能量',
+                  style: TextStyle(
+                      color: StarColors.cyan,
+                      fontSize: 11,
+                      decoration: TextDecoration.underline)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+```
+
+`_ActionButton` (`journey_page.dart:1238`) already takes a **nullable** `onPressed` and already renders
+the disabled state — `final disabled = onPressed == null;` with its own comment saying "a dead button
+must look dead". So `onPressed: canActivate ? onActivate : null` is the whole change; do not add a
+second flag to it and do not build a second button widget.
+
+- [ ] **Step 4: Mount it in both docks**
+
+`_DriftDock` and `_CoastDock` each gain `required this.onActivate`, and each renders
+`if (controller.isDormant) ...<Widget>[const SizedBox(height: 14), _EnginePanel(controller: controller, onActivate: onActivate)]`
+below its existing content. A dormant `_DriftDock` also keeps its `点火巡航` button — the cockpit is
+where the course is chosen, and §9.1 keeps that entry point.
+
+Wire both at their mount sites (`journey_page.dart:372` and `:380`) with
+`onActivate: () => _c.activate()`.
+
+- [ ] **Step 5: Run the tests to verify they pass**
+
+Run: `cd starward && flutter test test/cruise_ui_test.dart`
+Expected: PASS.
+
+- [ ] **Step 6: Full suite, analyze, commit**
+
+```bash
+cd starward && flutter analyze && flutter test
+git add starward/lib/ui/journey/journey_page.dart starward/test/cruise_ui_test.dart
+git commit -m "feat(starward): give the voyage dock a dormant engine panel
+
+Co-Authored-By: Claude Code <noreply@anthropic.com>"
+```
+
+---
+
+### Task 22: 清掉十条已确认的假注释
+
+The final review's L3–L10 plus its two INFO notes are ten claims in plan-added tests that are false
+as written and that no test can fail on. They are the same defect class the branch has fixed
+twenty-five times already, so shipping them knowingly would contradict the standard the rest of the
+branch holds. **Comment-only: no behaviour, no test name's assertion, no pinned number changes.**
+
+**Ruling:** this is in scope even though the user's instruction named the six findings, because it is
+the same class of defect the plan has treated as in-scope all along, and the alternative is shipping
+ten known-false claims. *Cost if wrong:* one dispatch spent on comment edits.
+
+**Files:**
+- Modify: `starward/test/cruise_ui_test.dart`, `starward/test/cruise_test.dart`, `starward/test/cruise_save_test.dart`, `starward/test/cockpit_hud_test.dart`, `starward/test/camera_aim_test.dart`, `starward/test/heading_test.dart`
+
+**Interfaces:** none. Nothing is produced or consumed; no assertion changes.
+
+- [ ] **Step 1: Correct each claim**
+
+Re-derive each one from the code **before** rewriting it, and if a claim cannot be made true by
+rewording, **stop and report** rather than changing behaviour.
+
+| # | Site | The claim | Why it is false | Make it true |
+|---|---|---|---|---|
+| L3 | `cruise_ui_test.dart:49` | `_enterCockpit`'s doc says "the regression test **above**" | that test is below — `main()` is at `:70` | say "the regression test below", or name it |
+| L4 | `cruise_test.dart:117` | the test name says `secondsForEnergy` "inverts the burn exactly" | the body never calls `burnForSeconds`, and at 0 it is false: `secondsForEnergy(0) == 0.0` but `burnForSeconds(0) == 1` (`energyCostFor`'s `minEnergyCost` floor) | rename to what it pins, and state the floor as the exception |
+| L5 | `cruise_save_test.dart:26` | `reason: 'no two kinds may share a name'` | unfalsifiable — Dart rejects duplicate enum names at compile time, so no runtime assertion can observe it | say what the assertion actually pins (the round-trip preserves each kind's wire name) |
+| L6 | `cockpit_hud_test.dart:42` | "only a normalised vector gives the true `asin(3/5) = +37°`" | `asin(3/5)` is 36.87°; the readout rounds it to `+37°` | say `36.87°`, which the readout rounds to `+37°` |
+| L7 | `cockpit_hud_test.dart:76` | the test "asserts **only** `\|dx − centre\| > 1`" | it also asserts `visible` and `dy ≈ 300` | drop "only", or list all three |
+| L8 | `camera_aim_test.dart:44` | "the two `const` expressions canonicalise" | there is one `const` expression in that comparison, so there is no second instance to canonicalise with | say what the comparison really is (identity, via `const` canonicalisation of the single instance both sides name) |
+| L9 | `heading_test.dart:94` | "Half a degree is the tightest step" | the real tightest half-step is ≈ 0.33° — re-derive it from the cost formula before rewriting | state the derived figure, or drop the superlative |
+| L10 | `cruise_test.dart:655` | "still the **nearest** candidate" | `recommendedDestination` prefers hand-authored hero worlds, so the winner need not be nearest (`game_controller.dart:988-991`) | say "the featured candidate", or whatever the assertion actually pins |
+
+Also fix the two INFO notes in the same pass, both in the plan document rather than in code:
+`docs/superpowers/plans/2026-10-14-starward-free-cruise.md`'s Self-Review claim "Every numbered
+requirement in the spec maps to a task" is false (Phase 5 is the evidence) and its closing
+「与 spec 的偏差汇总」 says "Four deviations" against the top-of-plan "Six". Correct both, and point
+the Self-Review at Phase 5.
+
+- [ ] **Step 2: Prove nothing changed**
+
+```bash
+cd starward && flutter analyze && flutter test
+git diff --stat
+```
+Expected: `No issues found!`; `All tests passed!` with the **same** count as Task 21's run; and a diff
+touching only comments (no changed assertion, no changed pinned number).
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add starward/test/cruise_ui_test.dart starward/test/cruise_test.dart starward/test/cruise_save_test.dart starward/test/cockpit_hud_test.dart starward/test/camera_aim_test.dart starward/test/heading_test.dart docs/superpowers/plans/2026-10-14-starward-free-cruise.md
+git commit -m "docs(starward): correct ten false claims in the free-cruise tests
+
+Co-Authored-By: Claude Code <noreply@anthropic.com>"
+```
