@@ -1005,6 +1005,7 @@ class GameController extends ChangeNotifier {
       ));
     }
     _repinLeg(at: now);
+    _syncDormancy();
     return burned;
   }
 
@@ -1115,6 +1116,53 @@ class GameController extends ChangeNotifier {
     _rebuildNearby();
     await _persist();
     notifyListeners();
+  }
+
+  /// Shuts the engine down when a settlement has left the tank empty.
+  ///
+  /// Called at the end of every settlement, so no rule can spend the last drop
+  /// without the shutdown following. Deliberately *not* called from `_addEnergy`:
+  /// training refills the tank but does not restart the engine — that is what
+  /// [activate] is for, and it is the difference between a setback and a free
+  /// recovery.
+  ///
+  /// Not the only way to become dormant, despite the name: a cruise that runs
+  /// dry stops on its *spendable budget* (`balance - cruiseReserve`) and keeps
+  /// its braking reserve, so `_reconcileCruise` sets the flag itself with 100 EN
+  /// still in the tank — this predicate would read that tank as full and leave
+  /// the engine running. Do not "unify" the two: routing `_reconcileCruise`
+  /// through here silently un-dormants every exhausted cruise.
+  void _syncDormancy() {
+    if (_player.engineDormant) return;
+    if (_player.energyBalance > 0) return;
+    _player = _player.copyWith(engineDormant: true);
+  }
+
+  /// Pays the activation fee and brings a dormant engine back online.
+  ///
+  /// Returns false when there is nothing to do — the engine is already running,
+  /// or the tank cannot cover the fee. Deliberately does *not* call
+  /// `_syncDormancy`: a player who spends their last 5 EN waking the engine ends
+  /// up awake with nothing, which is a worse position than dormant with nothing
+  /// but is exactly what they asked for. Re-dormanting them would be the game
+  /// quietly taking the decision back.
+  Future<bool> activate() async {
+    if (!isDormant) return false;
+    final cost = _ship.engine.activationCost;
+    if (_player.energyBalance < cost) return false;
+    _player = _player.copyWith(
+      energyBalance: _player.energyBalance - cost,
+      engineDormant: false,
+    );
+    _energyLedger.add(EnergyTransaction(
+      id: _newId('en'),
+      type: EnergyTxType.activation,
+      amount: -cost,
+      createdAt: _now(),
+    ));
+    await _persist();
+    notifyListeners();
+    return true;
   }
 
   /// Energy a cruise must keep in the tank so it can always buy its own stop.
@@ -1413,6 +1461,7 @@ class GameController extends ChangeNotifier {
       createdAt: now,
       relatedObjectId: j.id,
     ));
+    _syncDormancy();
     return burned;
   }
 
@@ -1432,6 +1481,7 @@ class GameController extends ChangeNotifier {
       amount: -amount,
       createdAt: _now(),
     ));
+    _syncDormancy();
   }
 
   /// Bills the entire tank.
@@ -1441,15 +1491,19 @@ class GameController extends ChangeNotifier {
   /// from a rounded progress fraction.
   void _settleTank(Journey journey, DateTime now) {
     final drained = _player.energyBalance;
-    if (drained <= 0) return;
-    _player = _player.copyWith(energyBalance: 0);
-    _energyLedger.add(EnergyTransaction(
-      id: _newId('en'),
-      type: EnergyTxType.travelCost,
-      amount: -drained,
-      createdAt: now,
-      relatedObjectId: journey.id,
-    ));
+    if (drained > 0) {
+      _player = _player.copyWith(energyBalance: 0);
+      _energyLedger.add(EnergyTransaction(
+        id: _newId('en'),
+        type: EnergyTxType.travelCost,
+        amount: -drained,
+        createdAt: now,
+        relatedObjectId: journey.id,
+      ));
+    }
+    // Runs even when the tank was already empty: this is the moment the ship is
+    // known to be out of power, and the only moment that knows it.
+    _syncDormancy();
   }
 
   void _addEnergy(int amount, EnergyTxType type, String relatedId) {
