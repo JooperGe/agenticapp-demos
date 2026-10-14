@@ -60,6 +60,7 @@ const _greedy = Engine(
   brakingDistanceLy: 40,
   minEnergyCost: 1,
   minTravelSeconds: 15,
+  activationCost: 5,
 );
 
 void main() {

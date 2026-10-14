@@ -21,6 +21,7 @@ const Engine _thrifty = Engine(
   brakingDistanceLy: 40,
   minEnergyCost: 1,
   minTravelSeconds: 15,
+  activationCost: 5,
 );
 
 class FakeClock {

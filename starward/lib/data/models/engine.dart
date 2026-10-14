@@ -17,6 +17,7 @@ class Engine {
     required this.brakingDistanceLy,
     required this.minEnergyCost,
     required this.minTravelSeconds,
+    required this.activationCost,
   });
 
   final String id;
@@ -50,6 +51,11 @@ class Engine {
   final int minEnergyCost;
   final int minTravelSeconds;
 
+  /// What it costs to bring the engine back online after the tank ran dry and
+  /// it shut itself down. A flat fee, not a function of anything: the point is
+  /// that recovery has a price, not that it scales.
+  final int activationCost;
+
   /// Energy required to travel [distanceLy] light-years.
   int energyCostFor(double distanceLy) =>
       math.max(minEnergyCost, (distanceLy * energyPerLy).round());
@@ -80,6 +86,42 @@ class Engine {
     return energyCostFor(brakingDistanceLy * speedLyPerSec / cruiseSpeedLyPerSec);
   }
 
+  /// Energy the engine spends per second of powered cruise.
+  ///
+  /// The ship's life support and electrical systems run off the same tank, so a
+  /// cruise burns continuously rather than only at ignition. Derived from the
+  /// two fields above so a cruise and a voyage can never disagree about how
+  /// fast the tank drains.
+  double get powerDrawPerSecond => energyPerLy * cruiseSpeedLyPerSec;
+
+  /// Energy burned by [seconds] of powered cruise.
+  ///
+  /// Deliberately shaped like [energyCostFor] — including its `minEnergyCost`
+  /// floor — because it *is* that quote: `seconds * cruiseSpeed` is the distance
+  /// covered, so the two can never drift apart.
+  int burnForSeconds(double seconds) =>
+      energyCostFor(seconds * cruiseSpeedLyPerSec);
+
+  /// How many seconds [energy] buys.
+  ///
+  /// The inverse of [burnForSeconds] on the quantised scale, and the form the
+  /// exhaustion check has to use: comparing `burnForSeconds(elapsed) >= budget`
+  /// fires a tick early, because EN is rounded to whole units. Division keeps it
+  /// exact — `secondsForEnergy(200)` is 3000.0, not 3000.0000000000005.
+  double secondsForEnergy(int energy) => energy / powerDrawPerSecond;
+
+  /// Energy to swing the heading by [radians] while under way.
+  ///
+  /// Physically this is a Δv burn: at speed `v`, turning by θ changes the
+  /// velocity vector by `2 v sin(θ/2)`. Priced through [energyCostFor] so a turn
+  /// is quoted on the same scale as the distance it costs, which is what makes
+  /// 60° cost exactly what braking costs.
+  int turnCostFor(double radians) {
+    if (radians <= 0) return 0;
+    final deltaV = 2 * cruiseSpeedLyPerSec * math.sin(radians / 2);
+    return energyCostFor(brakingDistanceLy * deltaV / cruiseSpeedLyPerSec);
+  }
+
   /// The engine every new ship is fitted with.
   ///
   /// These are the numbers the game has always used, so a standard ship flies
@@ -92,6 +134,7 @@ class Engine {
     brakingDistanceLy: 40,
     minEnergyCost: 1,
     minTravelSeconds: 15,
+    activationCost: 5,
   );
 
   factory Engine.fromJson(Map<String, dynamic> json) => Engine(
@@ -110,6 +153,11 @@ class Engine {
             Engine.standard.brakingDistanceLy,
         minEnergyCost: json['minEnergyCost'] as int,
         minTravelSeconds: json['minTravelSeconds'] as int,
+        // Absent in saves written before the activation fee existed. The
+        // standard fee is the only sensible reading: an engine that predates the
+        // field is a standard engine.
+        activationCost:
+            (json['activationCost'] as num?)?.toInt() ?? Engine.standard.activationCost,
       );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -120,5 +168,6 @@ class Engine {
         'brakingDistanceLy': brakingDistanceLy,
         'minEnergyCost': minEnergyCost,
         'minTravelSeconds': minTravelSeconds,
+        'activationCost': activationCost,
       };
 }

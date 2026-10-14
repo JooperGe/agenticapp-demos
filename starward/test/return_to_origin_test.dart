@@ -151,6 +151,7 @@ void main() {
         brakingDistanceLy: 40,
         minEnergyCost: 1,
         minTravelSeconds: 15,
+        activationCost: 5,
       ));
 
       expect(await c.returnToOrigin(), LaunchResult.insufficientEnergy);

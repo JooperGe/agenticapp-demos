@@ -263,6 +263,7 @@ const _greedy = Engine(
   brakingDistanceLy: 40,
   minEnergyCost: 1,
   minTravelSeconds: 15,
+  activationCost: 5,
 );
 
 Future<GameController> _bootAt(_FakeClock clock) async {
