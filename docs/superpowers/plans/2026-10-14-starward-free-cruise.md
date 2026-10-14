@@ -5391,10 +5391,23 @@ predicate: 「能量不足时的指引沿用 `journey_page.dart:822` 的既有�
 - Consumes: `GameController.energy`, `.brakingCost`, `.canBrake` (`game_controller.dart:983`, `!hasMomentum || energyBalance >= brakingCost`), `.turnCostTo`, `.ship.engine.activationCost`; `ShellScope.go(BuildContext, int)` (`lib/ui/shell/shell_scope.dart:15`); `TrainingPage` (`lib/ui/training/training_page.dart:18`).
 - Produces: `_HudButton.enabled` / `.disabledDetail`.
 
-**The two predicates are the controller's own, not new ones.** `activate()` requires
-`energyBalance > activationCost` **strictly** (§4.3 says so, so the tank never sits awake at zero) and
-`correctHeading` requires `energy >= cost` (`game_controller.dart:1356`). The buttons must be gated on
-exactly those, or a button will offer an action that then refuses.
+**The two predicates are the controller's own, not new ones.** `correctHeading` requires
+`energy >= cost` (`game_controller.dart:1356`) and `activate()` requires `energyBalance >= cost`
+(`:1218`). The buttons must be gated on exactly those, or a button will offer an action that then
+refuses.
+
+`activate()`'s guard is **lenient**, not strict — `if (_player.energyBalance < cost) return false;`,
+so a player holding exactly 5 EN can spend their last drop waking the engine. That deviates from
+§4.3, which asks for `energyBalance > activationCost` so the tank never sits awake at zero, and the
+plan ruled on it deliberately (deviation 6 under `## Spec Deviations (read this before Task 1)`),
+with its own doc comment in the `activate()` this plan specifies: *"a player who spends their last
+5 EN waking the engine ends up awake with nothing … exactly what they asked for."* The ruling
+stands: it is already built and reviewed across Tasks 1-16, and it is outside the six findings
+Phase 5 exists to close.
+
+What follows for the UI is not a choice. Gating the button `> ` while the controller allows `>=`
+would render 「需要 5 EN（现有 5 EN）」 on a **disabled** button — a message that contradicts its own
+disabled state. So the gate is `>=`, matching `activate()`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -5541,9 +5554,10 @@ In `_HeadingBar.build`:
 ```dart
     final energy = controller.energy;
     final activationCost = controller.ship.engine.activationCost;
-    // `activate()` needs the balance to be *strictly* greater than the fee, so
-    // that waking the engine never leaves it awake on an empty tank (§4.3).
-    final canActivate = energy > activationCost;
+    // `activate()` refuses when `energyBalance < cost` (`:1218`), so equality is
+    // allowed and the gate is `>=`. A strict `>` here would disable the button
+    // while the detail line read 「需要 5 EN（现有 5 EN）」.
+    final canActivate = energy >= activationCost;
     // `correctHeading` refuses when `energy < cost`, so the button may offer a
     // turn that spends the last drop — but not one that cannot be paid for.
     final canTurn = energy >= turnCost;
@@ -5643,9 +5657,11 @@ Implements spec §9.1's dormant panel and §9.3's extraction (finding M3).
     await _pumpVoyage(tester, c);
 
     expect(find.text('引擎休眠中 · 生命维持与照明已停止'), findsOneWidget);
-    expect(find.text('需要 5 EN 激活'), findsOneWidget);
+    // Short of the fee, so the panel quotes the shortfall rather than the price
+    // — `canActivate` is `energy > cost`, and `0 > 5` is false.
+    expect(find.text('需要 5 EN（现有 0 EN）'), findsOneWidget);
     expect(find.text('激活引擎'), findsOneWidget);
-    // Short of the fee, so the button is off and the escape hatch is offered.
+    // …and the button is off, with the escape hatch offered in its place.
     expect(find.text('前往训练补充能量'), findsOneWidget);
   });
 
@@ -5662,6 +5678,11 @@ Implements spec §9.1's dormant panel and §9.3's extraction (finding M3).
 
     await _pumpVoyage(tester, c);
     expect(find.text('激活引擎'), findsOneWidget);
+    // Affordable, so the panel quotes the price and offers no escape hatch.
+    // This is the other half of the branch test 1 pins: `100 > 5` is true.
+    expect(find.text('需要 5 EN 激活'), findsOneWidget);
+    expect(find.text('前往训练补充能量'), findsNothing,
+        reason: 'the ship can afford the fee, so nothing is short');
 
     await tester.tap(find.text('激活引擎'));
     await tester.pump(const Duration(milliseconds: 100));
@@ -5688,9 +5709,9 @@ Add it beside `_DriftDock` in `starward/lib/ui/journey/journey_page.dart`:
 /// (drifting) can both be dormant, and §9.3 asks for one component rather than
 /// the same activation entry written twice.
 ///
-/// The gate is `energy > activationCost`, strictly: `activate()` refuses at
-/// `energy == activationCost`, because waking the engine must not leave it awake
-/// on an empty tank.
+/// The gate is `energy >= activationCost`, matching `activate()`'s own guard
+/// (`game_controller.dart:1218` is `if (_player.energyBalance < cost)`), so the
+/// panel is never short of a fee the controller would have accepted.
 class _EnginePanel extends StatelessWidget {
   const _EnginePanel({required this.controller, required this.onActivate});
 
@@ -5701,7 +5722,7 @@ class _EnginePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final cost = controller.ship.engine.activationCost;
     final energy = controller.energy;
-    final canActivate = energy > cost;
+    final canActivate = energy >= cost;
     return StarPanel(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Column(
