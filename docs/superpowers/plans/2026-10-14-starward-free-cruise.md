@@ -6159,14 +6159,18 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 
 ---
 
-### Task 22: 清掉十三条已确认的假注释
+### Task 22: 清掉十六条已确认的假注释
 
 The final review's L3–L10 plus its two INFO notes are ten claims in plan-added tests that are false
-as written and that no test can fail on. **Task 17's reviewer added three more (L11–L13)**, found by
+as written and that no test can fail on. **The two INFO notes are not missing rows — they are items
+1 and 2 of the plan list at the end of this task** (INFO 1 = the Self-Review's coverage claim, INFO 2
+= the 「Four deviations」 count). **Task 17's reviewer added three more (L11–L13)**, found by
 re-deriving Task 17's own comments against the code it wrote — two of them in `lib/` rather than in
-tests, so this task's diff is no longer test-only. They are the same defect class the branch has
-corrected throughout, so shipping them knowingly would contradict the standard the rest of the
-branch holds. **Comment-only: no behaviour, no test name's assertion, no pinned number changes.**
+tests, so this task's diff is no longer test-only. A third plan item was added by the coordinator
+after that count was written, and **Task 21's reviewer then added L14 and L15**, so the total is
+**sixteen**: 13 table rows + 3 plan items. They are the same defect class the branch has corrected
+throughout, so shipping them knowingly would contradict the standard the rest of the branch holds.
+**Comment-only: no behaviour, no test name's assertion, no pinned number changes.**
 
 **Ruling:** this is in scope even though the user's instruction named the six findings, because it is
 the same class of defect the plan has treated as in-scope all along, and the alternative is shipping
@@ -6185,9 +6189,18 @@ rewording, **stop and report** rather than changing behaviour.
 
 **Locate each row by its quoted text, not by its line number.** The numbers in this table were taken
 at `6b9a842`, and Tasks 18-21 have all inserted lines into `galaxy_map_3d_page.dart` and the test
-files since. The test-file numbers are still accurate (every insertion was below them), but the two
-`lib/` sites have moved: at the time of writing, L11's `_aimCockpit` doc is at `:443-453` and L12's
-`_recenter` comment at `:475-480`, not at `:407` and `:437-439`. **L13 has moved too, for a different
+files since. **An earlier draft of this paragraph claimed the test-file numbers were all still
+accurate because every insertion landed below them. That is false for one row, and it was checked
+against HEAD rather than reasoned about: L10's citation reads `cruise_test.dart:655`, but Task 20's
+fix round inserted its 250 EN turn test at `:496-524` — above L10 — so the claim it quotes now sits
+at `:685-686` and `:655` is an unrelated `reason:` line for a precondition.** The other seven
+test-file rows are accurate to within two lines (L3's text is on `:50`, L7's comment opens on `:75`,
+L8's on `:43`, L9's on `:91`) and the quoted text falls inside or immediately beside each cited
+range, so re-derive them but expect them to hold. **L14 and L15 are the exception in the other
+direction: their numbers were verified at HEAD when they were added, so `:741` and `:742` are exact
+and the two *targets* they cite are the stale things.** The two `lib/` sites have also moved: at the time
+of writing, L11's `_aimCockpit` doc is at `:443-453` and L12's `_recenter` comment at `:475-480`,
+not at `:407` and `:437-439`. **L13 has moved too, for a different
 reason, and its *stated reason* drifted with it:** Task 19 added `import '../../core/theme.dart';` at
 `cockpit_hud.dart:5` for the triangle's `StarColors.cyan` default, which pushed the doc link down one
 line to `:38` and left the row's "imports only `dart:math`, `package:flutter/widgets.dart` and
@@ -6204,10 +6217,18 @@ do not retarget silently.
 | L7 | `cockpit_hud_test.dart:76-78` | "the existing `galaxy3d_projection_test.dart` asserts only `\|dx − centre\| > 1`" | **Ambiguous, not false — re-derive before "fixing" this one.** The "only" is scoped to the dx assertion and is *true*: that test's dx assertion is `(p.screen.dx - 400).abs() > 1` (`galaxy3d_projection_test.dart:44`), which states the magnitude and not the sign — the comment's whole point. But "asserts only" reads as if it described that whole test, and it also asserts `visible` and `dy` (`:43`, `:45`). Those are in *that* file, not this one | disambiguate without asserting anything false: "states the magnitude `\|dx − centre\| > 1` but not its sign". Do **not** add `visible`/`dy` to this comment — they are the other file's assertions, and listing them here would create a new false claim |
 | L8 | `camera_aim_test.dart:44` | "the two `const` expressions canonicalise" | there is one `const` expression in that comparison, so there is no second instance to canonicalise with | say what the comparison really is (identity, via `const` canonicalisation of the single instance both sides name) |
 | L9 | `heading_test.dart:93-95` | "Half a degree is the tightest step the EN grid can express here" | false, and the true figure is a band, not a number. `turnCostFor` is `round(200·sin(θ/2))`, so it reads exactly 100 for `θ ∈ [59.6695°, 60.3311°]` — **0.3305° below 60° and 0.3311° above it**, so the tightest half-step is **0.331°**, not 0.5°. The two sides differ because `sin` is not linear across the band. The assertion's ±0.5° is safe; it is just not the tightest | state the band rather than a superlative: "the 100 EN band here is θ ∈ [59.67°, 60.33°], so ±0.5° leaves it on both sides" — which is what actually justifies the two assertions |
-| L10 | `cruise_test.dart:655` | "The explored planet is still the nearest candidate, so without the guard it would simply be recommended again" | the rule is **featured first, then nearest** (`game_controller.dart:988-991`), so distance is not what decides the winner and a non-featured planet is never recommended while any featured candidate is in range. Whether `rec0` would win absent the guard therefore depends on the fixture, which this comment does not establish | state the rule rather than the distance: "Without the guard the rule would be free to return the explored planet again — it excludes nothing else that would stop it." If the fixture has a featured candidate, say what the assertion really pins instead, and if that leaves the assertion pinning nothing, **report it rather than inventing a justification** |
+| L10 | `cruise_test.dart:685-686` (**not `:655`** — see the paragraph above) | "The explored planet is still the nearest candidate, so without the guard it would simply be recommended again" | the rule is **featured first, then nearest** — doc at `game_controller.dart:988-993`, the loop's actual guard at `:998-999` — so distance is not what decides the winner and a non-featured planet is never recommended while any featured candidate is in range. The comment therefore gives a reason that is not the reason. **Check the conclusion separately from the reason before rewording:** in this test `rec0` is `c.recommendedDestination` *before* `_setExplored` (`:678`), so it is the planet the rule itself picked as the winner; exploring it changes only `stateOf`, which only the guard reads, and leaves its `featured` flag and its distance untouched. If that holds, the conclusion — absent the guard, `rec0` wins again — is **true** and only the reason needs replacing, with something like "`rec0` is the planet the rule already chose, so without the guard it would be chosen again — the guard is the only thing that stopped it." If re-deriving shows the conclusion is false too, say so in the report rather than inventing a justification |
 | L11 | `galaxy_map_3d_page.dart`, `_aimCockpit`'s doc (was `:407`) | the cruising aim is the current heading, "exactly" | `aimCameraAt` ends with `camera.clampPitch()` (`camera3d.dart:268`), which pins the pitch to `±(π/2 − 0.05)` (`:80`), so the aim is the precise inverse only for a heading more than `0.05 rad = 2.865°` from a pole. Unreachable through the cockpit's own ignition path — the drag clamp is the same one, so `driftVelocity` cannot land there — but false as written | keep the "precise inverse" sentence, which is true of the unclamped path, and qualify the "exactly": "up to the pole clamp `aimCameraAt` shares with every other aim" |
 | L12 | `galaxy_map_3d_page.dart`, `_recenter`'s comment (was `:437-439`) | it says what the button means "depends on whether the ship is **under way**" | a coasting ship is under way — it has momentum — and `_aimCockpit` gives it the galactic centre, not its heading. The predicate the code actually branches on is `isCruising`, and the very next clause enumerates the two cases correctly, so only the name is wrong | name the predicate instead of a synonym for it: "depends on whether the ship is **cruising**". Do not touch `_aimCockpit`, which is right |
 | L13 | `cockpit_hud.dart:38` | the doc link `[GameController.turnAngleTo]` | `cockpit_hud.dart`'s imports are `dart:math`, `package:flutter/widgets.dart`, `../../core/theme.dart` and `camera3d.dart` (`:1-6`) — Task 19 added the third for `StarColors.cyan` — and `game_controller.dart` is not among them, so the reference has nothing to resolve to. `comment_references` is off, so `flutter analyze` stays clean — this is a dead link, not a false claim | drop the brackets to a plain code span. Importing the controller into a painter-helper file to satisfy a comment is not worth the dependency; do not change `turnAngleTo`'s own doc |
+| L14 | `cruise_ui_test.dart:741` | `_ActionButton` renders `onTap: onPressed` "(`journey_page.dart:1270`)" | the citation is stale by 75 lines: `onTap: onPressed` is at **`journey_page.dart:1345`** at HEAD. Task 21's own `_EnginePanel` insertion above `_ActionButton` moved it, so the number was correct when the comment was written and wrong by the time it landed. The **claim** is true — `_ActionButton`'s `InkWell` does wire `onTap: onPressed`, null exactly when `onPressed` is null (`:1332` is `final disabled = onPressed == null;`) — only the number is wrong | point it at `journey_page.dart:1345` |
+| L15 | `cruise_ui_test.dart:742` | the same comment cites "the same read `braking_test.dart:493` uses for the unaffordable brake" | `:493` is `await tester.pump();`. The read it means — `final brake = tester.widget<InkWell>(find.ancestor(` — is at **`braking_test.dart:497`** | point it at `braking_test.dart:497` |
+
+**L14 and L15 were found by Task 21's reviewer, not by the original whole-branch pass, and they are the
+reason this brief's count moved from fourteen to sixteen.** They are folded in here rather than sent back
+to Task 21 as a fix round because they are the identical defect class, they live in a file this task
+already edits, and a fix round for two line numbers in a comment costs a whole dispatch. **They are
+comment-only like every other row** — do not touch `_ActionButton` or `braking_test.dart`.
 
 Also fix the plan's own three stale claims, all in
 `docs/superpowers/plans/2026-10-14-starward-free-cruise.md` rather than in code:
@@ -6265,7 +6286,7 @@ touching only comments (no changed assertion, no changed pinned number).
 
 ```bash
 git add starward/test/cruise_ui_test.dart starward/test/cruise_test.dart starward/test/cruise_save_test.dart starward/test/cockpit_hud_test.dart starward/test/camera_aim_test.dart starward/test/heading_test.dart starward/lib/ui/galaxy3d/galaxy_map_3d_page.dart starward/lib/ui/galaxy3d/cockpit_hud.dart docs/superpowers/plans/2026-10-14-starward-free-cruise.md
-git commit -m "docs(starward): correct thirteen false claims in the free-cruise tests
+git commit -m "docs(starward): correct sixteen false claims in the free-cruise comments
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
