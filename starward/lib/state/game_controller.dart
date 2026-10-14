@@ -1121,13 +1121,13 @@ class GameController extends ChangeNotifier {
   /// Shuts the engine down when a settlement has left the tank empty.
   ///
   /// Called at the end of every settlement that moves energy, so no rule can
-  /// spend the last drop without the shutdown following. A settlement with
-  /// nothing to book returns before reaching the sync — `_settleBurn` and
-  /// `_settleCruise` both do — which is harmless: a settlement that moves no
-  /// energy cannot create a new dormancy. Deliberately *not* called from
-  /// `_addEnergy`: training refills the tank but does not restart the engine —
-  /// that is what [activate] is for, and it is the difference between a setback
-  /// and a free recovery.
+  /// spend the last drop without the shutdown following. Two settlements can
+  /// return before reaching the sync — `_settleBurn` when `burned <= 0`, and
+  /// `_settleCruise` when the ship is not cruising — which is harmless: a
+  /// settlement that moves no energy cannot create a new dormancy.
+  /// Deliberately *not* called from `_addEnergy`: training refills the tank but
+  /// does not restart the engine — that is what [activate] is for, and it is
+  /// the difference between a setback and a free recovery.
   ///
   /// Not the only way to become dormant, despite the name: a cruise that runs
   /// dry stops on its *spendable budget* (`balance - cruiseReserve`) and keeps
