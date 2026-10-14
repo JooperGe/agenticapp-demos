@@ -5294,11 +5294,15 @@ In `paint`, replace the inline clamp with `final c = clampHudPoint(at, vp); fina
 
 - [ ] **Step 6: Parameterise the overlay, and give the marker layer its heading**
 
-The two cockpit layers stay two layers. `_CockpitOverlay` (`:872`, the frame and reticle) and the
-`CockpitHudPainter` `CustomPaint` mounted just below it (`:590-603`) are separate `Positioned.fill` +
+The two cockpit layers stay two layers. `_CockpitOverlay` (the frame and reticle) and the
+`CockpitHudPainter` `CustomPaint` mounted just below it are separate `Positioned.fill` +
 `IgnorePointer` siblings, and `cruise_ui_test.dart` asserts there is exactly one `CustomPaint` whose
 painter is a `CockpitHudPainter`. Merging them into one `CustomPaint` with a `foregroundPainter`
 would break that assertion and the marker tests with it.
+
+Locate both by symbol rather than by number: as shipped in `4bc68f9` they are at `:876` and
+`:594-609`, where this step originally said `:872` and `:590-603`. The names are unambiguous, and
+the numbers move again in Task 20.
 
 `_CockpitOverlay` gains the readout and therefore stops being `const`:
 
@@ -5377,22 +5381,45 @@ heading. Both use one local, and that local is the **bar's own condition for off
                   ],
 ```
 
-Declare `hasCourse` once at the top of `_JourneyMapPageState.build` (`galaxy_map_3d_page.dart:535`,
-which currently has no locals and opens straight into `return Scaffold(`), so the two layers cannot
-disagree:
+Declare `hasCourse` once, **inside the `AnimatedBuilder`'s builder and not at the top of `build`**,
+so the two layers cannot disagree. Both places are "once" — but only this one is *current*.
+
+`build` is not what re-runs when the controller notifies: the page's subtree hangs off
+`AnimatedBuilder(animation: _c, builder: …)`, and an `AnimatedBuilder` rebuild does not re-run the
+enclosing `build`. A `hasCourse` captured above it is frozen until the next `setState`, while
+`_HeadingBar` — rebuilt by that same builder — reads the controller live. `JourneyPage`'s
+one-second timer drives `tick()` whenever the ship has momentum (`journey_page.dart:104-107`,
+`needsTimer = status == JourneyStatus.inProgress || c.hasMomentum`) and it stays alive in the star
+map's `IndexedStack` sibling, so a cruise **can** run dry while the cockpit is on screen. At that
+moment a frozen `hasCourse` leaves the readout and the triangle up beside a 激活引擎 bar — exactly
+the state the comment below says must not happen.
+
+The class this goes in is `_GalaxyMap3DPageState`, not `_JourneyMapPageState` (which does not
+exist), and `build` opens at `:539` as shipped in `4bc68f9`, not `:535`:
 
 ```dart
     // The bar's own condition for offering 修正航向: `_HeadingBar` falls through
     // to that button only when the ship is moving and not dormant
-    // (`galaxy_map_3d_page.dart:1193-1206`). It is deliberately **not**
+    // (`galaxy_map_3d_page.dart:1252-1272`). It is deliberately **not**
     // `isCruising`: a coasting ship is `hasMomentum && !driftPowered`, so it
     // takes that same `else` branch and is offered a real, priced turn —
     // `correctHeading` re-lights the engine as it burns — which means the
     // triangle and the readout have to be there for it too. A *dormant* ship is
     // the one case that must not show them: its bar offers only 激活引擎, and a
     // turn price beside that button would offer something it cannot do.
+    //
+    // Declared here rather than at the top of `build`: this builder is what
+    // re-runs on every controller notification, so a `hasCourse` captured
+    // outside it would go stale the moment the burn runs dry on screen —
+    // the bar would rebuild to 激活引擎 while the readout and triangle
+    // stayed up, which is the disagreement this value exists to prevent.
     final hasCourse = _c.hasMomentum && !_c.isDormant;
 ```
+
+The `1252-1272` in that comment is the whole three-branch block of `_HeadingBar` as shipped in
+`4bc68f9`; locate it by the symbol, and by the branch it names. The `:1193-1206` this step
+originally cited was already wrong at `5315395`, where the branches were at 1190 / 1197 / 1206 —
+the range did not even begin at the `if (dormant)`.
 
 - [ ] **Step 7: Put the two numbers on the button**
 
@@ -5445,10 +5472,16 @@ In `starward/test/cruise_ui_test.dart`:
 - `'correcting course confirms before spending'` (Task 18): its dialog copy is matched by
   `RegExp(r'偏转 \d+°，消耗 200 EN。')`, so it is unaffected.
 
-Add two tests pinning the marker layer: one that it carries the course, and one that it does not
-when the bar is offering no turn. The second is what pins `hasCourse`'s `!isDormant` half — a
-dormant ship that is *still coasting* has a real velocity, so `hasMomentum` alone would mark it and
-quote a turn price next to a 激活引擎 button:
+Add three tests pinning the marker layer: one that it carries the course, one that it does not when
+the bar is offering no turn, and one that a burn running dry **while the cockpit is already on
+screen** takes the readout and the marker with it.
+
+The second pins `hasCourse`'s `!isDormant` half — a dormant ship that is *still coasting* has a real
+velocity, so `hasMomentum` alone would mark it and quote a turn price next to a 激活引擎 button. The
+third pins its **declaration site**, and is the only thing that does: see Step 6. Dormancy arrives
+there without any `setState` on the page, so a `hasCourse` captured above the `AnimatedBuilder`
+survives it and the assertions below fail. Do not "simplify" it by moving `c.tick()` before
+`_pumpStarMap` — that is the second test, and it passes either way.
 
 ```dart
   testWidgets('the cockpit marks the current heading on the HUD', (tester) async {
@@ -5496,6 +5529,47 @@ quote a turn price next to a 激活引擎 button:
         reason: 'nor a turn to price');
     expect(inCockpit('激活引擎'), findsOneWidget, reason: 'and the bar says so');
   });
+
+  testWidgets('a burn that runs dry on screen takes the readout with it',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.coast);
+    // 2900 s of the 3000 s the tank holds, so the burn runs dry *after* the
+    // cockpit is on screen rather than before it. `energy` is derived from the
+    // clock, so the readout is already live at this point without a `tick()`.
+    clock.advance(const Duration(seconds: 2900));
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+    expect(inCockpit('修正航向'), findsOneWidget, reason: 'precondition');
+    expect(find.textContaining('偏离'), findsOneWidget, reason: 'precondition');
+
+    // Nothing here calls `setState` on the page. `JourneyPage`'s one-second
+    // timer drives `tick()` from the star map's `IndexedStack` sibling
+    // (`journey_page.dart:104-107`) and this subtree rebuilds through
+    // `AnimatedBuilder(animation: _c)`, which does **not** re-run the enclosing
+    // `build` — so a `hasCourse` captured above it is still true here, and both
+    // assertions below fail against one.
+    clock.advance(const Duration(seconds: 200));
+    c.tick();
+    await tester.pump();
+
+    expect(c.isDormant, isTrue, reason: 'precondition: the burn ran dry');
+    expect(c.hasMomentum, isTrue,
+        reason: 'precondition: `coast` keeps the velocity, so the marker has '
+            'something to mark and only `!isDormant` can withhold it');
+    expect(inCockpit('激活引擎'), findsOneWidget, reason: 'the bar flipped');
+
+    final painter = tester
+        .widgetList<CustomPaint>(find.byWidgetPredicate(
+            (w) => w is CustomPaint && w.painter is CockpitHudPainter))
+        .single
+        .painter! as CockpitHudPainter;
+    expect(painter.heading, isNull, reason: 'the marker went with the bar');
+    expect(find.textContaining('偏离'), findsNothing,
+        reason: 'and so did the readout — the two cannot disagree, because '
+            'they read one local');
+  });
 ```
 
 `find.textContaining('偏离')` is deliberately unscoped: the readout lives in `_CockpitOverlay`, not
@@ -5533,7 +5607,7 @@ predicate: 「能量不足时的指引沿用 `journey_page.dart:822` 的既有�
 - Produces: `_HudButton.enabled` / `.disabledDetail`.
 
 **The three predicates are the controller's own, not new ones.** `correctHeading` requires
-`energy >= cost` (`game_controller.dart:1356`), `activate()` requires `energyBalance >= cost`
+`energy >= cost` (`game_controller.dart:1357`), `activate()` requires `energyBalance >= cost`
 (`:1218`), and `igniteCruise` requires `energy > cruiseReserve` (`:1316`). The buttons must be gated
 on exactly those, or a button will offer an action that then refuses.
 
@@ -5899,6 +5973,18 @@ Implements spec §9.1's dormant panel and §9.3's extraction (finding M3).
     expect(find.text('需要 5 EN（现有 0 EN）'), findsOneWidget);
     expect(find.text('激活引擎'), findsOneWidget);
     // …and the button is off, with the escape hatch offered in its place.
+    //
+    // `onTap` is read off the `InkWell` rather than inferred from a tap: a live
+    // button wired straight to `onActivate` also leaves `isDormant` true here,
+    // because `activate()` refuses on its own (`0 < 5`), so tapping cannot tell
+    // the two apart. `_ActionButton` renders `onTap: onPressed`
+    // (`journey_page.dart:1270`), null exactly when disabled — the same read
+    // `braking_test.dart:493` uses for the unaffordable brake.
+    final activate = tester.widget<InkWell>(find.ancestor(
+      of: find.text('激活引擎'),
+      matching: find.byType(InkWell),
+    ));
+    expect(activate.onTap, isNull, reason: 'the fee is unaffordable');
     expect(find.text('前往训练补充能量'), findsOneWidget);
   });
 
@@ -6063,6 +6149,13 @@ ten known-false claims. *Cost if wrong:* one dispatch spent on comment edits.
 Re-derive each one from the code **before** rewriting it, and if a claim cannot be made true by
 rewording, **stop and report** rather than changing behaviour.
 
+**Locate each row by its quoted text, not by its line number.** The numbers in this table were taken
+at `6b9a842`, and Tasks 18-21 have all inserted lines into `galaxy_map_3d_page.dart` and the test
+files since. The test-file numbers are still accurate (every insertion was below them), but the two
+`lib/` sites have moved: at the time of writing, L11's `_aimCockpit` doc is at `:443-453` and L12's
+`_recenter` comment at `:475-480`, not at `:407` and `:437-439`. L13's `cockpit_hud.dart:37` is still
+correct. Verify each before editing; do not retarget silently.
+
 | # | Site | The claim | Why it is false | Make it true |
 |---|---|---|---|---|
 | L3 | `cruise_ui_test.dart:49` | `_enterCockpit`'s doc says "the regression test **above**" | that test is below — `main()` is at `:70` | say "the regression test below", or name it |
@@ -6072,9 +6165,9 @@ rewording, **stop and report** rather than changing behaviour.
 | L7 | `cockpit_hud_test.dart:76-78` | "the existing `galaxy3d_projection_test.dart` asserts only `\|dx − centre\| > 1`" | **Ambiguous, not false — re-derive before "fixing" this one.** The "only" is scoped to the dx assertion and is *true*: that test's dx assertion is `(p.screen.dx - 400).abs() > 1` (`galaxy3d_projection_test.dart:44`), which states the magnitude and not the sign — the comment's whole point. But "asserts only" reads as if it described that whole test, and it also asserts `visible` and `dy` (`:43`, `:45`). Those are in *that* file, not this one | disambiguate without asserting anything false: "states the magnitude `\|dx − centre\| > 1` but not its sign". Do **not** add `visible`/`dy` to this comment — they are the other file's assertions, and listing them here would create a new false claim |
 | L8 | `camera_aim_test.dart:44` | "the two `const` expressions canonicalise" | there is one `const` expression in that comparison, so there is no second instance to canonicalise with | say what the comparison really is (identity, via `const` canonicalisation of the single instance both sides name) |
 | L9 | `heading_test.dart:93-95` | "Half a degree is the tightest step the EN grid can express here" | false, and the true figure is a band, not a number. `turnCostFor` is `round(200·sin(θ/2))`, so it reads exactly 100 for `θ ∈ [59.6695°, 60.3311°]` — **0.3305° below 60° and 0.3311° above it**, so the tightest half-step is **0.331°**, not 0.5°. The two sides differ because `sin` is not linear across the band. The assertion's ±0.5° is safe; it is just not the tightest | state the band rather than a superlative: "the 100 EN band here is θ ∈ [59.67°, 60.33°], so ±0.5° leaves it on both sides" — which is what actually justifies the two assertions |
-| L10 | `cruise_test.dart:655` | "still the **nearest** candidate" | `recommendedDestination` prefers hand-authored hero worlds, so the winner need not be nearest (`game_controller.dart:988-991`) | say "the featured candidate", or whatever the assertion actually pins |
-| L11 | `galaxy_map_3d_page.dart:407` | `_aimCockpit`'s doc says the cruising aim is the current heading, "exactly" | `aimCameraAt` ends with `camera.clampPitch()` (`camera3d.dart:268`), which pins the pitch to `±(π/2 − 0.05)` (`:80`), so the aim is the precise inverse only for a heading more than `0.05 rad = 2.865°` from a pole. Unreachable through the cockpit's own ignition path — the drag clamp is the same one, so `driftVelocity` cannot land there — but false as written | keep the "precise inverse" sentence, which is true of the unclamped path, and qualify the "exactly": "up to the pole clamp `aimCameraAt` shares with every other aim" |
-| L12 | `galaxy_map_3d_page.dart:437-439` | `_recenter`'s comment says what the button means "depends on whether the ship is **under way**" | a coasting ship is under way — it has momentum — and `_aimCockpit` gives it the galactic centre, not its heading. The predicate the code actually branches on is `isCruising`, and the very next clause enumerates the two cases correctly, so only the name is wrong | name the predicate instead of a synonym for it: "depends on whether the ship is **cruising**". Do not touch `_aimCockpit`, which is right |
+| L10 | `cruise_test.dart:655` | "The explored planet is still the nearest candidate, so without the guard it would simply be recommended again" | the rule is **featured first, then nearest** (`game_controller.dart:988-991`), so distance is not what decides the winner and a non-featured planet is never recommended while any featured candidate is in range. Whether `rec0` would win absent the guard therefore depends on the fixture, which this comment does not establish | state the rule rather than the distance: "Without the guard the rule would be free to return the explored planet again — it excludes nothing else that would stop it." If the fixture has a featured candidate, say what the assertion really pins instead, and if that leaves the assertion pinning nothing, **report it rather than inventing a justification** |
+| L11 | `galaxy_map_3d_page.dart`, `_aimCockpit`'s doc (was `:407`) | the cruising aim is the current heading, "exactly" | `aimCameraAt` ends with `camera.clampPitch()` (`camera3d.dart:268`), which pins the pitch to `±(π/2 − 0.05)` (`:80`), so the aim is the precise inverse only for a heading more than `0.05 rad = 2.865°` from a pole. Unreachable through the cockpit's own ignition path — the drag clamp is the same one, so `driftVelocity` cannot land there — but false as written | keep the "precise inverse" sentence, which is true of the unclamped path, and qualify the "exactly": "up to the pole clamp `aimCameraAt` shares with every other aim" |
+| L12 | `galaxy_map_3d_page.dart`, `_recenter`'s comment (was `:437-439`) | it says what the button means "depends on whether the ship is **under way**" | a coasting ship is under way — it has momentum — and `_aimCockpit` gives it the galactic centre, not its heading. The predicate the code actually branches on is `isCruising`, and the very next clause enumerates the two cases correctly, so only the name is wrong | name the predicate instead of a synonym for it: "depends on whether the ship is **cruising**". Do not touch `_aimCockpit`, which is right |
 | L13 | `cockpit_hud.dart:37` | the doc link `[GameController.turnAngleTo]` | `cockpit_hud.dart` imports only `dart:math`, `package:flutter/widgets.dart` and `camera3d.dart` (`:1-5`), so the reference has nothing to resolve to. `comment_references` is off, so `flutter analyze` stays clean — this is a dead link, not a false claim | drop the brackets to a plain code span. Importing the controller into a painter-helper file to satisfy a comment is not worth the dependency; do not change `turnAngleTo`'s own doc |
 
 Also fix the two INFO notes in the same pass, both in the plan document rather than in code:
