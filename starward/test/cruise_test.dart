@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:starward/core/vec3.dart';
 import 'package:starward/data/game_repository.dart';
+import 'package:starward/data/models/energy_transaction.dart';
 import 'package:starward/data/models/engine.dart';
 import 'package:starward/data/models/journey.dart';
 import 'package:starward/data/storage/storage_backend.dart';
@@ -337,6 +338,80 @@ void main() {
       await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
       // Every last drop is already spoken for, so there is no cruise to run.
       expect(c.cruiseRemaining, Duration.zero);
+    });
+  });
+
+  group('settling a cruise leg', () {
+    test('braking books the leg and the burn, in that order', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+      clock.advance(const Duration(seconds: 1500));
+      expect(c.energy, 200, reason: '100 EN of cruise is already spent');
+
+      await c.stopShip();
+
+      // Never 200: the leg's 100 EN was spent the moment it was burned, and the
+      // brake's 100 EN comes out of what is left.
+      expect(c.energy, 100);
+      expect(c.hasMomentum, isFalse);
+      expect(c.isCruising, isFalse);
+      expect(c.energyLedger, hasLength(2));
+      expect(c.energyLedger.first.type, EnergyTxType.braking);
+      expect(c.energyLedger.first.amount, -100);
+      expect(c.energyLedger[1].type, EnergyTxType.cruiseCost);
+      expect(c.energyLedger[1].amount, -100);
+    });
+
+    test('the burn is booked once, not once per settle', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+      clock.advance(const Duration(seconds: 1500));
+      // `_anchorHere` settles too, so `stopShip`'s own settle must be a no-op
+      // the second time round — a double booking here would be silent.
+      await c.stopShip();
+      final entries = c.energyLedger.length;
+      await c.stopShip();
+      expect(c.energyLedger, hasLength(entries));
+      expect(c.energy, 100);
+    });
+
+    test('launching a voyage mid-cruise settles the leg and charges the brake',
+        () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      final target = c.planets.firstWhere((p) => p.id != c.currentPlanetId);
+      await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+      clock.advance(const Duration(seconds: 1500));
+
+      // A lenient policy, so the gate turns only on the braking reserve — the
+      // point here is the settlement, not the quote.
+      expect(await c.launchJourney(target, onEmpty: FuelPolicy.halt),
+          LaunchResult.success);
+      expect(c.energy, 100,
+          reason: 'the leg and the brake are both gone; the voyage has not burned yet');
+      expect(c.isCruising, isFalse);
+      expect(c.hasMomentum, isFalse, reason: 'the brake parked the ship');
+    });
+
+    test('the gate sees the unbooked burn, not the stale balance', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+      // The reserve is all that is left, and it is spoken for. 3000 s is 80 ly is
+      // 200 EN — the whole spendable budget — so this is the exhaustion point
+      // itself, not a point past it. Advancing further would burn the reserve too
+      // and leave nothing, which is a state the finished game never reaches:
+      // Task 8's `tick` resolves the cruise at exactly this moment.
+      clock.advance(const Duration(seconds: 3000));
+      expect(c.energy, 100);
+      final far = c.planets
+          .where((p) => p.id != c.currentPlanetId)
+          .reduce((a, b) => c.distanceTo(a) > c.distanceTo(b) ? a : b);
+      expect(await c.launchJourney(far, onEmpty: FuelPolicy.halt),
+          LaunchResult.insufficientEnergy,
+          reason: 'a lenient launch still needs more than the braking reserve');
     });
   });
 }

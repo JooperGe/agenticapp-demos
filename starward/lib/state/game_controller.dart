@@ -404,20 +404,14 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Pins the deep-space anchor to where the ship actually is right now, and
-  /// stops any drift — the engine is taking over the motion.
+  /// Brings the ship to rest where it is, billing any momentum it has to shed.
   ///
-  /// Every launch must do this: [_originPosOf] reads the anchor, so a coasting
-  /// ship that launched without re-anchoring would plot its route from a stale
-  /// coordinate and arrive somewhere it never was.
-  ///
-  /// This is also the one place a drift is billed. Putting the charge here
-  /// rather than on the "stop" button is what keeps the exits honest: the star
-  /// map is a way out of a drift, and if it were free the player would learn to
-  /// route around the paid button sitting next to it.
+  /// The cruise settle comes first, and it has to: `brakingCost` is quoted from
+  /// the velocity, but what the tank actually holds is the balance *minus* the
+  /// leg's accrued burn. Settling after reading the cost would spend the same
+  /// energy twice.
   void _anchorHere() {
-    // Read the price before the velocity is cleared — braking is quoted off the
-    // speed the ship is actually carrying.
+    _settleCruise();
     final braking = brakingCost;
     final pos = playerPosition3D;
     _player = _player.copyWith(
@@ -425,6 +419,7 @@ class GameController extends ChangeNotifier {
       startY: pos.y,
       startZ: pos.z,
       driftVelocity: const Vec3(0, 0, 0),
+      driftPowered: false,
     );
     if (braking > 0) _settleBraking(braking);
   }
@@ -666,6 +661,9 @@ class GameController extends ChangeNotifier {
       driftVelocity: journey.fuelPolicy == FuelPolicy.coast
           ? _cruiseVelocityOf(journey)
           : const Vec3(0, 0, 0),
+      // An out-of-fuel drift is a coast whatever put the ship there: there is
+      // nothing left to power it with.
+      driftPowered: false,
       // The drift began when the tank emptied, not when the game noticed. A
       // player who was away for the whole coast gets the distance they missed.
       driftStartedAt: exhaustAt,
@@ -963,6 +961,32 @@ class GameController extends ChangeNotifier {
     return _ship.engine.burnForSeconds(seconds);
   }
 
+  /// Books the energy the current cruise leg has burned and re-pins the leg to
+  /// now, so the next leg is measured from here.
+  ///
+  /// Idempotent: re-pinning sets `driftStartedAt` to now, which makes the very
+  /// next `_cruiseBurnNow()` zero. That is what lets `stopShip` settle before
+  /// checking the brake *and* `_anchorHere` settle on its own — two call sites,
+  /// one booking.
+  int _settleCruise() {
+    if (!isCruising) return 0;
+    final burned = _cruiseBurnNow();
+    final now = _now();
+    if (burned > 0) {
+      _player = _player.copyWith(
+        energyBalance: math.max(0, _player.energyBalance - burned),
+      );
+      _energyLedger.add(EnergyTransaction(
+        id: _newId('en'),
+        type: EnergyTxType.cruiseCost,
+        amount: -burned,
+        createdAt: now,
+      ));
+    }
+    _repinLeg(at: now);
+    return burned;
+  }
+
   /// Energy a cruise must keep in the tank so it can always buy its own stop.
   ///
   /// State-independent on purpose: it is a property of the engine and the speed
@@ -1003,8 +1027,16 @@ class GameController extends ChangeNotifier {
     if (journey != null && journey.status == JourneyStatus.inProgress) {
       return abortJourney();
     }
-    if (!isCoasting) return;
-    if (!canBrake) return;
+    if (!hasMomentum) return;
+    // The leg's burn is owed before the brake can be quoted or afforded, and it
+    // is spent whether or not the brake goes ahead — so this runs before the
+    // gate, and the state is persisted either way.
+    _settleCruise();
+    if (!canBrake) {
+      await _persist();
+      notifyListeners();
+      return;
+    }
     _anchorHere();
     await _persist();
     notifyListeners();
@@ -1214,14 +1246,18 @@ class GameController extends ChangeNotifier {
   /// drop of fuel the voyage needs is what is *left after* braking, so the bar
   /// is `> braking` rather than `> 0`.
   LaunchResult? _launchGate(int voyageFuel, int braking, FuelPolicy policy) {
+    // The *live* balance, not `_player.energyBalance`: a cruise's accrued burn
+    // is real money that has not reached the ledger yet, and a gate reading the
+    // raw field would let a player launch on energy they no longer have. The two
+    // are identical in every other state, because a voyage in progress returns
+    // from `launchJourney` long before this.
+    final available = energy;
     if (policy == FuelPolicy.refuse) {
-      return _player.energyBalance < voyageFuel + braking
+      return available < voyageFuel + braking
           ? LaunchResult.insufficientEnergy
           : null;
     }
-    return _player.energyBalance <= braking
-        ? LaunchResult.insufficientEnergy
-        : null;
+    return available <= braking ? LaunchResult.insufficientEnergy : null;
   }
 
   /// Books the fuel voyage [j] has burned up to [now], once, and returns it.
