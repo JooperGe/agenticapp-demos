@@ -1,5 +1,23 @@
-/// Kinds of energy ledger entries.
-enum EnergyTxType { travelCost, trainingReward, explorationReward, braking }
+/// What a ledger entry is for.
+///
+/// The enum *name* is the save key — see [energyTxTypeFromName] — so members may
+/// be added but never renamed.
+enum EnergyTxType {
+  travelCost,
+  trainingReward,
+  explorationReward,
+  braking,
+
+  /// A powered drift's continuous draw. One entry per leg, booked when the leg
+  /// ends — on a turn, on a brake, or when the tank runs dry.
+  cruiseCost,
+
+  /// A heading correction, priced by the angle turned.
+  turn,
+
+  /// The flat fee that brings a dormant engine back online.
+  activation,
+}
 
 EnergyTxType energyTxTypeFromName(String name) =>
     EnergyTxType.values.firstWhere((t) => t.name == name,
