@@ -98,9 +98,10 @@ class _JourneyPageState extends State<JourneyPage>
   /// instant a voyage launches elsewhere or flips to arrived.
   void _sync(GameController c) {
     final status = c.activeJourney?.status;
-    // A coasting ship has no journey to resolve, but its marker still moves
-    // and the drift readout still ticks — so the timer runs for both.
-    final needsTimer = status == JourneyStatus.inProgress || c.isCoasting;
+    // A drifting ship has no journey to resolve, but its marker still moves, its
+    // readout still ticks, and — while cruising — its burn still has to be
+    // resolved when it runs out. So the timer runs for both.
+    final needsTimer = status == JourneyStatus.inProgress || c.hasMomentum;
     if (needsTimer) {
       _tickTimer ??=
           Timer.periodic(const Duration(seconds: 1), (_) => c.tick());
@@ -193,6 +194,16 @@ class _JourneyPageState extends State<JourneyPage>
     if (ok != true) return;
     await c.stopShip();
     if (!mounted) return;
+    ShellScope.go(context, 0);
+  }
+
+  /// Sends the player to the star map's cockpit, asking it to open there.
+  ///
+  /// The cockpit is the one place a heading is chosen: the reticle *is* the
+  /// direction, and both igniting and turning are quoted from it. Putting
+  /// direction-picking in two screens would mean two answers to "which way".
+  void _steerFromCockpit(GameController c) {
+    c.requestCockpit();
     ShellScope.go(context, 0);
   }
 
@@ -291,22 +302,24 @@ class _JourneyPageState extends State<JourneyPage>
   Widget _buildStandby(GameController c) {
     final current = c.currentPlanet;
     final coasting = c.isCoasting;
+    final cruising = c.isCruising;
     final drifting = current == null;
     final rec = c.recommendedDestination;
     return Stack(
       fit: StackFit.expand,
       children: <Widget>[
-        // Coasting keeps the star-stream moving; parked stays calm and static.
-        // `scrollSpeed` is a static offset, not a rate (`starfield.dart:164`),
-        // so the motion has to come from the ever-growing `_phase` — the same
-        // mechanism `_buildFlight` uses below. A constant here freezes the field.
+        // A drifting ship keeps the star-stream moving; parked stays calm and
+        // static. `scrollSpeed` is a static offset, not a rate
+        // (`starfield.dart:164`), so the motion has to come from the
+        // ever-growing `_phase` — the same mechanism `_buildFlight` uses below.
+        // A constant here freezes the field.
         Positioned.fill(
           child: ValueListenableBuilder<double>(
             valueListenable: _phase,
             builder: (context, phase, _) => StarfieldBackground(
               seed: 7,
               starCount: 150,
-              scrollSpeed: coasting ? 0.35 * phase : 0.0,
+              scrollSpeed: (coasting || cruising) ? 0.35 * phase : 0.0,
             ),
           ),
         ),
@@ -321,9 +334,11 @@ class _JourneyPageState extends State<JourneyPage>
                     size: 44, color: StarColors.cyanDim),
                 const SizedBox(height: 16),
                 Text(
-                  coasting
-                      ? '滑行中'
-                      : (drifting ? '漂浮于深空' : '没有进行中的航行'),
+                  cruising
+                      ? '巡航中'
+                      : (coasting
+                          ? '滑行中'
+                          : (drifting ? '漂浮于深空' : '没有进行中的航行')),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: StarColors.offWhite,
@@ -333,11 +348,14 @@ class _JourneyPageState extends State<JourneyPage>
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  coasting
-                      ? '燃料已尽，飞船以巡航速度继续滑行。它不会减速，也不会再消耗能量。'
-                      : (drifting
-                          ? '你的飞船正静静悬停在星海之中，等待你选择第一个目的地。'
-                          : '飞船正在 ${current.name} 停泊待命，等待下一段旅程。'),
+                  cruising
+                      ? '引擎正在驱动飞船以巡航速度前进，每秒消耗能量。'
+                          '在星图 · 座舱模式中可以用准星修正航向。'
+                      : (coasting
+                          ? '燃料已尽，飞船以巡航速度继续滑行。它不会减速，也不会再消耗能量。'
+                          : (drifting
+                              ? '你的飞船正静静悬停在星海之中，等待你选择第一个目的地。'
+                              : '飞船正在 ${current.name} 停泊待命，等待下一段旅程。')),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: StarColors.muted,
@@ -346,14 +364,19 @@ class _JourneyPageState extends State<JourneyPage>
                   ),
                 ),
                 const SizedBox(height: 26),
-                if (coasting)
+                if (coasting || cruising)
                   _CoastDock(
                     controller: c,
+                    cruising: cruising,
                     onBrake: () => _brakeCoast(c),
                     onChangeCourse: () => _brakeAndChangeCourse(c),
+                    onSteer: () => _steerFromCockpit(c),
                   )
                 else if (drifting)
-                  _DriftDock(controller: c)
+                  _DriftDock(
+                    controller: c,
+                    onIgnite: () => _steerFromCockpit(c),
+                  )
                 else
                   _CurrentDock(planet: current),
                 if (rec != null) ...<Widget>[
@@ -379,7 +402,10 @@ class _JourneyPageState extends State<JourneyPage>
           left: 0,
           right: 0,
           child: _TopBar(
-              energy: c.energy, subtitle: coasting ? '滑行中' : (drifting ? '深空待命' : '待命')),
+              energy: c.energy,
+              subtitle: cruising
+                  ? '巡航中'
+                  : (coasting ? '滑行中' : (drifting ? '深空待命' : '待命'))),
         ),
       ],
     );
@@ -642,9 +668,10 @@ class _CurrentDock extends StatelessWidget {
 /// Shown in the standby state when the player is still drifting in deep space
 /// (before the first arrival): the ship's randomised galactic coordinates.
 class _DriftDock extends StatelessWidget {
-  const _DriftDock({required this.controller});
+  const _DriftDock({required this.controller, required this.onIgnite});
 
   final GameController controller;
+  final VoidCallback onIgnite;
 
   @override
   Widget build(BuildContext context) {
@@ -654,36 +681,52 @@ class _DriftDock extends StatelessWidget {
         : 'X ${p.x.toStringAsFixed(1)}  Y ${p.y.toStringAsFixed(1)}  Z ${p.z.toStringAsFixed(1)} ly';
     return StarPanel(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
+      child: Column(
         children: <Widget>[
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: StarColors.panelLight,
-            ),
-            child: const Icon(Icons.my_location_rounded,
-                color: StarColors.cyan, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                const Text('当前坐标 · 深空',
-                    style: TextStyle(color: StarColors.faint, fontSize: 11)),
-                const SizedBox(height: 3),
-                Text(
-                  coord,
-                  style: const TextStyle(
-                    color: StarColors.offWhite,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
+          Row(
+            children: <Widget>[
+              Container(
+                width: 40,
+                height: 40,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: StarColors.panelLight,
                 ),
-              ],
-            ),
+                child: const Icon(Icons.my_location_rounded,
+                    color: StarColors.cyan, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    const Text('当前坐标 · 深空',
+                        style: TextStyle(color: StarColors.faint, fontSize: 11)),
+                    const SizedBox(height: 3),
+                    Text(
+                      coord,
+                      style: const TextStyle(
+                        color: StarColors.offWhite,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _ActionButton(
+            label: '点火巡航',
+            icon: Icons.rocket_launch_rounded,
+            onPressed: onIgnite,
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            '自由巡航没有目的地：点火后飞船以巡航速度沿准星方向前进，每秒耗电。'
+            '方向在星图 · 座舱模式中用准星选定。',
+            style: TextStyle(color: StarColors.faint, fontSize: 11, height: 1.5),
           ),
         ],
       ),
@@ -697,13 +740,22 @@ class _DriftDock extends StatelessWidget {
 class _CoastDock extends StatelessWidget {
   const _CoastDock({
     required this.controller,
+    required this.cruising,
     required this.onBrake,
     required this.onChangeCourse,
+    required this.onSteer,
   });
 
   final GameController controller;
+
+  /// True while the engine is driving the drift. Same readout, different labels
+  /// and a different second button: a cruise changes course, a coast changes it
+  /// by stopping first.
+  final bool cruising;
+
   final VoidCallback onBrake;
   final VoidCallback onChangeCourse;
+  final VoidCallback onSteer;
 
   @override
   Widget build(BuildContext context) {
@@ -733,7 +785,7 @@ class _CoastDock extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    const Text('滑行中 · 巡航速度',
+                    Text(cruising ? '巡航中 · 巡航速度' : '滑行中 · 巡航速度',
                         style:
                             TextStyle(color: StarColors.faint, fontSize: 11)),
                     const SizedBox(height: 3),
@@ -751,9 +803,10 @@ class _CoastDock extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _CoastStat(label: '已滑行', value: duration),
           _CoastStat(
-              label: '累计距离',
+              label: cruising ? '已巡航' : '已滑行', value: duration),
+          _CoastStat(
+              label: cruising ? '本段距离' : '累计距离',
               value: '${controller.driftDistanceLy.toStringAsFixed(1)} ly'),
           _CoastStat(
               label: '途经恒星系',
@@ -762,6 +815,17 @@ class _CoastDock extends StatelessWidget {
               label: '当前坐标',
               value:
                   'X ${p.x.toStringAsFixed(1)}  Y ${p.y.toStringAsFixed(1)}  Z ${p.z.toStringAsFixed(1)}'),
+          if (cruising) ...<Widget>[
+            _CoastStat(
+              label: '耗电',
+              value:
+                  '${controller.ship.engine.powerDrawPerSecond.toStringAsFixed(2)} EN/s',
+            ),
+            _CoastStat(
+              label: '可维持',
+              value: _formatDriftDuration(controller.cruiseRemaining),
+            ),
+          ],
           _CoastStat(
             label: '制动需要',
             value: '$braking EN（现有 ${controller.energy} EN）',
@@ -781,10 +845,14 @@ class _CoastDock extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: _ActionButton(
-                  label: '改变航向',
+                  label: cruising ? '修正航向' : '改变航向',
                   icon: Icons.alt_route_rounded,
                   filled: false,
-                  onPressed: canBrake ? onChangeCourse : null,
+                  // Steering a cruise does not stop it — that is the entire
+                  // point of the feature — so this is deliberately not gated on
+                  // `canBrake`, which is about a burn the ship is not making.
+                  onPressed:
+                      cruising ? onSteer : (canBrake ? onChangeCourse : null),
                 ),
               ),
             ],

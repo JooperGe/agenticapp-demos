@@ -67,11 +67,12 @@ class _StarNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // A coasting ship has no active journey, but it is still moving and the
-    // player still has something waiting on the voyage tab — so the badge has
-    // to cover both, or switching to training hides the drift entirely.
+    // A drifting ship has no active journey, but it is still moving — coasting
+    // or under power — and the player still has something waiting on the voyage
+    // tab. So the badge has to cover all three, or switching to training hides
+    // the drift entirely.
     final hasJourney =
-        controller.activeJourney != null || controller.isCoasting;
+        controller.activeJourney != null || controller.hasMomentum;
     return Container(
       decoration: const BoxDecoration(
         color: StarColors.panel,
