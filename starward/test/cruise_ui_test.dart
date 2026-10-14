@@ -10,6 +10,7 @@ import 'package:starward/state/game_controller.dart';
 import 'package:starward/ui/galaxy3d/cockpit_hud.dart';
 import 'package:starward/ui/game_scope.dart';
 import 'package:starward/ui/shell/home_shell.dart';
+import 'package:starward/ui/training/training_page.dart';
 
 class FakeClock {
   FakeClock(this._now);
@@ -596,5 +597,116 @@ void main() {
     expect(find.textContaining('偏离'), findsNothing,
         reason: 'and so did the readout — the two cannot disagree, because '
             'they read one local');
+  });
+
+  testWidgets('a turn the ship cannot afford is disabled, not a silent no-op',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+    clock.advance(const Duration(seconds: 2400));
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+    // 300 − energyCostFor(2400 / 37.5 = 64 ly) = 300 − 160.
+    expect(c.energy, 140, reason: 'precondition');
+
+    await tester.dragFrom(const Offset(600, 300), const Offset(-523.6, 0));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(inCockpit('需要 200 EN（现有 140 EN）'), findsOneWidget);
+    expect(find.text('前往训练补充能量'), findsOneWidget);
+
+    await tester.tap(inCockpit('修正航向'));
+    await tester.pump(const Duration(milliseconds: 300));
+    // The tap is dead, and this is the only assertion that says so. The two
+    // below it cannot: an *enabled* button opens a confirm dialog and spends
+    // nothing until it is confirmed, so both hold either way. Nor does the
+    // disabled detail above prove it — a button that renders that text while
+    // still wired to `onPressed` passes it too.
+    expect(find.byType(AlertDialog), findsNothing,
+        reason: 'a disabled button does not fire onPressed at all');
+    expect(c.energy, 140, reason: 'nothing was spent');
+    expect(c.driftVelocity.x, greaterThan(0), reason: 'still on the old course');
+  });
+
+  testWidgets('a dormant engine that cannot pay for activation says so',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.coast);
+    clock.advance(const Duration(seconds: 3000));
+    c.tick();
+    // Braking is not blocked by dormancy (§4.3), so this reaches a parked,
+    // dormant, empty ship — the only state where the activation button is short.
+    await c.stopShip();
+    await c.acknowledgeDriftReport();
+    expect(c.isDormant, isTrue, reason: 'precondition');
+    expect(c.energy, 0, reason: '300 − 200 burned − 100 braked');
+
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    expect(inCockpit('激活引擎'), findsOneWidget);
+    expect(inCockpit('需要 5 EN（现有 0 EN）'), findsOneWidget);
+    expect(find.text('前往训练补充能量'), findsOneWidget);
+  });
+
+  testWidgets('the training shortcut switches to the training tab',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.coast);
+    clock.advance(const Duration(seconds: 3000));
+    c.tick();
+    await c.stopShip();
+    await c.acknowledgeDriftReport();
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    await tester.tap(find.text('前往训练补充能量'));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // `TrainingPage` is an `IndexedStack` child, so the default finder sees it
+    // only while its tab is the selected one.
+    expect(find.byType(TrainingPage), findsOneWidget);
+  });
+
+  testWidgets('ignition is disabled when the tank cannot hold the reserve',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+    clock.advance(const Duration(seconds: 3000));
+    c.tick();
+    // `halt` spends the momentum instead of the energy, so the ship stops with
+    // the reserve intact: 300 − 200 burned, dormant, velocity zero.
+    await c.acknowledgeDriftReport();
+    expect(c.energy, 100, reason: 'precondition');
+    expect(c.hasMomentum, isFalse, reason: 'precondition: halt stops the ship');
+    // The state the ignition gate exists for, and the one `activate()` makes
+    // reachable on purpose: waking the engine with the last 5 EN leaves it
+    // running on 95 EN, and `igniteCruise` refuses below `cruiseReserve` (100).
+    await c.activate();
+    expect(c.isDormant, isFalse, reason: 'precondition');
+    expect(c.energy, 95, reason: 'precondition: 100 − 5');
+
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    expect(inCockpit('点火巡航'), findsOneWidget);
+    expect(inCockpit('需要 100 EN 巡航储备（现有 95 EN）'), findsOneWidget);
+    expect(find.text('前往训练补充能量'), findsOneWidget);
+
+    await tester.tap(inCockpit('点火巡航'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // The dialog is what an *enabled* button opens, so its absence is the
+    // assertion that carries the disabled state. `isCruising` alone cannot:
+    // the sheet's own 取消点火 back-out also leaves the ship parked, so a
+    // button that opened the dialog and a button that did nothing look the
+    // same to it.
+    expect(find.text('耗尽后停下'), findsNothing);
+    expect(c.isCruising, isFalse);
+    expect(c.energy, 95, reason: 'nothing was spent');
   });
 }

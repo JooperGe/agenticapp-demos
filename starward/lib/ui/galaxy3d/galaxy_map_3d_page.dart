@@ -1212,6 +1212,37 @@ class _HeadingBar extends StatelessWidget {
     // know it is being offered the expensive option first. So say the cheap one
     // out loud, and make it tappable.
     final turningIsDearer = moving && !dormant && turnCost > braking;
+    final energy = controller.energy;
+    final activationCost = controller.ship.engine.activationCost;
+    // `activate()` refuses when `energyBalance < cost` (`:1218`), so equality is
+    // allowed and the gate is `>=`. A strict `>` here would disable the button
+    // while the detail line read 「需要 5 EN（现有 5 EN）」.
+    final canActivate = energy >= activationCost;
+    // `correctHeading` refuses when `energy < cost`, so the button may offer a
+    // turn that spends the last drop — but not one that cannot be paid for.
+    final canTurn = energy >= turnCost;
+    // Ignition is free, but it is not unconditional: `igniteCruise` refuses when
+    // `energy <= cruiseReserve` (`:1316`), because a cruise that could not hold
+    // the reserve back would exhaust on its first tick. Strictly greater, and
+    // read off the controller rather than hardcoded, so a different engine moves
+    // the gate and the guard together.
+    final canIgnite = energy > controller.cruiseReserve;
+    // The hint is an offer, so it is bound to the brake's own predicate rather
+    // than to a second copy of it. Note what this does *not* do: `canBrake`
+    // compares the **unburned** `_player.energyBalance` to the reserve, and a
+    // cruising ship's balance can never be at or below it — ignition requires
+    // `balance > braking`, and the burn is booked only at settlement — so while
+    // cruising this conjunction is always true and the hint's visibility is
+    // still decided by `turningIsDearer` alone. It is here so that a future
+    // change to `canBrake` moves the hint with it.
+    final showBrakeHint = turningIsDearer && controller.canBrake;
+    // The same escape hatch the voyage dock offers when a button is short. One
+    // term per branch of the button switch, in the same order: a dormant engine
+    // needs `canActivate`, a moving ship needs `canTurn`, a parked one needs
+    // `canIgnite`. Every branch that can be short must be listed here, or the
+    // disabled button states its price with no way to earn it.
+    final shortOfEnergy =
+        dormant ? !canActivate : (moving ? !canTurn : !canIgnite);
 
     return SafeArea(
       // Keyed because `HomeShell` mounts all four pages in an `IndexedStack`,
@@ -1252,9 +1283,11 @@ class _HeadingBar extends StatelessWidget {
                 if (dormant)
                   _HudButton(
                     label: '激活引擎',
-                    detail: '${controller.ship.engine.activationCost} EN',
+                    detail: '$activationCost EN',
                     icon: Icons.power_settings_new_rounded,
                     onPressed: onActivate,
+                    enabled: canActivate,
+                    disabledDetail: '需要 $activationCost EN（现有 $energy EN）',
                   )
                 else if (!moving)
                   _HudButton(
@@ -1262,6 +1295,9 @@ class _HeadingBar extends StatelessWidget {
                     detail: '沿准星方向',
                     icon: Icons.rocket_launch_rounded,
                     onPressed: onIgnite,
+                    enabled: canIgnite,
+                    disabledDetail:
+                        '需要 ${controller.cruiseReserve} EN 巡航储备（现有 $energy EN）',
                   )
                 else
                   _HudButton(
@@ -1269,14 +1305,28 @@ class _HeadingBar extends StatelessWidget {
                     detail: '$deviation° · $turnCost EN',
                     icon: Icons.alt_route_rounded,
                     onPressed: onCorrect,
+                    enabled: canTurn,
+                    disabledDetail: '需要 $turnCost EN（现有 $energy EN）',
                   ),
-                if (turningIsDearer) ...<Widget>[
+                if (showBrakeHint) ...<Widget>[
                   const SizedBox(height: 8),
                   GestureDetector(
                     onTap: onBrake,
                     behavior: HitTestBehavior.opaque,
                     child: Text('制动停下只需 $braking EN',
                         style: const TextStyle(
+                            color: StarColors.cyan,
+                            fontSize: 11,
+                            decoration: TextDecoration.underline)),
+                  ),
+                ],
+                if (shortOfEnergy) ...<Widget>[
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () => ShellScope.go(context, 3),
+                    behavior: HitTestBehavior.opaque,
+                    child: const Text('前往训练补充能量',
+                        style: TextStyle(
                             color: StarColors.cyan,
                             fontSize: 11,
                             decoration: TextDecoration.underline)),
@@ -1308,6 +1358,8 @@ class _HudButton extends StatelessWidget {
     required this.detail,
     required this.icon,
     required this.onPressed,
+    this.enabled = true,
+    this.disabledDetail,
   });
 
   final String label;
@@ -1315,27 +1367,38 @@ class _HudButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
 
+  /// False when the action is not available. A disabled button does not fire
+  /// [onPressed] at all: a tap that silently does nothing reads as a broken
+  /// control, and the detail line is where the reason goes.
+  final bool enabled;
+
+  /// What the detail line says instead when [enabled] is false. Defaults to
+  /// [detail] for an action that is off for a reason the detail already states.
+  final String? disabledDetail;
+
   @override
   Widget build(BuildContext context) {
+    final on = enabled;
     return GestureDetector(
-      onTap: onPressed,
+      onTap: on ? onPressed : null,
       behavior: HitTestBehavior.opaque,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: panelDecoration(radius: 12, color: StarColors.panelLight),
         child: Row(
           children: <Widget>[
-            Icon(icon, color: StarColors.cyan, size: 18),
+            Icon(icon,
+                color: on ? StarColors.cyan : StarColors.faint, size: 18),
             const SizedBox(width: 10),
             Text(label,
-                style: const TextStyle(
-                    color: StarColors.offWhite,
+                style: TextStyle(
+                    color: on ? StarColors.offWhite : StarColors.faint,
                     fontSize: 13,
                     fontWeight: FontWeight.w700)),
             const Spacer(),
-            Text(detail,
-                style: const TextStyle(
-                    color: StarColors.gold,
+            Text(on ? detail : (disabledDetail ?? detail),
+                style: TextStyle(
+                    color: on ? StarColors.gold : StarColors.danger,
                     fontSize: 12,
                     fontWeight: FontWeight.w600)),
           ],
