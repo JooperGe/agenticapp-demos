@@ -47,6 +47,10 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
   double _lastScale = 1;
   bool _initedCamera = false;
 
+  /// Guards the post-frame callback that serves a `requestCockpit()`, so a
+  /// rebuild loop cannot queue more than one.
+  bool _cockpitRequestScheduled = false;
+
   double? _radiusLy;
 
   /// `Universe.universeRadius` scans the whole catalogue on first access and
@@ -114,7 +118,13 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
     setState(() {
       // Rotation from drag (one finger): horizontal → yaw, vertical → pitch.
       final delta = d.focalPointDelta;
-      const k = 0.006;
+      // Drag-to-look is a *screen* gesture, so it has to be scaled by how much
+      // of the world a screen pixel covers. At the default 60° FOV the factor
+      // is 1 and the feel is unchanged; zoomed in to 30° the same drag turns
+      // half as far, which keeps a star that was under the finger under the
+      // finger. Only the cockpit changes FOV (`_initCamera` sets 60 and the
+      // pinch clamp is 30–95), so the other two modes always get `k = 0.006`.
+      final k = 0.006 * (_camera.fovDegrees / 60);
       if (_camera.mode == CameraMode.cockpit) {
         // Cockpit: look around (invert so dragging feels like turning the view).
         _camera.yaw -= delta.dx * k;
@@ -297,6 +307,33 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
     });
   }
 
+  /// Enters cockpit mode when the voyage screen has asked for it.
+  ///
+  /// Called from inside the `LayoutBuilder`, which is the only place `vp`
+  /// exists — `_setMode` needs it for the overview distance. The actual work is
+  /// deferred to a post-frame callback because it calls `setState` *and*
+  /// `acknowledgeCockpitRequest`, which notifies listeners; doing either during
+  /// a build is an error.
+  void _maybeEnterRequestedCockpit(Size2 vp) {
+    if (!_c.cockpitRequested) return;
+    if (_camera.mode == CameraMode.cockpit) {
+      _c.acknowledgeCockpitRequest();
+      return;
+    }
+    if (_cockpitRequestScheduled) return;
+    _cockpitRequestScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cockpitRequestScheduled = false;
+      if (!mounted) return;
+      _setMode(CameraMode.cockpit, vp);
+      _c.acknowledgeCockpitRequest();
+    });
+  }
+
+  /// Points the cockpit at the galactic centre. A decorative default, not an
+  /// exact aim: the `* 0.6` flattens the tilt so the view lands on the
+  /// starfield rather than on the empty middle of the shell. Deliberately
+  /// different from `aimCameraAt`, which is the exact form the reticle needs.
   void _aimCockpitAtOrigin() {
     final dir = (const Vec3(0, 0, 0) - _shipPos).normalized;
     _camera.yaw = math.atan2(dir.x, dir.z);
@@ -306,6 +343,12 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
 
   void _recenter(Size2 vp) {
     setState(() {
+      if (_camera.mode == CameraMode.cockpit) {
+        // The eye is pinned to the ship in this mode, so there is nothing to
+        // re-place. What the button means here is "point me somewhere known".
+        _aimCockpitAtOrigin();
+        return;
+      }
       placeCamera(
         _camera,
         mode: _camera.mode,
@@ -375,6 +418,7 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
             builder: (context, constraints) {
               final size = Size(constraints.maxWidth, constraints.maxHeight);
               final vp = Size2(size.width, size.height);
+              _maybeEnterRequestedCockpit(vp);
               final endpoints = _routeEndpoints();
               return Stack(
                 fit: StackFit.expand,
@@ -537,7 +581,12 @@ class _SideControls extends StatelessWidget {
               const SizedBox(height: 12),
               _RoundButton(
                 icon: Icons.my_location_rounded,
-                label: '居中',
+                // `placeCamera` only sets `eyeOverride` in cockpit mode, so
+                // "居中" there would re-place the eye exactly where it already
+                // is — a button that visibly does nothing. Re-aiming at the
+                // galactic centre is the useful version of "put me back on a
+                // known reference", so the button changes meaning with the mode.
+                label: mode == CameraMode.cockpit ? '对准银心' : '居中',
                 onTap: onRecenter,
               ),
             ],

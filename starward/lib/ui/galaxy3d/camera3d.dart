@@ -248,6 +248,25 @@ void placeCameraForRoute(
       lengthWorld * focal / (kRouteFrameFraction * shortEdge), kMinZoomDistance);
 }
 
+/// Points [camera] along [direction], exactly.
+///
+/// The exact inverse of [Camera3D.forward]: `yaw = atan2(x, z)`,
+/// `pitch = asin(y)`. That exactness is the point — the cockpit's reticle is
+/// drawn at the centre of the screen, the heading bar quotes `forward`, and
+/// ignition flies along `forward`, so an approximate aim would make the three
+/// disagree about where the ship is pointing.
+///
+/// Pitch is still clamped, so aiming at a pole stops just short of it rather
+/// than flipping the camera over. A zero [direction] is ignored: there is no
+/// heading in it, and normalising would produce NaN.
+void aimCameraAt(Camera3D camera, Vec3 direction) {
+  final d = direction.normalized;
+  if (d.length <= 0) return;
+  camera.yaw = math.atan2(d.x, d.z);
+  camera.pitch = math.asin(d.y.clamp(-1.0, 1.0));
+  camera.clampPitch();
+}
+
 /// Zoom-in limit for every mode, in world units. Shared so the page's clamp and
 /// the route-focus framing cannot drift apart.
 const double kMinZoomDistance = 70;

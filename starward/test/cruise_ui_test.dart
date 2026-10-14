@@ -61,9 +61,27 @@ void main() {
     await _pumpVoyage(tester, c);
 
     await tester.tap(find.text('点火巡航'));
+    // The tap raises the request synchronously, and the star map — already in
+    // the tree as IndexedStack child 0 — consumes it in the very next frame.
+    // So the request has to be read *before* pumping: one pump later it has
+    // been acknowledged and this line would read false.
+    expect(c.cockpitRequested, isTrue);
+
+    await tester.pump(const Duration(milliseconds: 100));
+    // A second bounded pump. `_maybeEnterRequestedCockpit` defers `_setMode` to
+    // a post-frame callback, and that `setState` only renders on the *next*
+    // frame, so the frame above still shows the old label. Never
+    // `pumpAndSettle`: the starfield runs a repeating animation controller
+    // (`starfield.dart:97`), so no starfield screen ever settles.
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(c.cockpitRequested, isTrue);
+    // The label is a `switch (mode)` in galaxy_map_3d_page.dart:478-483, so it
+    // reads '星图 · 座舱视角' only in cockpit mode. It lives on the star map, which
+    // is IndexedStack child 0, and the default finder skips non-selected
+    // IndexedStack children — so finding it pins *both* halves of the tap:
+    // the tab switch (the page is onstage) and the mode change (the request was
+    // consumed). Neither half can pass on the other's work.
+    expect(find.text('星图 · 座舱视角'), findsOneWidget);
   });
 
   testWidgets('a cruising ship reads as cruising, not as coasting',
