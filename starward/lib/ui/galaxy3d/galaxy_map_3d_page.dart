@@ -593,12 +593,12 @@ class _SideControls extends StatelessWidget {
               const SizedBox(height: 12),
               _RoundButton(
                 icon: Icons.my_location_rounded,
-                // `placeCamera` only sets `eyeOverride` in cockpit mode and
-                // never touches the aim, so "居中" there would leave the view
-                // pointing exactly where it already points — a button that
-                // visibly does nothing. Re-aiming at the galactic centre is the
-                // useful version of "put me back on a known reference", so the
-                // button changes meaning with the mode.
+                // In cockpit mode `placeCamera` only re-pins `eyeOverride` to
+                // the ship and never touches the aim — and the aim is what this
+                // mode is about, since the reticle at the centre of the screen
+                // *is* the heading. The useful "put me back on a known
+                // reference" here is therefore to re-aim at the galactic
+                // centre, which is why the label changes with the mode.
                 label: mode == CameraMode.cockpit ? '对准银心' : '居中',
                 onTap: onRecenter,
               ),
