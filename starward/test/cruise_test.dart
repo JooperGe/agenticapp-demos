@@ -493,6 +493,36 @@ void main() {
     });
   });
 
+  group('correctHeading', () {
+    test('a turn can leave a cruising ship unable to brake', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+      // 750 s of burn is 20 ly is 50 EN, so the live tank reads 250 — enough to
+      // clear the 180° turn's `turnCostFor(π) == 200` under the lenient
+      // `energy >= cost` guard.
+      clock.advance(const Duration(seconds: 750));
+      expect(c.energy, 250, reason: 'precondition');
+
+      expect(await c.correctHeading(const Vec3(-1, 0, 0)), isTrue,
+          reason: 'precondition: the turn is affordable');
+
+      // The turn settles the leg's 50 EN *and* books the 200 EN fee, so the raw
+      // balance lands on 50 — under the 100 EN `canBrake` needs — while the ship
+      // is still under power and not dormant (`_syncDormancy` trips only at
+      // `<= 0`). This is the state the cockpit's brake hint must not offer a
+      // stop in: `stopShip` settles the burn and then returns without braking
+      // when `canBrake` is false, so the hint would offer a stop that does not
+      // happen, at a price the tank cannot pay.
+      expect(c.energy, 50);
+      expect(c.hasMomentum, isTrue);
+      expect(c.isCruising, isTrue);
+      expect(c.isDormant, isFalse);
+      expect(c.brakingCost, 100);
+      expect(c.canBrake, isFalse);
+    });
+  });
+
   group('running the tank dry mid-cruise', () {
     /// Ignites [c] with a full tank and runs the cruise to its exhaustion point.
     ///

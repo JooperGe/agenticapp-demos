@@ -1228,13 +1228,21 @@ class _HeadingBar extends StatelessWidget {
     // the gate and the guard together.
     final canIgnite = energy > controller.cruiseReserve;
     // The hint is an offer, so it is bound to the brake's own predicate rather
-    // than to a second copy of it. Note what this does *not* do: `canBrake`
-    // compares the **unburned** `_player.energyBalance` to the reserve, and a
-    // cruising ship's balance can never be at or below it — ignition requires
-    // `balance > braking`, and the burn is booked only at settlement — so while
-    // cruising this conjunction is always true and the hint's visibility is
-    // still decided by `turningIsDearer` alone. It is here so that a future
-    // change to `canBrake` moves the hint with it.
+    // than to a second copy of it. The conjunct is load-bearing, not defensive:
+    // `stopShip` settles the leg's burn and then returns without braking when
+    // `canBrake` is false, so a hint shown in that state would spend the
+    // player's energy and do nothing else — and it would quote the `braking`
+    // local above (`controller.brakingCost`, 100 EN) against a tank that cannot
+    // pay it.
+    //
+    // It bites because `canBrake` reads the *raw* `_player.energyBalance`, not
+    // the live `energy`, and a turn is charged in two steps: `correctHeading`
+    // settles the leg's burn (`:1359`) and then deducts the fee (`:1378`). A
+    // ship cruising at 250 EN that turns 180° for 200 EN lands on a raw balance
+    // of 50, under the 100 EN the brake costs, while still powered and not
+    // dormant — `_syncDormancy` trips only at `<= 0`. There `turningIsDearer` is
+    // true and `canBrake` is false, so the hint is withheld. Binding it here is
+    // what makes a future change to `canBrake` move the hint with it.
     final showBrakeHint = turningIsDearer && controller.canBrake;
     // The same escape hatch the voyage dock offers when a button is short. One
     // term per branch of the button switch, in the same order: a dormant engine
