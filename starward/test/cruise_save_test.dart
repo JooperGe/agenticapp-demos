@@ -23,7 +23,8 @@ void main() {
           EnergyTxType.activation,
         }.length,
         EnergyTxType.values.length,
-        reason: 'no two kinds may share a name — the enum name is the save key',
+        reason: 'the enum is exactly these seven kinds — an eighth needs its '
+            'own save migration',
       );
     });
 

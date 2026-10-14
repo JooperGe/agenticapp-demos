@@ -4326,7 +4326,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 
 Run against `docs/superpowers/specs/2026-10-14-starward-free-cruise-design.md` after the last task was written.
 
-**Spec coverage.** Every numbered requirement in the spec maps to a task: §3 (states and transitions) → T4/T9; §4 (free cruise) → T5/T6/T8; §5.1 (turn pricing) → T1/T13; §5.2 (the 60° crossover and its UI mitigation) → T13's crossover test and T16's brake hint; §5.3 (the cockpit HUD) → T15/T16; §6 (dormancy) → T9/T10; §7 (activation, and the §7.1 dialog wording) → T9; §8 (controller API) → T5–T13; §9 (readouts) → T12; §10 (test matrix) → the per-task test files, with `test/dormancy_test.dart` added beyond the spec's list because dormancy turned out to be its own concern; §11 (staging) → the four phases.
+**Spec coverage.** Every numbered requirement in the spec maps to a task, the six the first pass missed having been added as Phase 5 after the first whole-branch review: §3 (states and transitions) → T4/T9; §4 (free cruise) → T5/T6/T8; §5.1 (turn pricing) → T1/T13; §5.2 (the 60° crossover and its UI mitigation) → T13's crossover test and T16's brake hint; §5.3 (the cockpit HUD) → T15/T16; §6 (dormancy) → T9/T10; §7 (activation, and the §7.1 dialog wording) → T9; §8 (controller API) → T5–T13; §9 (readouts) → T12; §10 (test matrix) → the per-task test files, with `test/dormancy_test.dart` added beyond the spec's list because dormancy turned out to be its own concern; §11 (staging) → the five phases.
 
 **Placeholder scan.** No "TBD", no "handle edge cases", no "similar to Task N". Every code step carries the code. Every test step carries the assertions. Two spots name a decision rather than a value and are deliberate: Task 12 Step 9's conditional `skip` (resolved in Task 14) and Task 16 Step 7's manual walkthrough (a human check, not a machine one).
 
@@ -4350,7 +4350,7 @@ Three ordering constraints that a fresh executor could get wrong, all called out
 
 ## 与 spec 的偏差汇总
 
-Four deviations, all documented in place at the top of the plan; repeated here so an executor who reads only the closing section still sees them.
+Six deviations, all documented in place at the top of the plan. The four rows below are a selection, repeated so an executor who reads only the closing section still sees them; deviations 5 and 6 are left out only because they are restated where an executor cannot miss them — 5 in invariants 2 and 3 and in `_reconcileCruise`'s own comment, 6 in `activate()`'s doc.
 
 | # | Spec says | Plan does | Why |
 |---|---|---|---|
@@ -4365,7 +4365,9 @@ Four deviations, all documented in place at the top of the plan; repeated here s
 
 **Plan complete and saved to `docs/superpowers/plans/2026-10-14-starward-free-cruise.md`.** Two execution options:
 
-**1. Subagent-Driven (recommended)** — a fresh subagent per task, with review between tasks. Sixteen tasks across four phases, each with its own test cycle, is exactly the shape this suits: the phases have hard boundaries (Phase 1 changes no behaviour, Phase 2 adds no UI, Phase 3 adds the entry points, Phase 4 adds the cockpit), so a reviewer can reject one task without blocking its neighbour.
+**1. Subagent-Driven (recommended)** — a fresh subagent per task, with review between tasks. 22 tasks across five phases, each with its own test cycle, is exactly the shape this suits: the phases have hard boundaries (Phase 1 changes no behaviour, Phase 2 adds no UI, Phase 3 adds the entry points, Phase 4 adds the cockpit, Phase 5 adds the six UI requirements the first whole-branch review returned), so a reviewer can reject one task without blocking its neighbour.
+
+Phase 5 is the six findings the first whole-branch review returned, and its tasks follow the closing sections rather than sitting inside the outline of Phases 1–4.
 
 **2. Inline Execution** — execute the tasks in this session, with checkpoints for review. Better if you want to watch the numbers land as they go, since this plan pins a lot of them.
 
@@ -4378,7 +4380,7 @@ Which approach?
 ---
 ---
 
-# Phase 5 — the spec's UI requirements the first sixteen tasks never reached
+## Phase 5 — the spec's UI requirements the first sixteen tasks never reached
 
 **Why this phase exists.** The final whole-branch review found six player-facing requirements in
 the spec that no task in Phases 1–4 implements, and that the plan's Self-Review wrongly claimed

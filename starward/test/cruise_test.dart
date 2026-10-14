@@ -114,9 +114,11 @@ void main() {
       }
     });
 
-    test('secondsForEnergy inverts the burn exactly', () {
+    test('secondsForEnergy is 15 s per EN, with no floor of its own', () {
       // Exact, not approximate: the exhaustion check compares elapsed seconds
       // against this, and a rounding error here moves the halt point a tick.
+      // Except at the floor: this has no `minEnergyCost` of its own, so 0 EN
+      // reads 0 s where `burnForSeconds(0)` quotes 1 EN.
       expect(Engine.standard.secondsForEnergy(300), 4500.0);
       expect(Engine.standard.secondsForEnergy(200), 3000.0);
       expect(Engine.standard.secondsForEnergy(40), 600.0);
@@ -682,8 +684,8 @@ void main() {
       expect(reloaded.stateOf(rec0.id), DiscoveryState.explored,
           reason: 'precondition: the fixture really marked it explored');
 
-      // The explored planet is still the nearest candidate, so without the
-      // guard it would simply be recommended again.
+      // `rec0` is the planet the rule already chose, so without the guard it
+      // would be chosen again — the guard is the only thing that stopped it.
       final rec1 = reloaded.recommendedDestination;
       expect(rec1, isNotNull);
       expect(rec1!.id, isNot(rec0.id));

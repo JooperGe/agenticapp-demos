@@ -91,8 +91,8 @@ void main() {
       // Not 59.9/60.1: `turnCostFor` is quoted through `energyCostFor`, which
       // rounds to whole EN, and 0.1° of turn is worth about 0.15 EN — both of
       // those read 100 and the assertions would be `100 < 100` and
-      // `100 > 100`. Half a degree is the tightest step the EN grid can
-      // express here: 59.5° is 99.24 EN, 60.5° is 100.75 EN.
+      // `100 > 100`. The 100 EN band here is θ ∈ [59.67°, 60.33°], so ±0.5°
+      // leaves it on both sides: 59.5° is 99.24 EN, 60.5° is 100.75 EN.
       expect(engine.turnCostFor(59.5 * math.pi / 180), lessThan(braking));
       expect(engine.turnCostFor(60 * math.pi / 180), braking);
       expect(engine.turnCostFor(60.5 * math.pi / 180), greaterThan(braking));

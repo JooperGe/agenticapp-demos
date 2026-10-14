@@ -35,7 +35,7 @@ import 'camera3d.dart';
 /// The angle between the ship's current course and a proposed heading, in whole
 /// degrees.
 ///
-/// The same angle [GameController.turnAngleTo] prices the turn on — same
+/// The same angle `GameController.turnAngleTo` prices the turn on — same
 /// normalisation, same `acos` of the clamped dot product — so the number the
 /// readout shows and the number the fee is computed from cannot drift apart.
 ///

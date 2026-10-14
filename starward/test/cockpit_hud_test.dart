@@ -39,7 +39,8 @@ void main() {
 
     test('does not care how long the vector is', () {
       // Unnormalised, `asin(3)` saturates the clamp and reads `+90°`; only a
-      // normalised vector gives the true `asin(3/5) = +37°`.
+      // normalised vector gives the true `asin(3/5) = 36.87°`, which the
+      // readout rounds to `+37°`.
       expect(headingLabel(const Vec3(0, 3, 4)).elevation, '+37°');
     });
 
@@ -73,9 +74,9 @@ void main() {
       // `dx ≈ 269.28`, against a centre of 200.
       //
       // Pinned here because nothing else pins it: the existing
-      // `galaxy3d_projection_test.dart` asserts only `|dx − centre| > 1`, which
-      // leaves the sign unstated, and the HUD's markers and the scene painter
-      // have to agree on it.
+      // `galaxy3d_projection_test.dart` states the magnitude `|dx − centre| > 1`
+      // but not its sign, and the HUD's markers and the scene painter have to
+      // agree on it.
       final right = hudMarkerPoint(
           camera: _lookingForward(), world: const Vec3(-10, 0, 100), viewport: _vp);
       final up = hudMarkerPoint(

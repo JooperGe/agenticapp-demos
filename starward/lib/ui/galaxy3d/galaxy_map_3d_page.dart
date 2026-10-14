@@ -443,8 +443,9 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
 
   /// Points the cockpit where it should open.
   ///
-  /// While cruising that is the current heading, exactly: `aimCameraAt` is the
-  /// precise inverse of [Camera3D.forward], which is what the reticle's
+  /// While cruising that is the current heading, up to the pole clamp
+  /// `aimCameraAt` shares with every other aim. That clamp aside, `aimCameraAt`
+  /// is the precise inverse of [Camera3D.forward], which is what the reticle's
   /// deviation reading is measured against. A decorative flattening here would
   /// make Task 19's number disagree with the price it sits beside.
   ///
@@ -476,7 +477,7 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
         // the aim, so a plain recenter would leave the view pointing exactly
         // where it already points. What the button means here is "point me
         // somewhere known" — and what is known depends on whether the ship is
-        // under way: its own heading while cruising, the galactic centre otherwise.
+        // cruising: its own heading while cruising, the galactic centre otherwise.
         _aimCockpit();
         return;
       }

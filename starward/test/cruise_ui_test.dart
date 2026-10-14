@@ -47,7 +47,7 @@ Future<void> _pumpVoyage(WidgetTester tester, GameController c) async {
 /// Enters the star map's cockpit mode from the 座舱 side control.
 ///
 /// One bounded pump is enough: `_setMode` `setState`s synchronously in the tap
-/// handler, unlike the post-frame cockpit-request path the regression test above
+/// handler, unlike the post-frame cockpit-request path the regression test below
 /// pumps twice for.
 Future<void> _enterCockpit(WidgetTester tester) async {
   await tester.tap(find.text('座舱'));
@@ -738,8 +738,8 @@ void main() {
     // button wired straight to `onActivate` also leaves `isDormant` true here,
     // because `activate()` refuses on its own (`0 < 5`), so tapping cannot tell
     // the two apart. `_ActionButton` renders `onTap: onPressed`
-    // (`journey_page.dart:1270`), null exactly when disabled — the same read
-    // `braking_test.dart:493` uses for the unaffordable brake.
+    // (`journey_page.dart:1345`), null exactly when disabled — the same read
+    // `braking_test.dart:497` uses for the unaffordable brake.
     final activate = tester.widget<InkWell>(find.ancestor(
       of: find.text('激活引擎'),
       matching: find.byType(InkWell),

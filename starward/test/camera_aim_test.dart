@@ -41,9 +41,10 @@ void main() {
 
     test('leaves the eye and the mode alone', () {
       // `Vec3` has no `operator ==`, so `expect(camera.eyeOverride, eye)` would
-      // be an *identity* check that happens to pass only because the two `const`
-      // expressions canonicalise to one instance. Assert identity deliberately,
-      // so the test says what it means: the aim must not replace the eye.
+      // be an *identity* check. It passes because both sides name the one
+      // `const` instance — canonicalisation makes `Vec3(5, 6, 7)` a single
+      // object, not two equal ones. Assert identity deliberately, so the test
+      // says what it means: the aim must not replace the eye.
       const eye = Vec3(5, 6, 7);
       final camera = Camera3D()
         ..mode = CameraMode.cockpit
