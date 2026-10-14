@@ -1357,6 +1357,23 @@ class GameController extends ChangeNotifier {
     if (energy < cost) return false;
 
     _settleCruise();
+    // Pin the leg *before* rotating the velocity — the same ordering trick
+    // `_repinLeg` documents one level down. On a coasting ship `_settleCruise`
+    // above returns early without re-pinning, so the anchor is still the
+    // exhaust point the tank ran dry at, hundreds of seconds behind. `_repinLeg`
+    // reads `playerPosition3D`, which is that anchor advanced by the *current*
+    // velocity: rotating first and pinning after would re-derive the ship's
+    // position under the new heading and jump it by the drift crossed with the
+    // angle turned (6.9 ly for a 500 s coast turned 30°). Pinning first freezes
+    // where the ship actually is, and the rotation below then changes only the
+    // course.
+    //
+    // The pin also restarts `driftStartedAt`, which is the clock the re-lit
+    // engine burns from. `_cruiseBurnNow()` reads zero while coasting, so
+    // nothing accrued during the drift — but without the reset the leg would
+    // still be timed from the exhaust point, and the next read would charge the
+    // whole coast as burn (43 EN with the reset, 10 without).
+    _repinLeg(at: _now());
     _player = _player.copyWith(
       energyBalance: _player.energyBalance - cost,
       // Same speed, new direction — a turn is a rotation of the velocity, not a
@@ -1372,11 +1389,6 @@ class GameController extends ChangeNotifier {
         createdAt: _now(),
       ));
     }
-    // Required even though `_settleCruise` just re-pinned: it returns early
-    // when the ship is *coasting*, leaving the anchor at the original ignition.
-    // Rotating the velocity under a stale anchor would teleport the ship to
-    // where it would be if it had always flown the new heading.
-    _repinLeg(at: _now());
     // A turn is a rule that spends, and it can spend the last drop — the guard
     // above only checks `energy < cost`, so `energy == cost` goes through and
     // leaves the tank at zero. `_syncDormancy`'s contract is that no *settlement*

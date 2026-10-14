@@ -130,7 +130,7 @@ void main() {
       expect(v.z, closeTo(Engine.standard.cruiseSpeedLyPerSec, 1e-12));
     });
 
-    test('does not teleport the ship — the anchor is re-pinned at the turn',
+    test('does not teleport the ship while cruising — the anchor is re-pinned at the turn',
         () async {
       final clock = FakeClock(DateTime(2026));
       final c = await _boot(clock);
@@ -210,9 +210,10 @@ void main() {
       expect(c.energy, 95);
 
       // 30° off the bow is 52 EN, which 95 EN covers. A 90° turn (141 EN) would
-      // be *refused* — after activation the ship holds only the 100 EN reserve,
-      // which is the trap 已知取舍 #2 describes. Worth knowing before writing a
-      // test that expects a big turn here to succeed.
+      // be *refused* — after activation the ship holds only 95 EN, the 100 EN
+      // reserve less the 5 EN activation fee, which is the trap 已知取舍 #2
+      // describes. Worth knowing before writing a test that expects a big turn
+      // here to succeed.
       final heading = Vec3(math.cos(math.pi / 6), math.sin(math.pi / 6), 0);
       expect(c.turnCostTo(heading), 52);
       expect(await c.correctHeading(heading), isTrue);
@@ -220,6 +221,31 @@ void main() {
       expect(c.isCruising, isTrue, reason: 'the engine is driving again');
       expect(c.energyLedger.first.type, EnergyTxType.turn);
       expect(c.energyLedger.first.amount, -52);
+    });
+
+    test('a turn taken on a coast happens where the ship is', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _cruising(clock, 3000);
+      c.tick();
+      expect(c.isCoasting, isTrue, reason: 'precondition: out of power');
+      // Drift on with the engine off, so the anchor the cruise left behind is
+      // well away from where the ship now is. A turn that re-derived its
+      // position from that anchor under the *new* velocity would jump the ship
+      // by the drift crossed with the angle turned — 6.9 ly at 30°.
+      clock.advance(const Duration(seconds: 500));
+      final before = c.playerPosition3D;
+
+      expect(await c.activate(), isTrue);
+      // 30° off an eastbound bow is 52 EN, which the 95 EN aboard covers.
+      final heading = Vec3(math.cos(math.pi / 6), math.sin(math.pi / 6), 0);
+      expect(await c.correctHeading(heading), isTrue,
+          reason: 'precondition: the turn is affordable');
+
+      final after = c.playerPosition3D;
+      expect(after.x, closeTo(before.x, 1e-9));
+      expect(after.y, closeTo(before.y, 1e-9));
+      expect(after.z, closeTo(before.z, 1e-9),
+          reason: 'a turn changes the heading, not the position');
     });
 
     test('a turn that spends the last drop shuts the engine down', () async {
