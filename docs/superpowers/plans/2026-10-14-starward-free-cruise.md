@@ -6170,11 +6170,27 @@ correct. Verify each before editing; do not retarget silently.
 | L12 | `galaxy_map_3d_page.dart`, `_recenter`'s comment (was `:437-439`) | it says what the button means "depends on whether the ship is **under way**" | a coasting ship is under way — it has momentum — and `_aimCockpit` gives it the galactic centre, not its heading. The predicate the code actually branches on is `isCruising`, and the very next clause enumerates the two cases correctly, so only the name is wrong | name the predicate instead of a synonym for it: "depends on whether the ship is **cruising**". Do not touch `_aimCockpit`, which is right |
 | L13 | `cockpit_hud.dart:37` | the doc link `[GameController.turnAngleTo]` | `cockpit_hud.dart` imports only `dart:math`, `package:flutter/widgets.dart` and `camera3d.dart` (`:1-5`), so the reference has nothing to resolve to. `comment_references` is off, so `flutter analyze` stays clean — this is a dead link, not a false claim | drop the brackets to a plain code span. Importing the controller into a painter-helper file to satisfy a comment is not worth the dependency; do not change `turnAngleTo`'s own doc |
 
-Also fix the two INFO notes in the same pass, both in the plan document rather than in code:
-`docs/superpowers/plans/2026-10-14-starward-free-cruise.md`'s Self-Review claim "Every numbered
-requirement in the spec maps to a task" is false (Phase 5 is the evidence) and its closing
-「与 spec 的偏差汇总」 says "Four deviations" against the top-of-plan "Six". Correct both, and point
-the Self-Review at Phase 5.
+Also fix the plan's own three stale claims, all in
+`docs/superpowers/plans/2026-10-14-starward-free-cruise.md` rather than in code:
+
+1. The Self-Review's claim that "Every numbered requirement in the spec maps to a task" is false —
+   Phase 5 is the evidence — so correct it and point the Self-Review at Phase 5.
+2. The closing 「与 spec 的偏差汇总」 opens "Four deviations, all documented in place at the top of
+   the plan; repeated here so an executor who reads only the closing section still sees them." The
+   top of the plan has **six**, so that sentence is false twice over: the count, and the "all".
+   Rewrite it to state the true total and to be explicit that the four rows below are a selection —
+   deviations 5 and 6 are the ones it does not repeat, and the reason it can is that they are
+   restated where an executor cannot miss them: 5 in invariants 2 and 3 and in `_reconcileCruise`'s
+   own comment, 6 in `activate()`'s doc. Do not pad the table to six. If that account of why 5 and 6
+   are safe to omit does not survive checking against those three sites, say so in the report rather
+   than writing it.
+3. The Execution Handoff says "**Sixteen** tasks across **four** phases". The plan has **22** tasks,
+   and the six Phase 5 tasks — 17 through 22 — have no `## Phase 5` heading at all: they sit under
+   Phase 4's, below the Self-Review and the Execution Handoff, which is why the count reads sixteen
+   to anyone scanning headings. Add a `## Phase 5` heading above Task 17 naming what the phase is
+   for (the six findings the first whole-branch review returned), and correct the count and the
+   phase description in the Execution Handoff. This one is a heading plus a sentence; do not
+   renumber tasks or move anything.
 
 - [ ] **Step 2: Prove nothing changed**
 
