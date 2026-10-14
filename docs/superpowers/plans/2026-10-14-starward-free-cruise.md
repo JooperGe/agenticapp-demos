@@ -5049,7 +5049,7 @@ its button table.
 
 **Interfaces:**
 - Consumes: `headingDeviationDegrees` (Task 17); `GameController.isCruising`, `.driftVelocity`, `.turnCostTo(Vec3)`; `Camera3D.forward`, `.eye` (`camera3d.dart:89`), `.project`; `hudMarkerPoint`, `HudMarker`, `CockpitHudPainter`; `Size2`.
-- Produces: `({Offset at, bool offScreen}) clampHudPoint(Offset at, Size2 size)`; `Offset? headingMarkerPoint({required Camera3D camera, required Vec3 heading, required Size2 viewport})`; `CockpitHudPainter.heading` / `.headingColor`.
+- Produces: `({Offset at, bool offScreen}) clampHudPoint(Offset at, Size2 size)`; `({Offset at, bool offScreen})? headingMarkerPoint({required Camera3D camera, required Vec3 heading, required Size2 viewport})`; `CockpitHudPainter.heading` / `.headingColor`.
 
 **Two rulings that move §9.4's letter, both for testability.**
 
@@ -5099,13 +5099,17 @@ is `dx ∈ [26, 374]`, `dy ∈ [74, 668]`.
 
   group('headingMarkerPoint', () {
     test('sits on the reticle when the course is the aim', () {
-      final at = headingMarkerPoint(
+      final p = headingMarkerPoint(
         camera: _lookingForward(),
         heading: const Vec3(0, 0, 1),
         viewport: _vp,
       )!;
-      expect(at.dx, moreOrLessEquals(200, epsilon: 0.5));
-      expect(at.dy, moreOrLessEquals(400, epsilon: 0.5));
+      expect(p.at.dx, moreOrLessEquals(200, epsilon: 0.5));
+      expect(p.at.dy, moreOrLessEquals(400, epsilon: 0.5));
+      // On screen, so the triangle is drawn at full strength. This is the only
+      // one of the five that is not clamped, which makes it the only one that
+      // pins the `false` side of the dimming.
+      expect(p.offScreen, isFalse);
     });
 
     test('pins to the side edge for a course abeam', () {
@@ -5120,30 +5124,38 @@ is `dx ∈ [26, 374]`, `dy ∈ [74, 668]`.
       // screen-right, and a +X course lands left of centre. The existing
       // 'puts a point off to the right of centre' test pins that convention for
       // the same reason: it is not the one you would guess.
-      final at = headingMarkerPoint(
+      final p = headingMarkerPoint(
         camera: _lookingForward(),
         heading: const Vec3(1, 0, 0),
         viewport: _vp,
       )!;
-      expect(at, const Offset(26, 400));
+      expect(p.at, const Offset(26, 400));
+      // Clamped, so the triangle dims — the same signal the markers use for a
+      // target that is off the edge. `headingMarkerPoint` has to report this
+      // rather than leave the painter to re-derive it: it already returns the
+      // **clamped** point, so a painter that re-clamps that result gets
+      // `clamped == at` and an `offScreen` of `false` in every reachable state.
+      expect(p.offScreen, isTrue);
     });
 
     test('pins to the top edge for a course straight up', () {
-      final at = headingMarkerPoint(
+      final p = headingMarkerPoint(
         camera: _lookingForward(),
         heading: const Vec3(0, 1, 0),
         viewport: _vp,
       )!;
-      expect(at, const Offset(200, 74));
+      expect(p.at, const Offset(200, 74));
+      expect(p.offScreen, isTrue);
     });
 
     test('pins to the bottom edge for a course dead astern', () {
-      final at = headingMarkerPoint(
+      final p = headingMarkerPoint(
         camera: _lookingForward(),
         heading: const Vec3(0, 0, -1),
         viewport: _vp,
       )!;
-      expect(at, const Offset(200, 668));
+      expect(p.at, const Offset(200, 668));
+      expect(p.offScreen, isTrue);
     });
 
     test('has no position without a course', () {
@@ -5213,7 +5225,12 @@ const double _headingMarkerForwardNudge = 0.25;
 /// 75.7° band around dead astern — is pinned to the bottom edge, the conventional
 /// "behind you" position. The readout beside it carries the exact angle, so
 /// nothing is lost that the player needs.
-Offset? headingMarkerPoint({
+///
+/// Reports `offScreen` alongside the point rather than returning the point alone.
+/// The point is clamped here, so a caller that re-clamped it would get
+/// `clamped == at` and an `offScreen` of `false` in every reachable state —
+/// which is how the triangle's dimming would come to be dead code.
+({Offset at, bool offScreen})? headingMarkerPoint({
   required Camera3D camera,
   required Vec3 heading,
   required Size2 viewport,
@@ -5227,9 +5244,9 @@ Offset? headingMarkerPoint({
     viewport: viewport,
   );
   if (at == null) {
-    return clampHudPoint(Offset(viewport.width / 2, viewport.height), viewport).at;
+    return clampHudPoint(Offset(viewport.width / 2, viewport.height), viewport);
   }
-  return clampHudPoint(at, viewport).at;
+  return clampHudPoint(at, viewport);
 }
 ```
 
@@ -5271,11 +5288,14 @@ In `paint`, replace the inline clamp with `final c = clampHudPoint(at, vp); fina
 ```dart
     final h = heading?.normalized;
     if (h != null && h.length > 0) {
-      final at = headingMarkerPoint(camera: camera, heading: h, viewport: vp);
-      if (at != null) {
-        final offScreen = clampHudPoint(at, vp).offScreen;
+      final p = headingMarkerPoint(camera: camera, heading: h, viewport: vp);
+      if (p != null) {
+        // Read off `p`, not recomputed: the point is already clamped, so
+        // `clampHudPoint(p.at, vp).offScreen` is `false` by construction and the
+        // dimming below would never fire.
+        final at = p.at;
         final paint = Paint()
-          ..color = headingColor.withValues(alpha: offScreen ? 0.45 : 0.9);
+          ..color = headingColor.withValues(alpha: p.offScreen ? 0.45 : 0.9);
         // A filled triangle, deliberately unlike the ring markers: the current
         // course must never read as a destination.
         canvas.drawPath(
