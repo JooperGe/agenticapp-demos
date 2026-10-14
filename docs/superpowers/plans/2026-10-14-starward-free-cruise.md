@@ -1596,8 +1596,8 @@ In `starward/lib/state/game_controller.dart`, add after `_settleCruise`:
   ///
   /// Compared on *time*, not on energy: `burnForSeconds` rounds to whole EN, so
   /// testing `burnForSeconds(elapsed) >= budget` fires a tick early — at a
-  /// budget of 200 it trips at 2992 s instead of 3000 s, and the halt point
-  /// lands 0.2 ly short of the 80 ly the readout promised. Division keeps it
+  /// budget of 200 it first reaches 200 at 2992.5 s, and the halt point lands
+  /// 0.2 ly short of the 80 ly the readout promised. Division keeps it
   /// exact: `secondsForEnergy(200)` is 3000.0, while `200 / powerDraw` computed
   /// the other way round is 3000.0000000000005.
   DateTime? _cruiseExhaustTime() {
