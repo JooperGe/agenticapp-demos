@@ -1,4 +1,5 @@
 import '../../core/vec3.dart';
+import 'journey.dart';
 
 /// The player's mutable progress. Immutable value object — the controller
 /// replaces it wholesale via [copyWith] so state transitions are explicit and
@@ -18,6 +19,9 @@ class PlayerState {
     required this.startZ,
     required this.driftVelocity,
     required this.driftStartedAt,
+    this.driftPowered = false,
+    this.engineDormant = false,
+    this.cruisePolicy = FuelPolicy.halt,
   });
 
   final int energyBalance;
@@ -56,6 +60,23 @@ class PlayerState {
   /// arithmetic well away from any "you have been drifting for 56 years" bug.
   final DateTime driftStartedAt;
 
+  /// True when the engine is driving the drift: the ship is cruising under power
+  /// and the tank is draining. False on a coast, which is the same motion with
+  /// the engine off.
+  final bool driftPowered;
+
+  /// True when the tank hit zero and the engine shut itself down. The ship still
+  /// hovers or coasts — what stops is everything that needs a burn: igniting,
+  /// turning, and launching a voyage.
+  final bool engineDormant;
+
+  /// What the player chose should happen when a *cruise* runs the tank dry.
+  ///
+  /// A cruise has no destination, so unlike a voyage's policy this cannot live
+  /// on a `Journey` — it has to survive on the player, because the choice is
+  /// made at ignition and acted on arbitrarily later.
+  final FuelPolicy cruisePolicy;
+
   bool get inDeepSpace => currentPlanetId == null;
 
   PlayerState copyWith({
@@ -71,6 +92,9 @@ class PlayerState {
     bool toDeepSpace = false,
     Vec3? driftVelocity,
     DateTime? driftStartedAt,
+    bool? driftPowered,
+    bool? engineDormant,
+    FuelPolicy? cruisePolicy,
   }) {
     return PlayerState(
       energyBalance: energyBalance ?? this.energyBalance,
@@ -88,6 +112,9 @@ class PlayerState {
       startZ: startZ ?? this.startZ,
       driftVelocity: driftVelocity ?? this.driftVelocity,
       driftStartedAt: driftStartedAt ?? this.driftStartedAt,
+      driftPowered: driftPowered ?? this.driftPowered,
+      engineDormant: engineDormant ?? this.engineDormant,
+      cruisePolicy: cruisePolicy ?? this.cruisePolicy,
     );
   }
 
@@ -140,6 +167,12 @@ class PlayerState {
         ),
         driftStartedAt: DateTime.fromMillisecondsSinceEpoch(
             (json['driftStartedAt'] as int?) ?? 0),
+        // All three are absent in every save written before free cruise existed.
+        // The defaults are the only reading that keeps those saves behaving
+        // exactly as they did: not powered, not dormant, halt on empty.
+        driftPowered: json['driftPowered'] as bool? ?? false,
+        engineDormant: json['engineDormant'] as bool? ?? false,
+        cruisePolicy: cruisePolicyFromName(json['cruisePolicy'] as String?),
       );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -158,5 +191,8 @@ class PlayerState {
         'driftVelocityY': driftVelocity.y,
         'driftVelocityZ': driftVelocity.z,
         'driftStartedAt': driftStartedAt.millisecondsSinceEpoch,
+        'driftPowered': driftPowered,
+        'engineDormant': engineDormant,
+        'cruisePolicy': cruisePolicy.name,
       };
 }

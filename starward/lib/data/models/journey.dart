@@ -29,6 +29,14 @@ enum FuelPolicy {
 FuelPolicy fuelPolicyFromName(String name) => FuelPolicy.values
     .firstWhere((p) => p.name == name, orElse: () => FuelPolicy.halt);
 
+/// Reads a [FuelPolicy] back from a save, falling back to the safe default when
+/// the key is absent (an old save) or unrecognised.
+FuelPolicy cruisePolicyFromName(String? name) {
+  if (name == null) return FuelPolicy.halt;
+  return FuelPolicy.values.firstWhere((p) => p.name == name,
+      orElse: () => FuelPolicy.halt);
+}
+
 /// A single voyage between two planets.
 ///
 /// Progress is derived entirely from the departure/arrival timestamps, never
