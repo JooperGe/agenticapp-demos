@@ -1132,12 +1132,13 @@ class GameController extends ChangeNotifier {
   /// Like [_reconcileJourney] this is a pure function of the clock: it can run a
   /// second late, a day late, or after the app was killed, and still place the
   /// ship, the ledger and the report where they belong. It leaves the ship
-  /// *dormant*, and bills the leg down to `cruiseReserve` — so when the burn is
-  /// the only thing that has spent, the tank lands on the reserve and the ship
-  /// can still afford its own stop, which is the whole reason the reserve
-  /// exists. A turn may have spent below it first: the deduction is
-  /// `balance - cruiseReserve` only when positive, so a ship that turned down to
-  /// 50 EN is left dormant at 50, not at 100.
+  /// *dormant*, and its own deduction bills `balance - cruiseReserve` when that
+  /// is positive, which lands the tank on the reserve whenever it was still above
+  /// it — so the ship can still afford its own stop, the whole reason the reserve
+  /// exists. Something may have taken the tank below it first: a turn, or an
+  /// earlier [_settleCruise] billing a leg already past its budget. Then the
+  /// deduction is skipped and the ship is left dormant where it was — a ship that
+  /// turned down to 50 EN ends dormant at 50, not at 100.
   Future<void> _reconcileCruise() async {
     final exhaustAt = _cruiseExhaustTime();
     if (exhaustAt == null) return;
@@ -1235,13 +1236,14 @@ class GameController extends ChangeNotifier {
     return true;
   }
 
-  /// Energy a cruise holds back from its own burn so it can buy its own stop.
+  /// Energy a cruise keeps in the tank so it can buy its own stop.
   ///
-  /// Held back by the *exhaustion rule* — the burn never spends it — not by
-  /// every rule that spends. [correctHeading] prices a turn against the whole
-  /// tank and may spend into the reserve, so a turn made on a low tank can leave
-  /// the ship unable to brake. That exception is recorded as 已知取舍 #2 in the
-  /// plan and as its deviation 7.
+  /// Held back by the *exhaustion rule*, which bills at most `balance -
+  /// cruiseReserve` — and by that rule alone. The rules that spend outside it are
+  /// not capped: [correctHeading] prices a turn against the whole tank, and
+  /// [_settleCruise] bills the raw elapsed burn, so either can spend into the
+  /// reserve and leave the ship unable to brake. That is recorded as 已知取舍 #2
+  /// in the plan and as its deviation 7.
   ///
   /// State-independent on purpose: it is a property of the engine and the speed
   /// a cruise runs at, not of where the ship happens to be, so the exhaustion
