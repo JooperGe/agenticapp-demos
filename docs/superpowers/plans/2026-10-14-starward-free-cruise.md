@@ -3117,6 +3117,20 @@ void main() {
       expect(c.energyLedger.first.amount, -52);
     });
 
+    test('a turn that spends the last drop shuts the engine down', () async {
+      // The guard is `energy < cost`, so `energy == cost` goes through — this is
+      // the exact boundary it permits, and the one place a turn can leave the
+      // tank at zero. `_settleCruise` ran before the deduction and saw 200, so
+      // the shutdown has to come from `correctHeading` itself.
+      final clock = FakeClock(DateTime(2026));
+      final c = await _cruising(clock, 1500);
+      expect(c.energy, 200, reason: 'exactly enough for a hairpin');
+      expect(await c.correctHeading(const Vec3(-1, 0, 0)), isTrue);
+      expect(c.energy, 0);
+      expect(c.isDormant, isTrue,
+          reason: 'the turn spent the last drop, so the shutdown follows');
+    });
+
     test('a correction survives a reload', () async {
       final clock = FakeClock(DateTime(2026));
       final storage = MemoryStorage();
@@ -3210,6 +3224,14 @@ In `starward/lib/state/game_controller.dart`, add after `igniteCruise`:
     // Rotating the velocity under a stale anchor would teleport the ship to
     // where it would be if it had always flown the new heading.
     _repinLeg(at: _now());
+    // A turn is a rule that spends, and it can spend the last drop — the guard
+    // above only checks `energy < cost`, so `energy == cost` goes through and
+    // leaves the tank at zero. `_syncDormancy`'s contract is that no rule can
+    // spend the last drop without the shutdown following, and `_settleCruise`
+    // cannot honour it here: it ran *before* the deduction, when the tank still
+    // held the fee. Without this call the ship reads as cruising on an empty
+    // tank until the next `tick()` happens to resolve it.
+    _syncDormancy();
     await _persist();
     notifyListeners();
     return true;
@@ -3219,7 +3241,7 @@ In `starward/lib/state/game_controller.dart`, add after `igniteCruise`:
 - [ ] **Step 4: Run the test and analyze**
 
 Run: `flutter test test/heading_test.dart`
-Expected: PASS, all ten.
+Expected: PASS, all fourteen.
 
 Run: `flutter analyze`
 Expected: `No issues found!`
