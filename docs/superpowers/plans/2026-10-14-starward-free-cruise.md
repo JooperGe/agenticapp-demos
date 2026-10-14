@@ -2991,9 +2991,14 @@ void main() {
       final c = await _cruising(clock, 1500);
       final engine = c.ship.engine;
       final braking = engine.brakingCostFor(engine.cruiseSpeedLyPerSec);
-      expect(engine.turnCostFor(59.9 * math.pi / 180), lessThan(braking));
+      // Not 59.9/60.1: `turnCostFor` is quoted through `energyCostFor`, which
+      // rounds to whole EN, and 0.1° of turn is worth about 0.15 EN — both of
+      // those read 100 and the assertions would be `100 < 100` and
+      // `100 > 100`. Half a degree is the tightest step the EN grid can
+      // express here: 59.5° is 99.23 EN, 60.5° is 100.75 EN.
+      expect(engine.turnCostFor(59.5 * math.pi / 180), lessThan(braking));
       expect(engine.turnCostFor(60 * math.pi / 180), braking);
-      expect(engine.turnCostFor(60.1 * math.pi / 180), greaterThan(braking));
+      expect(engine.turnCostFor(60.5 * math.pi / 180), greaterThan(braking));
     });
 
     test('is zero when the ship is not moving — there is no course to be off',
