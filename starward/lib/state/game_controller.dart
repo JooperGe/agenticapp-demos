@@ -1361,9 +1361,8 @@ class GameController extends ChangeNotifier {
   /// an hour ago.
   ///
   /// The guard is `energy < cost`, so it does **not** hold back [cruiseReserve]:
-  /// a turn on a low tank can spend into the reserve and leave the ship unable
-  /// to brake ([canBrake] reads `energyBalance >= 100`) — 已知取舍 #2's trap,
-  /// and deviation 7's subject. It also lets `energy == cost` through, so a turn
+  /// a turn on a low tank can spend into the reserve — 已知取舍 #2's trap, and
+  /// deviation 7's subject. It also lets `energy == cost` through, so a turn
   /// can leave the tank at zero, which is why the `_syncDormancy()` call at the
   /// end of this method exists and must stay.
   Future<bool> correctHeading(Vec3 heading) async {

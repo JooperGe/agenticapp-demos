@@ -330,7 +330,7 @@ void main() {
       expect(c.energy, 300, reason: 'an unpowered drift costs nothing to run');
     });
 
-    test('the reserve is what the cruise must keep to buy its own stop', () async {
+    test('the reserve is the braking cost a cruise holds back', () async {
       final clock = FakeClock(DateTime(2026));
       final c = await _boot(clock);
       expect(c.cruiseReserve, 100);
@@ -440,8 +440,9 @@ void main() {
       // The reserve is all that is left, and it is spoken for. 3000 s is 80 ly is
       // 200 EN — the whole spendable budget — so this is the exhaustion point
       // itself, not a point past it. Advancing further would burn the reserve too
-      // and leave nothing, which is a state the finished game never reaches:
-      // Task 8's `tick` resolves the cruise at exactly this moment.
+      // and leave nothing — which the tick never lets happen, since it resolves
+      // the cruise at exactly this moment. A settlement with no tick behind it
+      // can still overspend the leg; 已知取舍 #2 records that.
       clock.advance(const Duration(seconds: 3000));
       expect(c.energy, 100);
       final far = c.planets

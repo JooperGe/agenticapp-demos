@@ -213,8 +213,8 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
   /// player can choose it. The two answers do not differ in *when* the tank
   /// empties (both spend the same budget), only in what the ship does next:
   /// stop, or keep drifting. The reserve is `cruiseReserve`, the energy a cruise
-  /// always holds back to buy its own stop, not `brakingCost`, which is what a
-  /// *moving* ship would spend and is 0 for the parked ship this button serves.
+  /// holds back to buy its own stop, not `brakingCost`, which is what a *moving*
+  /// ship would spend and is 0 for the parked ship this button serves.
   Future<void> _igniteFromCockpit() async {
     final policy = await showCruiseFuelChoiceDialog(
       context,
