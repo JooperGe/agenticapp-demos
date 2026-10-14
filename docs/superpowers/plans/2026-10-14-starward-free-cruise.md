@@ -4804,10 +4804,12 @@ surface that does not exist yet, so read the failures rather than counting them:
 - `'backing out of the ignition dialog does not ignite'` fails at `tester.tap(find.text('取消点火'))`
   — the finder matches nothing and the tap throws.
 - `'correcting course confirms before spending'` fails on `expect(find.text('修正航向'),
-  findsNWidgets(2))`, which reads 1: the bar's button is there, the dialog title is not. Note what
-  this means for the assertion two lines below it — `before` is captured *before* the tap, so it is
-  200 EN, and an unconfirmed turn spends it down to 0. That `expect(c.energy, before)` never runs,
-  because the count assertion fails first; it becomes live only once the dialog exists.
+  findsNWidgets(2))`, which reads **0**, not 1: before this task the tap turns the ship on the spot,
+  the 200 EN burn empties the tank, and the ship goes dormant — so the bar renders its dormant
+  branch and the `修正航向` button is gone before the assertion looks for it. Note what this means
+  for the assertion two lines below it — `before` is captured *before* the tap, so it is 200 EN, and
+  an unconfirmed turn spends it down to 0. That `expect(c.energy, before)` never runs, because the
+  count assertion fails first; it becomes live only once the dialog exists.
 - Task 17's drag test fails at `tester.tap(find.text('修正'))`, same as the back-out test.
 
 - [ ] **Step 3: Add the cruise variant of the dialog**
@@ -5542,9 +5544,22 @@ Add `import 'package:starward/ui/training/training_page.dart';` to the test file
 - [ ] **Step 2: Run them to verify they fail**
 
 Run: `cd starward && flutter test test/cruise_ui_test.dart`
-Expected: FAIL — `需要 200 EN（现有 140 EN）` and `前往训练补充能量` do not exist, and the first test's
-tap spends nothing only because the drag produced a cost of 200 against 140 EN, so
-`correctHeading` refuses and the snackbar fires instead.
+Expected: FAIL — each test stops at its first missing surface, and in all three that is a surface
+that does not exist yet, so read the failures rather than counting them:
+
+- Test 1 fails on `expect(inCockpit('需要 200 EN（现有 140 EN）'), findsOneWidget)` — there is no
+  disabled state, so the button still renders its enabled detail `'173° · 200 EN'`.
+- Test 2 fails the same way, on `需要 5 EN（现有 0 EN）`: the dormant button renders `'5 EN'`.
+- Test 3 fails at `tester.tap(find.text('前往训练补充能量'))` — the finder matches nothing and the tap
+  throws.
+
+The tap-and-assert blocks in tests 1 and 2 sit *below* their failing lines, so they do not run yet.
+They become live once the disabled state exists, and they are the assertions that pin the point: a
+disabled button must not fire `onPressed` at all, so `c.energy` stays 140 and the ship stays on its
+old course. Do not be tempted to delete them because they "already pass" — before this task the tap
+reaches `_correctFromCockpit`, which (since Task 18) opens a confirm dialog rather than spending, so
+`c.energy` would read 140 either way and the assertion alone cannot tell the two apart. The
+`findsOneWidget` on the disabled detail above it is what carries the distinction.
 
 - [ ] **Step 3: Give the button a disabled state**
 
@@ -5631,8 +5646,14 @@ And the brake hint must not offer something the ship cannot take either:
 
 ```dart
     final turningIsDearer = moving && !dormant && turnCost > braking;
-    // The hint is an offer, so it obeys the same rule as the button: a broke
-    // ship is not told to brake instead when it cannot brake either.
+    // The hint is an offer, so it is bound to the brake's own predicate rather
+    // than to a second copy of it. Note what this does *not* do: `canBrake`
+    // compares the **unburned** `_player.energyBalance` to the reserve, and a
+    // cruising ship's balance can never be at or below it — ignition requires
+    // `balance > braking`, and the burn is booked only at settlement — so while
+    // cruising this conjunction is always true and the hint's visibility is
+    // still decided by `turningIsDearer` alone. It is here so that a future
+    // change to `canBrake` moves the hint with it.
     final showBrakeHint = turningIsDearer && controller.canBrake;
 ```
 
@@ -5717,7 +5738,7 @@ Implements spec §9.1's dormant panel and §9.3's extraction (finding M3).
 
     expect(find.text('引擎休眠中 · 生命维持与照明已停止'), findsOneWidget);
     // Short of the fee, so the panel quotes the shortfall rather than the price
-    // — `canActivate` is `energy > cost`, and `0 > 5` is false.
+    // — `canActivate` is `energy >= cost`, and `0 >= 5` is false.
     expect(find.text('需要 5 EN（现有 0 EN）'), findsOneWidget);
     expect(find.text('激活引擎'), findsOneWidget);
     // …and the button is off, with the escape hatch offered in its place.
@@ -5738,8 +5759,13 @@ Implements spec §9.1's dormant panel and §9.3's extraction (finding M3).
     await _pumpVoyage(tester, c);
     expect(find.text('激活引擎'), findsOneWidget);
     // Affordable, so the panel quotes the price and offers no escape hatch.
-    // This is the other half of the branch test 1 pins: `100 > 5` is true.
+    // This is the other half of the branch test 1 pins: `100 >= 5` is true.
     expect(find.text('需要 5 EN 激活'), findsOneWidget);
+    // Two separate guards keep this string off the screen, and only the first is
+    // this task's. `_CoastDock` renders here (the ship is coasting, not parked)
+    // and has its own 前往训练补充能量 button — but that one is gated on
+    // `!canBrake`, and a coasting ship's unburned balance is exactly the 100 EN
+    // reserve, so `canBrake` is `100 >= 100` and its button is hidden too.
     expect(find.text('前往训练补充能量'), findsNothing,
         reason: 'the ship can afford the fee, so nothing is short');
 
@@ -5833,7 +5859,11 @@ below its existing content. A dormant `_DriftDock` also keeps its `点火巡航`
 where the course is chosen, and §9.1 keeps that entry point.
 
 Wire both at their mount sites (`journey_page.dart:372` and `:380`) with
-`onActivate: () => _c.activate()`.
+`onActivate: () => c.activate()`. The controller local there is `c`, not `_c` — `_c` is
+`galaxy_map_3d_page.dart`'s field and `journey_page.dart` has no such name. `activate()` is a
+`Future<bool>` and both call sites are sync callbacks, so the returned future is deliberately
+dropped; the panel reads the result back through the controller rather than through the return
+value, and `activate()` calls `notifyListeners()` before it returns.
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
