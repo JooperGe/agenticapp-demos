@@ -98,7 +98,8 @@ class GameController extends ChangeNotifier {
   /// the drift happening and the sheet being opened does not lose it.
   DriftReport? _pendingDriftReport;
 
-  /// A one-shot hint from the voyage screen, never written to the save.
+  /// A one-shot request for the star map to open in cockpit mode. Never
+  /// written to the save — see [requestCockpit].
   bool _cockpitRequested = false;
 
   final List<DiscoveryRecord> _discoveries = <DiscoveryRecord>[];
@@ -985,7 +986,8 @@ class GameController extends ChangeNotifier {
   /// null when there is nothing worth suggesting.
   ///
   /// Nearest not-yet-explored planet, preferring the hand-authored hero worlds
-  /// so the suggestion always leads somewhere with real content to discover.
+  /// so the suggestion favours somewhere with real content to discover whenever
+  /// such a world is in range. With none in range, it is simply the nearest.
   /// Lifted out of the voyage screen so every surface that offers a "next
   /// destination" reads one rule rather than keeping its own copy that could
   /// drift out of step with the others.

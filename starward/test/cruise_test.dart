@@ -59,6 +59,19 @@ Future<void> _setEnergy(MemoryStorage storage, int balance) async {
   await storage.write('starward.save.v2', jsonEncode(json));
 }
 
+/// Marks a planet explored in the save, so a reload sees it through `stateOf`.
+///
+/// Written into `planetStates` — the map `stateOf` reads — rather than the
+/// player's `exploredPlanetIds`. `completeExploration` keeps the two in step,
+/// but only `planetStates` backs `stateOf`, so this is the lever that makes an
+/// explored planet actually invisible to the recommendation rule.
+Future<void> _setExplored(MemoryStorage storage, String planetId) async {
+  final raw = await storage.read('starward.save.v2');
+  final json = jsonDecode(raw!) as Map<String, dynamic>;
+  (json['planetStates'] as Map<String, dynamic>)[planetId] = 'explored';
+  await storage.write('starward.save.v2', jsonEncode(json));
+}
+
 /// The persisted `driftPowered` flag — the only way to observe it once the
 /// velocity has been cleared, since `hasMomentum` is false either way then.
 Future<bool> _savedPowered(MemoryStorage storage) async {
@@ -604,33 +617,80 @@ void main() {
   });
 
   group('recommendedDestination', () {
-    test('is never where the ship is, nor anywhere already explored', () async {
+    test('is never the planet the ship is already parked on', () async {
       final clock = FakeClock(DateTime(2026));
-      final c = await _boot(clock);
-      final rec = c.recommendedDestination;
-      expect(rec, isNotNull);
-      expect(rec!.id, isNot(c.currentPlanetId));
-      expect(c.stateOf(rec.id), isNot(DiscoveryState.explored));
-    });
+      final storage = MemoryStorage();
+      final c = await _docked(clock, storage);
+      expect(c.currentPlanetId, isNotNull,
+          reason: 'precondition: docked, so there is an own planet to exclude');
 
-    test('is the nearest hero world, or the nearest world if there is none',
-        () async {
-      // A property, not a fixed answer: the universe is generated from a seed,
-      // and pinning one planet id would make this test a hostage of the
-      // generator rather than of the rule.
-      final clock = FakeClock(DateTime(2026));
-      final c = await _boot(clock);
-      final rec = c.recommendedDestination!;
-      final candidates = c.planets
-          .where((p) => p.id != c.currentPlanetId)
+      // The guard only bites if the ship's own planet would otherwise win. It
+      // sits at distance 0, so it wins whenever it is a hero world, or whenever
+      // no hero world is in range to outrank it. Assert that, or removing the
+      // guard would change nothing and this test would be vacuous.
+      final pool = c.planets
           .where((p) => c.stateOf(p.id) != DiscoveryState.explored)
           .toList();
-      expect(candidates, contains(rec));
+      final featured = pool.where((p) => p.featured).toList();
+      final winner = (featured.isNotEmpty ? featured : pool)
+          .reduce((a, b) => c.distanceTo(a) <= c.distanceTo(b) ? a : b);
+      expect(winner.id, c.currentPlanetId,
+          reason: 'precondition: without the guard the ship would recommend the '
+              'planet it is parked on');
+
+      expect(c.recommendedDestination!.id, isNot(c.currentPlanetId));
+    });
+
+    test('is never a planet that has already been explored', () async {
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      final c = await _boot(clock, storage: storage);
+      final rec0 = c.recommendedDestination;
+      expect(rec0, isNotNull, reason: 'precondition: something is recommended');
+      await _setExplored(storage, rec0!.id);
+      final reloaded = await _boot(clock, storage: storage);
+      expect(reloaded.stateOf(rec0.id), DiscoveryState.explored,
+          reason: 'precondition: the fixture really marked it explored');
+
+      // The explored planet is still the nearest candidate, so without the
+      // guard it would simply be recommended again.
+      final rec1 = reloaded.recommendedDestination;
+      expect(rec1, isNotNull);
+      expect(rec1!.id, isNot(rec0.id));
+      expect(reloaded.stateOf(rec1.id), isNot(DiscoveryState.explored));
+    });
+
+    test('prefers the nearest hero world over a nearer ordinary one', () async {
+      // Force the preference to matter: explore the current recommendation, so
+      // the nearest survivor is generally no longer the nearest hero world.
+      // A property, not a fixed answer: the universe is generated from a seed,
+      // and pinning a planet id would make this test a hostage of the generator
+      // rather than of the rule.
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      final c = await _boot(clock, storage: storage);
+      final rec0 = c.recommendedDestination!;
+      await _setExplored(storage, rec0.id);
+      final reloaded = await _boot(clock, storage: storage);
+
+      final candidates = reloaded.planets
+          .where((p) => p.id != reloaded.currentPlanetId)
+          .where((p) => reloaded.stateOf(p.id) != DiscoveryState.explored)
+          .toList();
+      Planet nearest(Iterable<Planet> pool) => pool.reduce(
+          (a, b) => reloaded.distanceTo(a) <= reloaded.distanceTo(b) ? a : b);
+
       final featured = candidates.where((p) => p.featured).toList();
-      final pool = featured.isNotEmpty ? featured : candidates;
-      final nearest =
-          pool.reduce((a, b) => c.distanceTo(a) <= c.distanceTo(b) ? a : b);
-      expect(rec.id, nearest.id);
+      expect(featured, isNotEmpty,
+          reason: 'precondition: a hero world survives to be preferred');
+      final nearestFeatured = nearest(featured);
+      final nearestOverall = nearest(candidates);
+      expect(nearestFeatured.id, isNot(nearestOverall.id),
+          reason: 'precondition: the preference must be able to change the '
+              'answer, or this test could not tell the two rules apart');
+
+      expect(reloaded.recommendedDestination!.id, nearestFeatured.id,
+          reason: 'a hero world wins even when an ordinary world is nearer');
     });
   });
 
@@ -650,8 +710,10 @@ void main() {
 
       c.acknowledgeCockpitRequest();
       expect(c.cockpitRequested, isFalse);
+      expect(notified, 2, reason: 'clearing a live request is news');
       c.acknowledgeCockpitRequest();
       expect(c.cockpitRequested, isFalse, reason: 'idempotent');
+      expect(notified, 2, reason: 'an already-clear request is not news either');
     });
 
     test('is not persisted — it is a hint for one screen transition', () async {
