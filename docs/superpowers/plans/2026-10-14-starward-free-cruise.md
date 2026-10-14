@@ -1954,10 +1954,10 @@ void main() {
       await c.completeCourse(session.id, 40);
       expect(c.energy, 140);
       expect(c.isDormant, isTrue, reason: 'only activate() clears it');
-      expect(
-        await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt),
-        LaunchResult.engineDormant,
-      );
+      // That a dormant engine then *refuses* to ignite is Task 10's assertion,
+      // not this one's: it needs `LaunchResult.engineDormant`, which Task 10
+      // introduces. Asserting it here would make this file fail to compile and
+      // this task's own Step 6 unsatisfiable.
     });
 
     test('a wake-up survives a reload', () async {
@@ -2123,8 +2123,11 @@ Append to `starward/test/dormancy_test.dart`:
     test('ignition is refused too', () async {
       final clock = FakeClock(DateTime(2026));
       final c = await _exhaustedCruise(clock);
-      // Still coasting, so this is `alreadyTraveling` — brake first to reach the
-      // state where the dormant check is the one that answers.
+      // Parked first, so that the dormancy guard is the only one that can
+      // refuse. `igniteCruise` checks dormancy *before* `hasMomentum` (Task 5's
+      // block puts it directly after the zero-heading check), so a still-coasting
+      // ship would answer `engineDormant` as well — but this test is about the
+      // engine, and parking removes motion as an alternative explanation.
       await c.stopShip();
       expect(c.hasMomentum, isFalse);
       expect(c.isDormant, isTrue);
