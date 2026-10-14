@@ -5091,12 +5091,18 @@ is `dx ∈ [26, 374]`, `dy ∈ [74, 668]`.
       // because the cull is at `camZ <= 1.0` and the raw `camZ` is only
       // `400·cos θ`. The nudge moves that boundary out to 104.33°, so a course
       // abeam gets a real screen position instead of the bottom-edge fallback.
+      //
+      // It lands on the **left** edge, not the right. `Camera3D.project` builds
+      // `right = forward × up`, which for a forward of +Z is −X — so world −X is
+      // screen-right, and a +X course lands left of centre. The existing
+      // 'puts a point off to the right of centre' test pins that convention for
+      // the same reason: it is not the one you would guess.
       final at = headingMarkerPoint(
         camera: _lookingForward(),
         heading: const Vec3(1, 0, 0),
         viewport: _vp,
       )!;
-      expect(at, const Offset(374, 400));
+      expect(at, const Offset(26, 400));
     });
 
     test('pins to the top edge for a course straight up', () {
@@ -5167,7 +5173,8 @@ const double _headingMarkerForwardNudge = 0.25;
 ///
 /// Shared by every HUD layer so the two painters cannot disagree about the safe
 /// area. `_CockpitPainter` insets its window by 14 on the sides and a further
-/// 48 / 40 at the top and bottom; `_BottomControls` is pinned below 132.
+/// 48 / 40 at the top and bottom; the bottom margin also has to clear
+/// `_BottomControls`, the panel pinned to the bottom of the screen.
 ({Offset at, bool offScreen}) clampHudPoint(Offset at, Size2 size) {
   final clamped = Offset(
     at.dx.clamp(26.0, size.width - 26.0),
@@ -5230,8 +5237,8 @@ class CockpitHudPainter extends CustomPainter {
   final List<HudMarker> markers;
 
   /// The ship's current course, marked with a filled triangle. Null when the
-  /// ship has no course — parked, or coasting with the engine off and the bar
-  /// offering a brake rather than a turn.
+  /// bar is not offering a turn — parked, or dormant — which is the same
+  /// condition the bar's own button uses.
   final Vec3? heading;
   final Color headingColor;
 ```
@@ -5264,8 +5271,8 @@ In `paint`, replace the inline clamp with `final c = clampHudPoint(at, vp); fina
 
 - [ ] **Step 6: Parameterise the overlay, and give the marker layer its heading**
 
-The two cockpit layers stay two layers. `_CockpitOverlay` (`:836`, the frame and reticle) and the
-`CockpitHudPainter` `CustomPaint` mounted just below it (`:556-566`) are separate `Positioned.fill` +
+The two cockpit layers stay two layers. `_CockpitOverlay` (`:872`, the frame and reticle) and the
+`CockpitHudPainter` `CustomPaint` mounted just below it (`:590-603`) are separate `Positioned.fill` +
 `IgnorePointer` siblings, and `cruise_ui_test.dart` asserts there is exactly one `CustomPaint` whose
 painter is a `CockpitHudPainter`. Merging them into one `CustomPaint` with a `foregroundPainter`
 would break that assertion and the marker tests with it.
@@ -5285,8 +5292,9 @@ class _CockpitOverlay extends StatelessWidget {
   final int deviationDegrees;
   final int turnCost;
 
-  /// False when the ship has no course to deviate from (parked, or coasting
-  /// with the bar offering a brake), in which case there is no readout.
+  /// False when the bar is not offering a turn, in which case there is no
+  /// readout: quoting a turn price beside a 激活引擎 button would offer
+  /// something that button cannot do.
   final bool hasCourse;
 
   @override
@@ -5314,7 +5322,7 @@ class _CockpitOverlay extends StatelessWidget {
 ```
 
 At its mount site, drop the `const` and pass the values; at the marker layer just below, pass the
-heading:
+heading. Both use one local, and that local is the **bar's own condition for offering a turn**:
 
 ```dart
                   if (_camera.mode == CameraMode.cockpit) ...<Widget>[
@@ -5326,7 +5334,7 @@ heading:
                             proposed: _camera.forward,
                           ),
                           turnCost: _c.turnCostTo(_camera.forward),
-                          hasCourse: _c.isCruising,
+                          hasCourse: hasCourse,
                         ),
                       ),
                     ),
@@ -5337,7 +5345,7 @@ heading:
                           painter: CockpitHudPainter(
                             camera: _camera,
                             markers: _hudMarkers(scene),
-                            heading: _c.isCruising ? _c.driftVelocity : null,
+                            heading: hasCourse ? _c.driftVelocity : null,
                             headingColor: StarColors.gold,
                           ),
                         ),
@@ -5346,8 +5354,22 @@ heading:
                   ],
 ```
 
-The heading is passed only while cruising: the bar offers a coasting ship a brake rather than a
-turn, and a turn readout beside a brake button would offer something the button cannot do.
+Declare `hasCourse` once at the top of `_JourneyMapPageState.build` (`galaxy_map_3d_page.dart:535`,
+which currently has no locals and opens straight into `return Scaffold(`), so the two layers cannot
+disagree:
+
+```dart
+    // The bar's own condition for offering 修正航向: `_HeadingBar` falls through
+    // to that button only when the ship is moving and not dormant
+    // (`galaxy_map_3d_page.dart:1193-1206`). It is deliberately **not**
+    // `isCruising`: a coasting ship is `hasMomentum && !driftPowered`, so it
+    // takes that same `else` branch and is offered a real, priced turn —
+    // `correctHeading` re-lights the engine as it burns — which means the
+    // triangle and the readout have to be there for it too. A *dormant* ship is
+    // the one case that must not show them: its bar offers only 激活引擎, and a
+    // turn price beside that button would offer something it cannot do.
+    final hasCourse = _c.hasMomentum && !_c.isDormant;
+```
 
 - [ ] **Step 7: Put the two numbers on the button**
 
@@ -5400,7 +5422,10 @@ In `starward/test/cruise_ui_test.dart`:
 - `'correcting course confirms before spending'` (Task 18): its dialog copy is matched by
   `RegExp(r'偏转 \d+°，消耗 200 EN。')`, so it is unaffected.
 
-Add one test pinning that the marker layer carries the course:
+Add two tests pinning the marker layer: one that it carries the course, and one that it does not
+when the bar is offering no turn. The second is what pins `hasCourse`'s `!isDormant` half — a
+dormant ship that is *still coasting* has a real velocity, so `hasMomentum` alone would mark it and
+quote a turn price next to a 激活引擎 button:
 
 ```dart
   testWidgets('the cockpit marks the current heading on the HUD', (tester) async {
@@ -5420,7 +5445,39 @@ Add one test pinning that the marker layer carries the course:
     expect(painter.heading!.normalized.x, closeTo(1.0, 1e-9),
         reason: 'driftVelocity is +X');
   });
+
+  testWidgets('a dormant ship marks no course and quotes no turn price',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.coast);
+    clock.advance(const Duration(seconds: 3000));
+    c.tick();
+    await c.acknowledgeDriftReport();
+    expect(c.isDormant, isTrue, reason: 'precondition');
+    expect(c.hasMomentum, isTrue,
+        reason: 'precondition: a coast keeps its velocity, so this is not '
+            'the parked case');
+
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    final painter = tester
+        .widgetList<CustomPaint>(find.byWidgetPredicate(
+            (w) => w is CustomPaint && w.painter is CockpitHudPainter))
+        .single
+        .painter! as CockpitHudPainter;
+    expect(painter.heading, isNull,
+        reason: 'the bar offers only 激活引擎, so there is no turn to mark');
+    expect(find.textContaining('偏离'), findsNothing,
+        reason: 'nor a turn to price');
+    expect(inCockpit('激活引擎'), findsOneWidget, reason: 'and the bar says so');
+  });
 ```
+
+`find.textContaining('偏离')` is deliberately unscoped: the readout lives in `_CockpitOverlay`, not
+in `cockpit-heading-bar`, so an `inCockpit` finder could never see it and the assertion would pass
+vacuously.
 
 - [ ] **Step 9: Run the tests to verify they pass**
 
