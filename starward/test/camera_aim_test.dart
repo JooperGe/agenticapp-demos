@@ -6,9 +6,10 @@ import 'package:starward/ui/galaxy3d/camera3d.dart';
 void main() {
   group('aimCameraAt', () {
     test('is the exact inverse of Camera3D.forward', () {
-      // The reticle is drawn at the centre of the screen, the heading bar quotes
-      // `forward`, and ignition flies along `forward`. If aiming and reading are
-      // not exact inverses, those three disagree about where the ship points.
+      // The cockpit is built around `forward`: the reticle is drawn at the
+      // centre of the screen, which is exactly where `forward` projects. If
+      // aiming and reading are not exact inverses, the direction the player
+      // lines up and the direction the camera reads disagree.
       final directions = <Vec3>[
         const Vec3(1, 0, 0),
         const Vec3(-1, 0, 0),
@@ -23,9 +24,10 @@ void main() {
         aimCameraAt(camera, d);
         final want = d.normalized;
         final got = camera.forward.normalized;
-        expect(got.x, closeTo(want.x, 1e-9), reason: '$d');
-        expect(got.y, closeTo(want.y, 1e-9), reason: '$d');
-        expect(got.z, closeTo(want.z, 1e-9), reason: '$d');
+        final why = 'dir (${d.x}, ${d.y}, ${d.z})';
+        expect(got.x, closeTo(want.x, 1e-9), reason: why);
+        expect(got.y, closeTo(want.y, 1e-9), reason: why);
+        expect(got.z, closeTo(want.z, 1e-9), reason: why);
       }
     });
 
@@ -52,11 +54,16 @@ void main() {
           reason: 'the aim must not touch the eye');
     });
 
-    test('a zero vector is ignored rather than producing NaN', () {
-      final camera = Camera3D()..yaw = 1.2;
+    test('a zero vector is ignored', () {
+      // The guard's job is to leave the camera alone. Without it `normalized`
+      // hands back the zero vector, and `atan2(0, 0)` / `asin(0)` are both 0 —
+      // so the aim would snap to the +z axis at zero pitch, not stay put.
+      final camera = Camera3D()
+        ..yaw = 1.2
+        ..pitch = 0.4;
       aimCameraAt(camera, const Vec3(0, 0, 0));
       expect(camera.yaw, 1.2, reason: 'unchanged');
-      expect(camera.forward.length, closeTo(1, 1e-9));
+      expect(camera.pitch, 0.4, reason: 'unchanged');
     });
   });
 }

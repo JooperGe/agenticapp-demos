@@ -75,13 +75,49 @@ void main() {
     // (`starfield.dart:97`), so no starfield screen ever settles.
     await tester.pump(const Duration(milliseconds: 100));
 
-    // The label is a `switch (mode)` in galaxy_map_3d_page.dart:478-483, so it
-    // reads '星图 · 座舱视角' only in cockpit mode. It lives on the star map, which
-    // is IndexedStack child 0, and the default finder skips non-selected
-    // IndexedStack children — so finding it pins *both* halves of the tap:
-    // the tab switch (the page is onstage) and the mode change (the request was
+    // The label is a `switch (mode)` in this page's `_TopBar`, so it reads
+    // '星图 · 座舱视角' only in cockpit mode. It lives on the star map, which is
+    // IndexedStack child 0, and the default finder skips non-selected
+    // IndexedStack children — so finding it pins *both* halves of the tap: the
+    // tab switch (the page is onstage) and the mode change (the request was
     // consumed). Neither half can pass on the other's work.
     expect(find.text('星图 · 座舱视角'), findsOneWidget);
+  });
+
+  testWidgets('a cockpit request served while already in the cockpit does not '
+      'throw', (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await tester.pumpWidget(MaterialApp(
+      home: GameScope(controller: c, child: const HomeShell()),
+    ));
+    await tester.pump();
+
+    // Precondition: the star map (IndexedStack child 0, the default tab) is
+    // already in cockpit mode before the request arrives. 座舱 is the side
+    // control that enters it.
+    await tester.tap(find.text('座舱'));
+    await tester.pump();
+    expect(find.text('星图 · 座舱视角'), findsOneWidget,
+        reason: 'precondition: the star map is in cockpit mode');
+
+    // Switch to 航行 and ask for the cockpit again. The star map is still in
+    // cockpit mode, so this takes `_maybeEnterRequestedCockpit`'s
+    // already-in-cockpit branch. That branch must not acknowledge the request
+    // synchronously from inside the LayoutBuilder: `acknowledgeCockpitRequest`
+    // notifies listeners, which marks the star map's AnimatedBuilder — an
+    // ancestor of the LayoutBuilder, and live even on another tab — dirty
+    // during build.
+    await tester.tap(find.text('航行'));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.text('点火巡航'));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(tester.takeException(), isNull,
+        reason: 'acknowledging inside the LayoutBuilder throws '
+            'setState()/markNeedsBuild() called during build');
+    expect(find.text('星图 · 座舱视角'), findsOneWidget,
+        reason: 'the request is served without leaving cockpit mode');
   });
 
   testWidgets('a cruising ship reads as cruising, not as coasting',

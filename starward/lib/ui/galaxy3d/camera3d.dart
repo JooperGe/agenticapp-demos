@@ -251,14 +251,15 @@ void placeCameraForRoute(
 /// Points [camera] along [direction], exactly.
 ///
 /// The exact inverse of [Camera3D.forward]: `yaw = atan2(x, z)`,
-/// `pitch = asin(y)`. That exactness is the point — the cockpit's reticle is
-/// drawn at the centre of the screen, the heading bar quotes `forward`, and
-/// ignition flies along `forward`, so an approximate aim would make the three
-/// disagree about where the ship is pointing.
+/// `pitch = asin(y)`. That exactness is the point — the cockpit is built around
+/// `forward`: the reticle is drawn at the centre of the screen, which is exactly
+/// where `forward` projects, so the direction the player lines up and the
+/// direction the camera reads have to be the same one. An approximate aim would
+/// put the two out of step.
 ///
 /// Pitch is still clamped, so aiming at a pole stops just short of it rather
 /// than flipping the camera over. A zero [direction] is ignored: there is no
-/// heading in it, and normalising would produce NaN.
+/// heading in it.
 void aimCameraAt(Camera3D camera, Vec3 direction) {
   final d = direction.normalized;
   if (d.length <= 0) return;

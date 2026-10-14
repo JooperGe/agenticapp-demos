@@ -310,14 +310,24 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
   /// Enters cockpit mode when the voyage screen has asked for it.
   ///
   /// Called from inside the `LayoutBuilder`, which is the only place `vp`
-  /// exists — `_setMode` needs it for the overview distance. The actual work is
-  /// deferred to a post-frame callback because it calls `setState` *and*
-  /// `acknowledgeCockpitRequest`, which notifies listeners; doing either during
-  /// a build is an error.
+  /// exists — `_setMode` needs it for the overview distance. Both branches defer
+  /// their real work to a post-frame callback, because each one calls
+  /// `acknowledgeCockpitRequest`, which notifies listeners: the star map's
+  /// `AnimatedBuilder` is an ancestor of this `LayoutBuilder` (and is live even
+  /// while another tab is selected, because `IndexedStack` builds every child),
+  /// so notifying from in here marks it dirty during build — and
+  /// `_setMode` would `setState` in the same forbidden phase.
   void _maybeEnterRequestedCockpit(Size2 vp) {
     if (!_c.cockpitRequested) return;
     if (_camera.mode == CameraMode.cockpit) {
-      _c.acknowledgeCockpitRequest();
+      // Already there: nothing to place, so this branch does not need the
+      // `_cockpitRequestScheduled` guard (which exists to stop `_setMode` being
+      // queued twice). The acknowledge is idempotent, so a re-check inside the
+      // callback is enough.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_c.cockpitRequested) return;
+        _c.acknowledgeCockpitRequest();
+      });
       return;
     }
     if (_cockpitRequestScheduled) return;
@@ -344,8 +354,10 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
   void _recenter(Size2 vp) {
     setState(() {
       if (_camera.mode == CameraMode.cockpit) {
-        // The eye is pinned to the ship in this mode, so there is nothing to
-        // re-place. What the button means here is "point me somewhere known".
+        // `placeCamera` only sets `eyeOverride` in this mode and never touches
+        // the aim, so a plain recenter would leave the view pointing exactly
+        // where it already points. What the button means here is "point me
+        // somewhere known".
         _aimCockpitAtOrigin();
         return;
       }
@@ -581,11 +593,12 @@ class _SideControls extends StatelessWidget {
               const SizedBox(height: 12),
               _RoundButton(
                 icon: Icons.my_location_rounded,
-                // `placeCamera` only sets `eyeOverride` in cockpit mode, so
-                // "居中" there would re-place the eye exactly where it already
-                // is — a button that visibly does nothing. Re-aiming at the
-                // galactic centre is the useful version of "put me back on a
-                // known reference", so the button changes meaning with the mode.
+                // `placeCamera` only sets `eyeOverride` in cockpit mode and
+                // never touches the aim, so "居中" there would leave the view
+                // pointing exactly where it already points — a button that
+                // visibly does nothing. Re-aiming at the galactic centre is the
+                // useful version of "put me back on a known reference", so the
+                // button changes meaning with the mode.
                 label: mode == CameraMode.cockpit ? '对准银心' : '居中',
                 onTap: onRecenter,
               ),
