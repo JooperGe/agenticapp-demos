@@ -193,7 +193,7 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
       case LaunchResult.insufficientEnergy:
         return '能量不足，无法出发';
       case LaunchResult.engineDormant:
-        return '引擎处于休眠状态，请先激活（5 EN）';
+        return '引擎处于休眠状态，请先激活（${_c.ship.engine.activationCost} EN）';
       case LaunchResult.alreadyTraveling:
         return '已有航行进行中';
       case LaunchResult.alreadyHere:
