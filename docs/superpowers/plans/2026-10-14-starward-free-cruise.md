@@ -43,19 +43,21 @@ Derived, all verified numerically against Dart's `double.round()` (half away fro
 ### The three invariants, verbatim
 
 1. **A cruise and a voyage price the same distance identically.** `burnForSeconds(secondsFor(D)) == energyCostFor(D)`.
-2. **A cruise always leaves enough in the tank to buy its own stop.** `cruiseReserve` = 100 EN is held back for the whole cruise, so the exhaustion point is `balance − 100`.
-3. **`driftVelocity` going from non-zero to zero books exactly one `braking` entry** (unchanged from the braking spec), and any change to one of `(startX/Y/Z, driftStartedAt, driftVelocity)` re-pins the other two in the same breath.
+2. **A cruise always leaves enough in the tank to buy its own stop.** `cruiseReserve` = 100 EN is held back for the whole cruise, so the exhaustion point is `balance − 100` — for **both** policies — and the reserve *survives* exhaustion, so a ship that has just run dry can still afford the 100 EN brake. The spec spends it instead; see deviation 5.
+3. **`driftVelocity` going from non-zero to zero books exactly one `braking` entry** (unchanged from the braking spec) — with one exception, the automatic halt at exhaustion, which is not a purchase (deviation 5) — and any change to one of `(startX/Y/Z, driftStartedAt, driftVelocity)` re-pins the other two in the same breath.
 
 ---
 
 ## Spec Deviations (read this before Task 1)
 
-Four places where the spec and the code disagree, or where the spec is self-inconsistent. Each is resolved here, in favour of the code, with the reason. Do not "fix" these back.
+Six places where the spec and the code disagree, or where the spec is self-inconsistent. Each is resolved here, in favour of the code, with the reason. Do not "fix" these back.
 
 1. **`turnCostFor`'s domain is `[0, π]`, not `[0, 2π]`.** Spec §5.1's table lists 350° and 360°. Those are unreachable: `GameController.turnAngleTo` computes the angle between two unit vectors with `acos(dot)`, which cannot exceed π. The table's 350° row (17 EN) is the 10° row, which is correct physics — a 350° turn *is* a 10° turn the other way — and the 360° row (0 EN) contradicts `minEnergyCost = 1`. So `turnCostFor` is only ever called with `[0, π]`, and 0° → 0 comes from an explicit early return, not from the floor.
 2. **`correctHeading` guards on the live `energy`, and checks before settling.** Spec §8.8's sample reads `_player.energyBalance`, which is stale — the current leg's burn is computed by the `energy` getter and not yet booked. Checking the stale number would let a turn eat the braking reserve.
-3. **The exhaustion check compares time, not energy.** `burnForSeconds(elapsed) >= budget` fires a tick early because EN is quantised: at `budget = 200` it trips at 2992 s (79.8 ly) instead of 3000 s (80 ly). Compare `elapsed >= engine.secondsForEnergy(budget)` instead — verified exact at 4500.0 / 3000.0 / 600.0 s.
+3. **The exhaustion check compares time, not energy.** `burnForSeconds(elapsed) >= budget` fires a tick early because EN is quantised: at `budget = 200` it first reaches 200 at 2992.5 s (79.8 ly) instead of 3000 s (80 ly). Compare `elapsed >= engine.secondsForEnergy(budget)` instead — verified exact at 4500.0 / 3000.0 / 600.0 s.
 4. **`_reconcileCruise` builds its `DriftReport` before settling.** `_settleCruise` re-pins `driftStartedAt = now`, so a report built afterwards would see a zero-length leg and return null.
+5. **Exhaustion keeps the braking reserve; the spec spends it.** Spec §4.2 ends both policies at 0 EN — `halt` by paying the reserve out as a `braking` entry, `coast` by burning the whole tank (120 ly rather than 80). The plan keeps the reserve in the tank and books no `braking` entry for the automatic halt, so both policies exhaust at `balance − 100` = 80 ly and end dormant with 100 EN. **Why:** the reserve exists to guarantee a way out, and it is the whole reason this feature exists — the defect being fixed is a ship with no way to restart. Spending it leaves a coasting player at 0 EN whose only escape is to go and train, which is §4.3's own stated fear ("把出口挂在收费门后面") reintroduced through the back door. Cost if wrong: a player who runs dry is 100 EN richer than the spec intended, and `halt`'s automatic stop is free where the spec charges 100 — so both policies end up strictly better than the spec's by one reserve, at the moment the tank runs out. Note the two consequences that follow and must not be "tidied": `_reconcileCruise` books no `braking` entry (invariant 3's named exception), and ignition is gated on a *spendable budget* rather than a positive balance (Task 10), because a cruise that can afford no seconds of burn would otherwise re-exhaust on its first tick.
+6. **`activate` allows the tank to land on exactly zero.** Spec §4.3 requires `energyBalance > activationCost`, strictly, so that waking up always leaves at least 1 EN. The plan refuses only when `balance < cost`, so a player holding exactly 5 EN can spend their last drop waking the engine. **Why:** it is not a decision worth refusing, because both rules reach the same place — spend 5 then train, or train then spend 5, ends at the same balance awake either way. The strict rule only changes which of two adjacent states the player sits in for the length of one training session, and the plan's version honours the request they just made instead of refusing it on their behalf. Cost if wrong: a player can be awake with an empty tank, which §4.3 calls a strange state — but every action is gated on energy anyway, so it is a state they can see out of, not one they can be stuck in.
 
 ---
 
@@ -1114,15 +1116,24 @@ Append to `starward/test/cruise_test.dart`:
       expect(c.cruiseRemaining, const Duration(seconds: 1500));
     });
 
-    test('the reserve is held back even at the very start', () async {
+    test('a tank that is all reserve is not enough to cruise', () async {
       final clock = FakeClock(DateTime(2026));
       final storage = MemoryStorage();
       await _boot(clock, storage: storage);
       await _setEnergy(storage, 100);
       final c = await _boot(clock, storage: storage);
-      await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
-      // Every last drop is already spoken for, so there is no cruise to run.
+      // Every last drop is already spoken for, so there is no cruise to run —
+      // and none to start: `igniteCruise` refuses on a spendable budget of zero
+      // (Task 10), which is the same rule `_launchGate` applies as `> braking`.
+      expect(await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt),
+          LaunchResult.insufficientEnergy);
       expect(c.cruiseRemaining, Duration.zero);
+
+      // One EN past the reserve is a real, if tiny, cruise: 1 EN is 15 s.
+      await _setEnergy(storage, 101);
+      final c2 = await _boot(clock, storage: storage);
+      await c2.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+      expect(c2.cruiseRemaining, const Duration(seconds: 15));
     });
   });
 ```
@@ -2094,10 +2105,11 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 - Modify: `starward/lib/ui/galaxy3d/galaxy_map_3d_page.dart:180` (`_launchMessage`)
 - Modify: `starward/lib/ui/galaxy/planet_details_sheet.dart:457` (`_messageFor`)
 - Test: `starward/test/dormancy_test.dart` (append)
+- Test: `starward/test/cruise_test.dart` (one test replaced — see Step 5)
 
 **Interfaces:**
-- Consumes: `isDormant`.
-- Produces: `LaunchResult.engineDormant`.
+- Consumes: `isDormant`, `energy`, `cruiseReserve`.
+- Produces: `LaunchResult.engineDormant`; `igniteCruise` now refuses on a spendable budget of zero rather than on a zero balance.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2160,6 +2172,19 @@ Append to `starward/test/dormancy_test.dart`:
       expect(c.isDormant, isTrue, reason: 'training does not restart it');
       expect(await c.activate(), isTrue);
       expect(c.energy, 35);
+      // Awake is not the same as ready to fly. 35 EN is less than the 100 EN
+      // reserve, so a cruise would have no seconds of burn to buy — and would
+      // exhaust on its first tick, handing the player a fuel-out report for a
+      // leg of 0 ly. The refusal is about energy, not about dormancy, which the
+      // activation above already cleared.
+      expect(
+        await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt),
+        LaunchResult.insufficientEnergy,
+      );
+      // One more course clears the reserve, and the block really is gone.
+      final second = await c.startCourse('walk');
+      await c.completeCourse(second.id, 80);
+      expect(c.energy, 115);
       expect(
         await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt),
         LaunchResult.success,
@@ -2228,9 +2253,51 @@ In `igniteCruise`, add the guard that Task 5 left out, immediately after the zer
     if (_player.engineDormant) return LaunchResult.engineDormant;
 ```
 
-Ordering matters: it must come **before** the fuel gate in each method, so a dormant-and-poor player is told about the engine, which 5 EN fixes, rather than about the tank, which needs a training session.
+And replace its tank check (`if (_player.energyBalance <= 0) return LaunchResult.insufficientEnergy;`) with a *spendable budget* check:
 
-- [ ] **Step 5: Add the two switch cases**
+```dart
+    // Nothing spendable, so nothing to cruise: a cruise holds back the 100 EN
+    // braking reserve (`cruiseReserve`) and `_cruiseExhaustTime` reads a budget of
+    // `balance - reserve`. Igniting with less than the reserve would exhaust on the
+    // very first tick — a zero-length leg, a `fuelOut` report for 0 ly, and under
+    // `coast` a free perpetual drift, because the exhaustion bills `balance -
+    // reserve`, which is negative and so books nothing at all. Refuse instead.
+    // Same rule as `_launchGate`'s `available > braking`, which spec §4.2 calls
+    // the same rule.
+    if (energy <= cruiseReserve) return LaunchResult.insufficientEnergy;
+```
+
+Ordering matters: the dormancy guard must come **before** the fuel gate in each method, so a dormant-and-poor player is told about the engine, which 5 EN fixes, rather than about the tank, which needs a training session. The budget gate then comes after it, for the same reason in reverse: a player who is awake but broke is owed the message about energy.
+
+- [ ] **Step 5: Update the Task 6 test the budget gate changes**
+
+In `starward/test/cruise_test.dart`, replace the test `'the reserve is held back even at the very start'` — the one that boots with exactly 100 EN and asserts only `cruiseRemaining == Duration.zero` — with:
+
+```dart
+    test('a tank that is all reserve is not enough to cruise', () async {
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      await _boot(clock, storage: storage);
+      await _setEnergy(storage, 100);
+      final c = await _boot(clock, storage: storage);
+      // Every last drop is already spoken for, so there is no cruise to run —
+      // and none to start: `igniteCruise` refuses on a spendable budget of zero
+      // (Task 10), which is the same rule `_launchGate` applies as `> braking`.
+      expect(await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt),
+          LaunchResult.insufficientEnergy);
+      expect(c.cruiseRemaining, Duration.zero);
+
+      // One EN past the reserve is a real, if tiny, cruise: 1 EN is 15 s.
+      await _setEnergy(storage, 101);
+      final c2 = await _boot(clock, storage: storage);
+      await c2.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+      expect(c2.cruiseRemaining, const Duration(seconds: 15));
+    });
+```
+
+The old body would have gone on passing after this change — a refused ignition also leaves `cruiseRemaining` at `Duration.zero` — which is exactly the kind of green-but-vacuous test worth replacing rather than keeping. The new one pins both sides of the boundary.
+
+- [ ] **Step 6: Add the two switch cases**
 
 In `starward/lib/ui/galaxy3d/galaxy_map_3d_page.dart`, in `_launchMessage`:
 
@@ -2248,7 +2315,7 @@ In `starward/lib/ui/galaxy/planet_details_sheet.dart`, in `_messageFor`:
 
 Both switches are exhaustive over `LaunchResult`, so both will fail to compile until these are added.
 
-- [ ] **Step 6: Run the whole suite and analyze**
+- [ ] **Step 7: Run the whole suite and analyze**
 
 Run: `flutter test`
 Expected: PASS. `fuel_out_test.dart:166` must still get `insufficientEnergy` from all three policies — that save has no `engineDormant` key, so the new guard is skipped.
@@ -2256,11 +2323,12 @@ Expected: PASS. `fuel_out_test.dart:166` must still get `insufficientEnergy` fro
 Run: `flutter analyze`
 Expected: `No issues found!`
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add starward/lib/state/game_controller.dart starward/lib/ui/galaxy3d/galaxy_map_3d_page.dart \
-        starward/lib/ui/galaxy/planet_details_sheet.dart starward/test/dormancy_test.dart
+        starward/lib/ui/galaxy/planet_details_sheet.dart starward/test/dormancy_test.dart \
+        starward/test/cruise_test.dart
 git commit -m "feat(starward): refuse to launch on a dormant engine, and say so
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
