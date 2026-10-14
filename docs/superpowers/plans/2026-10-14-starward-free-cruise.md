@@ -5084,9 +5084,11 @@ is `dx ∈ [26, 374]`, `dy ∈ [74, 668]`.
     });
 
     test('pins to the side edge for a course abeam', () {
-      // The whole reason for the forward nudge: at exactly 90° the raw point has
-      // `camZ == 0` and `project` culls it, so without the nudge an 89.9° course
-      // would pin to the right edge and a 90.0° one would vanish.
+      // The whole reason for the forward nudge. The raw point at exactly 90° has
+      // `camZ == 0` and is culled — and so is every course out to dead astern,
+      // because the cull is at `camZ <= 1.0` and the raw `camZ` is only
+      // `400·cos θ`. The nudge moves that boundary out to 104.33°, so a course
+      // abeam gets a real screen position instead of the bottom-edge fallback.
       final at = headingMarkerPoint(
         camera: _lookingForward(),
         heading: const Vec3(1, 0, 0),
@@ -5133,7 +5135,7 @@ Expected: FAIL — neither function is defined.
 - [ ] **Step 3: Extract the clamp and add the marker point**
 
 In `starward/lib/ui/galaxy3d/cockpit_hud.dart`. `clampHudPoint` is the existing inline clamp lifted
-out of `CockpitHudPainter.paint` (`:90-93`) unchanged, so `CockpitHudPainter` must be rewritten to
+out of `CockpitHudPainter.paint` (`:114-116`) unchanged, so `CockpitHudPainter` must be rewritten to
 call it — otherwise the numbers exist twice and will drift.
 
 ```dart
@@ -5143,9 +5145,13 @@ call it — otherwise the numbers exist twice and will drift.
 const double _headingMarkerDistance = 400;
 
 /// Nudges the marked direction toward the aim so a course exactly abeam still
-/// has a forward component to project. Without it `camZ == 0` at 90° and
-/// `Camera3D.project` culls the point, so an 89.9° course would pin to the side
-/// edge and a 90.0° one would disappear.
+/// has a forward component to project.
+///
+/// `Camera3D.project` culls at `camZ <= 1.0`, and at [_headingMarkerDistance] the
+/// raw `camZ` is only `400·cos θ` — so without the nudge every course from
+/// `acos(1/400) = 89.86°` off the aim out to dead astern is culled, which is the
+/// whole rear hemisphere and not a sliver around abeam. The nudge moves that
+/// boundary out to 104.33°, and that ~14.5° is what it buys.
 const double _headingMarkerForwardNudge = 0.25;
 
 /// Where a HUD point lands once it is kept clear of the cockpit frame and the
@@ -5171,10 +5177,10 @@ const double _headingMarkerForwardNudge = 0.25;
 /// Where the current-heading triangle sits, or null when there is no course to
 /// mark.
 ///
-/// A heading that survives the nudge still projects behind the near plane only
-/// when the ship is pointing within ~15° of dead astern; that case is pinned to
-/// the bottom edge, the conventional "behind you" position. The readout beside
-/// it carries the exact angle, so nothing is lost that the player needs.
+/// A heading still culled after the nudge — anything past 104.33° off the aim, a
+/// 75.7° band around dead astern — is pinned to the bottom edge, the conventional
+/// "behind you" position. The readout beside it carries the exact angle, so
+/// nothing is lost that the player needs.
 Offset? headingMarkerPoint({
   required Camera3D camera,
   required Vec3 heading,
@@ -5203,6 +5209,11 @@ Expected: PASS.
 - [ ] **Step 5: Draw the triangle**
 
 Give `CockpitHudPainter` a heading and a colour, and rewrite its clamp to use `clampHudPoint`:
+
+**Add `import '../../core/theme.dart';` first.** `cockpit_hud.dart` currently imports only
+`dart:math`, `package:flutter/widgets.dart` and `camera3d.dart`, and names no `StarColors` member —
+the marker colours arrive as `HudMarker.color`. `StarColors.cyan` as a default value will not compile
+until the import is there. It is the same relative path `galaxy_map_3d_page.dart` already uses.
 
 ```dart
 class CockpitHudPainter extends CustomPainter {
@@ -5251,8 +5262,8 @@ In `paint`, replace the inline clamp with `final c = clampHudPoint(at, vp); fina
 
 - [ ] **Step 6: Parameterise the overlay, and give the marker layer its heading**
 
-The two cockpit layers stay two layers. `_CockpitOverlay` (`:812`, the frame and reticle) and the
-`CockpitHudPainter` `CustomPaint` mounted just below it (`:541-548`) are separate `Positioned.fill` +
+The two cockpit layers stay two layers. `_CockpitOverlay` (`:836`, the frame and reticle) and the
+`CockpitHudPainter` `CustomPaint` mounted just below it (`:556-566`) are separate `Positioned.fill` +
 `IgnorePointer` siblings, and `cruise_ui_test.dart` asserts there is exactly one `CustomPaint` whose
 painter is a `CockpitHudPainter`. Merging them into one `CustomPaint` with a `foregroundPainter`
 would break that assertion and the marker tests with it.
@@ -5366,8 +5377,22 @@ In `starward/test/cruise_ui_test.dart`:
   Keep the degrees by shape. Do **not** tighten that regex to `180°`: the drag delivers **173°**, not
   180° — `ScaleGestureRecognizer` absorbs ~20 px of touch slop, so 503.6 px × 0.006 = 3.0216 rad.
   The price is unaffected (`round(200·sin(86.5°))` = 200), which is why it is the assertion.
-  Its two price assertions need no change: `inCockpit('200 EN')` stays, and
-  `inCockpit('制动停下只需 100 EN')` stays.
+  **One of its two price assertions does need changing.** `inCockpit('200 EN')` is a `find.text`
+  exact match against the *button's* `detail`, and this task is what turns that detail from
+  `'200 EN'` into `'173° · 200 EN'` — so left alone it matches nothing and the test fails. It cannot
+  simply become `inCockpit('173° · 200 EN')` either, for the same reason the readout regex must stay
+  loose. Match it by shape instead, scoped to the bar:
+
+  ```dart
+    expect(
+        find.descendant(of: cockpit, matching: find.textContaining('· 200 EN')),
+        findsOneWidget,
+        reason: 'a turn this wide costs more than the 100 EN a stop costs');
+  ```
+
+  `'· 200 EN'` is unique inside the bar: the HUD readout carries the same `· 200 EN` but lives in
+  `_CockpitOverlay`, a sibling layer rather than a descendant of `cockpit-heading-bar`. The other
+  price assertion, `inCockpit('制动停下只需 100 EN')`, is a separate `Text` and stays as it is.
 - `'recentering in the cockpit returns to the current heading'` (Task 17): both `inCockpit('0 EN')`
   occurrences → `inCockpit('0° · 0 EN')`.
 - `'correcting course confirms before spending'` (Task 18): its dialog copy is matched by
@@ -5827,11 +5852,13 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 
 ---
 
-### Task 22: 清掉十条已确认的假注释
+### Task 22: 清掉十三条已确认的假注释
 
 The final review's L3–L10 plus its two INFO notes are ten claims in plan-added tests that are false
-as written and that no test can fail on. They are the same defect class the branch has fixed
-twenty-five times already, so shipping them knowingly would contradict the standard the rest of the
+as written and that no test can fail on. **Task 17's reviewer added three more (L11–L13)**, found by
+re-deriving Task 17's own comments against the code it wrote — two of them in `lib/` rather than in
+tests, so this task's diff is no longer test-only. They are the same defect class the branch has
+corrected throughout, so shipping them knowingly would contradict the standard the rest of the
 branch holds. **Comment-only: no behaviour, no test name's assertion, no pinned number changes.**
 
 **Ruling:** this is in scope even though the user's instruction named the six findings, because it is
@@ -5840,6 +5867,7 @@ ten known-false claims. *Cost if wrong:* one dispatch spent on comment edits.
 
 **Files:**
 - Modify: `starward/test/cruise_ui_test.dart`, `starward/test/cruise_test.dart`, `starward/test/cruise_save_test.dart`, `starward/test/cockpit_hud_test.dart`, `starward/test/camera_aim_test.dart`, `starward/test/heading_test.dart`
+- Modify (L11–L13 only): `starward/lib/ui/galaxy3d/galaxy_map_3d_page.dart`, `starward/lib/ui/galaxy3d/cockpit_hud.dart`
 
 **Interfaces:** none. Nothing is produced or consumed; no assertion changes.
 
@@ -5858,6 +5886,9 @@ rewording, **stop and report** rather than changing behaviour.
 | L8 | `camera_aim_test.dart:44` | "the two `const` expressions canonicalise" | there is one `const` expression in that comparison, so there is no second instance to canonicalise with | say what the comparison really is (identity, via `const` canonicalisation of the single instance both sides name) |
 | L9 | `heading_test.dart:93-95` | "Half a degree is the tightest step the EN grid can express here" | false, and the true figure is a band, not a number. `turnCostFor` is `round(200·sin(θ/2))`, so it reads exactly 100 for `θ ∈ [59.673°, 60.165°]` — **0.327° below 60° and 0.165° above it**, so the tightest half-step is **0.165°**, not 0.5°. The assertion's ±0.5° is safe; it is just not the tightest | state the band rather than a superlative: "the 100 EN band here is θ ∈ [59.67°, 60.17°], so ±0.5° leaves it on both sides" — which is what actually justifies the two assertions |
 | L10 | `cruise_test.dart:655` | "still the **nearest** candidate" | `recommendedDestination` prefers hand-authored hero worlds, so the winner need not be nearest (`game_controller.dart:988-991`) | say "the featured candidate", or whatever the assertion actually pins |
+| L11 | `galaxy_map_3d_page.dart:407` | `_aimCockpit`'s doc says the cruising aim is the current heading, "exactly" | `aimCameraAt` ends with `camera.clampPitch()` (`camera3d.dart:268`), which pins the pitch to `±(π/2 − 0.05)` (`:80`), so the aim is the precise inverse only for a heading more than `0.05 rad = 2.865°` from a pole. Unreachable through the cockpit's own ignition path — the drag clamp is the same one, so `driftVelocity` cannot land there — but false as written | keep the "precise inverse" sentence, which is true of the unclamped path, and qualify the "exactly": "up to the pole clamp `aimCameraAt` shares with every other aim" |
+| L12 | `galaxy_map_3d_page.dart:437-439` | `_recenter`'s comment says what the button means "depends on whether the ship is **under way**" | a coasting ship is under way — it has momentum — and `_aimCockpit` gives it the galactic centre, not its heading. The predicate the code actually branches on is `isCruising`, and the very next clause enumerates the two cases correctly, so only the name is wrong | name the predicate instead of a synonym for it: "depends on whether the ship is **cruising**". Do not touch `_aimCockpit`, which is right |
+| L13 | `cockpit_hud.dart:37` | the doc link `[GameController.turnAngleTo]` | `cockpit_hud.dart` imports only `dart:math`, `package:flutter/widgets.dart` and `camera3d.dart` (`:1-5`), so the reference has nothing to resolve to. `comment_references` is off, so `flutter analyze` stays clean — this is a dead link, not a false claim | drop the brackets to a plain code span. Importing the controller into a painter-helper file to satisfy a comment is not worth the dependency; do not change `turnAngleTo`'s own doc |
 
 Also fix the two INFO notes in the same pass, both in the plan document rather than in code:
 `docs/superpowers/plans/2026-10-14-starward-free-cruise.md`'s Self-Review claim "Every numbered
@@ -5877,8 +5908,8 @@ touching only comments (no changed assertion, no changed pinned number).
 - [ ] **Step 3: Commit**
 
 ```bash
-git add starward/test/cruise_ui_test.dart starward/test/cruise_test.dart starward/test/cruise_save_test.dart starward/test/cockpit_hud_test.dart starward/test/camera_aim_test.dart starward/test/heading_test.dart docs/superpowers/plans/2026-10-14-starward-free-cruise.md
-git commit -m "docs(starward): correct ten false claims in the free-cruise tests
+git add starward/test/cruise_ui_test.dart starward/test/cruise_test.dart starward/test/cruise_save_test.dart starward/test/cockpit_hud_test.dart starward/test/camera_aim_test.dart starward/test/heading_test.dart starward/lib/ui/galaxy3d/galaxy_map_3d_page.dart starward/lib/ui/galaxy3d/cockpit_hud.dart docs/superpowers/plans/2026-10-14-starward-free-cruise.md
+git commit -m "docs(starward): correct thirteen false claims in the free-cruise tests
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
