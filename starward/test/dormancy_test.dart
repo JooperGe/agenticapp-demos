@@ -101,6 +101,43 @@ void main() {
       expect(c.isCoasting, isTrue);
     });
 
+    test('a voyage resolving against an already-empty tank still shuts down',
+        () async {
+      // A save hand-edited to a dry tank with a voyage under way — the shape a
+      // save written before dormancy existed has. Resolution is left to
+      // `init()` rather than driven by a `tick()`: reopening the save is
+      // exactly the scenario the `init()` constraint exists to protect, and it
+      // reaches `_settleTank` with `drained == 0`, which the `_doomed` test
+      // above cannot (its tank still holds the 1 EN it launched with).
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      final c = await _boot(clock, storage: storage);
+      final near = c.planets.firstWhere((p) => p.id != c.currentPlanetId);
+      expect(await c.launchJourney(near), LaunchResult.success);
+      clock.advance(const Duration(hours: 12));
+      c.tick();
+      await c.acknowledgeArrival();
+      final docked = await _boot(clock, storage: storage);
+      final far = docked.planets
+          .where((p) => p.id != docked.currentPlanetId)
+          .reduce((a, b) => docked.distanceTo(a) > docked.distanceTo(b) ? a : b);
+      expect(await docked.launchJourney(far, onEmpty: FuelPolicy.coast),
+          LaunchResult.success);
+      await _setEnergy(storage, 0);
+      // Precondition, read straight off the hand-edited save: the voyage is
+      // still under way and the tank is empty, so the reload's `_settleTank`
+      // sees `drained == 0` and takes the branch that only syncs dormancy.
+      final saved = jsonDecode((await storage.read('starward.save.v2'))!);
+      final raw = saved as Map<String, dynamic>;
+      expect((raw['player'] as Map<String, dynamic>)['energyBalance'], 0);
+      expect(raw['activeJourney'], isNotNull);
+
+      final resumed = await _boot(clock, storage: storage);
+      expect(resumed.activeJourney, isNull, reason: 'the voyage resolved');
+      expect(resumed.energy, 0);
+      expect(resumed.isDormant, isTrue);
+    });
+
     test('loading a dry save does not invent a dormancy', () async {
       // `init()` deliberately does not sync dormancy. A save written before
       // dormancy existed, with an empty tank, has to keep behaving as it did:

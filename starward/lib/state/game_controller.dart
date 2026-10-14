@@ -1120,18 +1120,22 @@ class GameController extends ChangeNotifier {
 
   /// Shuts the engine down when a settlement has left the tank empty.
   ///
-  /// Called at the end of every settlement, so no rule can spend the last drop
-  /// without the shutdown following. Deliberately *not* called from `_addEnergy`:
-  /// training refills the tank but does not restart the engine — that is what
-  /// [activate] is for, and it is the difference between a setback and a free
-  /// recovery.
+  /// Called at the end of every settlement that moves energy, so no rule can
+  /// spend the last drop without the shutdown following. A settlement with
+  /// nothing to book returns before reaching the sync — `_settleBurn` and
+  /// `_settleCruise` both do — which is harmless: a settlement that moves no
+  /// energy cannot create a new dormancy. Deliberately *not* called from
+  /// `_addEnergy`: training refills the tank but does not restart the engine —
+  /// that is what [activate] is for, and it is the difference between a setback
+  /// and a free recovery.
   ///
   /// Not the only way to become dormant, despite the name: a cruise that runs
   /// dry stops on its *spendable budget* (`balance - cruiseReserve`) and keeps
   /// its braking reserve, so `_reconcileCruise` sets the flag itself with 100 EN
   /// still in the tank — this predicate would read that tank as full and leave
   /// the engine running. Do not "unify" the two: routing `_reconcileCruise`
-  /// through here silently un-dormants every exhausted cruise.
+  /// through here would fail to set the flag, leaving every exhausted cruise's
+  /// engine running.
   void _syncDormancy() {
     if (_player.engineDormant) return;
     if (_player.energyBalance > 0) return;
