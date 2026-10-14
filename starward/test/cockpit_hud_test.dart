@@ -38,13 +38,20 @@ void main() {
     });
 
     test('does not care how long the vector is', () {
-      expect(headingLabel(const Vec3(0, 0, 7)).bearing, '0°');
-      expect(headingLabel(const Vec3(0, 7, 0)).elevation, '+90°');
+      // Unnormalised, `asin(3)` saturates the clamp and reads `+90°`; only a
+      // normalised vector gives the true `asin(3/5) = +37°`.
+      expect(headingLabel(const Vec3(0, 3, 4)).elevation, '+37°');
     });
 
     test('a zero vector reads as no heading rather than as NaN', () {
       expect(headingLabel(const Vec3(0, 0, 0)).bearing, '—');
       expect(headingLabel(const Vec3(0, 0, 0)).elevation, '—');
+    });
+
+    test('a negative-zero heading reads as 0° rather than -0°', () {
+      // `atan2(-0.0, 1.0)` is `-0.0`, which is not `< 0`, so it skips the wrap
+      // and `toStringAsFixed` renders it `-0`. That is a bearing, not a sign.
+      expect(headingLabel(const Vec3(-0.0, 0, 1)).bearing, '0°');
     });
   });
 
@@ -88,12 +95,19 @@ void main() {
       final at = hudMarkerPoint(
           camera: _lookingForward(), world: const Vec3(-10, 0, 100), viewport: _vp);
       expect(at!.dx, closeTo(200 + 69.2820323, 1e-4));
+      // Twice as deep, the same offset is half the displacement: `focal * 0.05
+      // = 34.641...`. A flat per-unit scale would give `69.282...` at both
+      // depths, so this is what pins the divide.
+      final deeper = hudMarkerPoint(
+          camera: _lookingForward(), world: const Vec3(-10, 0, 200), viewport: _vp);
+      expect(deeper!.dx, closeTo(200 + 34.6410162, 1e-4));
     });
 
     test('drops anything level with or behind the camera', () {
       final camera = _lookingForward();
-      // Behind: a marker there would otherwise be mirrored to the wrong side of
-      // the screen, which reads as a marker for something in front.
+      // Behind: `project` culls it to `Projected.hidden`, whose `screen` is
+      // `Offset.zero`, so without the null the marker would be drawn in the
+      // top-left corner and read as a marker sitting there.
       expect(
           hudMarkerPoint(
               camera: camera, world: const Vec3(0, 0, -100), viewport: _vp),

@@ -20,6 +20,9 @@ import 'camera3d.dart';
   if (d.length <= 0) return (bearing: '—', elevation: '—');
   var bearing = math.atan2(d.x, d.z) * 180 / math.pi;
   if (bearing < 0) bearing += 360;
+  // `atan2(-0.0, z)` is `-0.0`, which is not `< 0`, so it skips the wrap above
+  // and `toStringAsFixed` would render the bearing `-0`. Fold it to `+0`.
+  if (bearing == 0) bearing = 0;
   final elevation = math.asin(d.y.clamp(-1.0, 1.0)) * 180 / math.pi;
   final sign = elevation < 0 ? '−' : '+';
   return (
@@ -28,14 +31,15 @@ import 'camera3d.dart';
   );
 }
 
-/// Where [world] lands on screen, in logical pixels, or null when it is not in
-/// front of the camera.
+/// Where [world] lands on screen, in logical pixels, or null when it is at or
+/// behind the camera's near plane.
 ///
 /// Thin wrapper over [Camera3D.project] so the HUD and the scene painter cannot
 /// disagree about the projection — there is one convention in this codebase and
 /// it lives in `camera3d.dart`. The null case is the whole reason this exists:
-/// a point behind the eye would otherwise be mirrored to the wrong side of the
-/// screen and read as a marker for something in front.
+/// `Camera3D.project` culls a point behind the eye to `Projected.hidden`, whose
+/// `screen` is `Offset.zero`, so passing that through would park the marker in
+/// the top-left corner of the screen.
 Offset? hudMarkerPoint({
   required Camera3D camera,
   required Vec3 world,
@@ -61,10 +65,12 @@ class HudMarker {
 /// Draws a ring and a label for each marker, clamped to the viewport edge when
 /// the marker is outside the field of view.
 ///
-/// The clamping is the point. Without it, a destination further away than the
-/// ship's sensor range — or simply off to one side — draws nothing at all,
-/// which is exactly the defect the free-cruise feature exists to fix. A clamped
-/// marker still answers "which way", which is the question the player is asking.
+/// The clamping is the point. [hudMarkerPoint] returns null only for a point at
+/// or behind the camera's near plane, so a point that is in front of the camera
+/// but outside the field of view projects to coordinates outside the canvas —
+/// drawing there is invisible, which is exactly the defect the free-cruise
+/// feature exists to fix. A clamped marker still answers "which way", which is
+/// the question the player is asking.
 class CockpitHudPainter extends CustomPainter {
   const CockpitHudPainter({required this.camera, required this.markers});
 
@@ -127,7 +133,13 @@ class CockpitHudPainter extends CustomPainter {
         ),
         textDirection: TextDirection.ltr,
       )..layout();
-      text.paint(canvas, clamped + const Offset(14, -6));
+      // The label sits to the right of the marker, but a marker clamped at the
+      // right edge would start its label past `size.width`, where it is clipped
+      // away; flip it to the left of the marker when it would overflow.
+      final labelX = clamped.dx + 14 + text.width > size.width
+          ? clamped.dx - 14 - text.width
+          : clamped.dx + 14;
+      text.paint(canvas, Offset(labelX, clamped.dy - 6));
     }
   }
 
