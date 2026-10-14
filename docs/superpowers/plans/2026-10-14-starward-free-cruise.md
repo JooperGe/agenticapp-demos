@@ -5686,6 +5686,13 @@ disabled state. So the gate is `>=`, matching `activate()`.
 
     await tester.tap(inCockpit('修正航向'));
     await tester.pump(const Duration(milliseconds: 300));
+    // The tap is dead, and this is the only assertion that says so. The two
+    // below it cannot: an *enabled* button opens a confirm dialog and spends
+    // nothing until it is confirmed, so both hold either way. Nor does the
+    // disabled detail above prove it — a button that renders that text while
+    // still wired to `onPressed` passes it too.
+    expect(find.byType(AlertDialog), findsNothing,
+        reason: 'a disabled button does not fire onPressed at all');
     expect(c.energy, 140, reason: 'nothing was spent');
     expect(c.driftVelocity.x, greaterThan(0), reason: 'still on the old course');
   });
@@ -5790,13 +5797,20 @@ that does not exist yet, so read the failures rather than counting them:
   `reason: 'precondition'` assertions above it are what establish that the state is reachable at
   all, and if one of them fails the test is testing the wrong thing, not a missing surface.
 
-The tap-and-assert blocks in tests 1 and 2 sit *below* their failing lines, so they do not run yet.
-They become live once the disabled state exists, and they are the assertions that pin the point: a
-disabled button must not fire `onPressed` at all, so `c.energy` stays 140 and the ship stays on its
-old course. Do not be tempted to delete them because they "already pass" — before this task the tap
-reaches `_correctFromCockpit`, which (since Task 18) opens a confirm dialog rather than spending, so
-`c.energy` would read 140 either way and the assertion alone cannot tell the two apart. The
-`findsOneWidget` on the disabled detail above it is what carries the distinction.
+The tap-and-assert block in test 1 sits *below* its failing line, so it does not run yet. It becomes
+live once the disabled state exists, and its load-bearing assertion is the **first** one —
+`find.byType(AlertDialog), findsNothing`. That is the only assertion in the test that can tell a
+disabled button from a live one: before this task the tap reaches `_correctFromCockpit`, which
+(since Task 18) opens a confirm dialog rather than spending, so `c.energy` reads 140 and the ship
+stays on its old course **either way**. Do not be tempted to delete the block because those two
+"already pass" — they are kept as a statement of what a dead tap must leave untouched, not as the
+proof. Nor does the `findsOneWidget` on the disabled detail above prove it: a button that renders
+that text while still wired to `onPressed` passes it, which is exactly the regression the
+`AlertDialog` assertion exists to catch.
+
+Test 2 has no tap block, and that is deliberate: `onActivate` is `() => _c.activate()`
+(`galaxy_map_3d_page.dart:660`), and `activate()` refuses on its own at 0 EN, so `isDormant` stays
+true whether the button fired or not. There is nothing there for a tap to distinguish.
 
 - [ ] **Step 3: Give the button a disabled state**
 
