@@ -276,4 +276,67 @@ void main() {
           LaunchResult.insufficientEnergy);
     });
   });
+
+  group('a cruise drains the tank', () {
+    test('the meter runs while the engine is on', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+      expect(c.energy, 300);
+
+      // 37.5 s is one light-year, which is 3 EN — the same quote a voyage of
+      // that length gets. Nothing about the price is cruise-specific.
+      clock.advance(const Duration(seconds: 37, milliseconds: 500));
+      expect(c.energy, 297);
+
+      clock.advance(const Duration(seconds: 1462, milliseconds: 500));
+      expect(c.energy, 200, reason: '1500 s is 40 ly is 100 EN');
+    });
+
+    test('a coast does not drain anything', () async {
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      await _boot(clock, storage: storage);
+      await _setDrift(storage, const Vec3(1 / 37.5, 0, 0), clock());
+      final c = await _boot(clock, storage: storage);
+
+      clock.advance(const Duration(days: 3));
+      expect(c.energy, 300, reason: 'an unpowered drift costs nothing to run');
+    });
+
+    test('the reserve is what the cruise must keep to buy its own stop', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      expect(c.cruiseReserve, 100);
+      await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+      // While cruising the two quotes coincide, which is the point: the reserve
+      // *is* the braking cost, held back rather than spent.
+      expect(c.cruiseReserve, c.brakingCost);
+    });
+
+    test('the remaining-time readout counts down one-for-one with the meter',
+        () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      expect(c.cruiseRemaining, Duration.zero, reason: 'not cruising yet');
+
+      await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+      // 300 EN less the 100 EN reserve is 200 EN, which is 3000 s.
+      expect(c.cruiseRemaining, const Duration(seconds: 3000));
+
+      clock.advance(const Duration(seconds: 1500));
+      expect(c.cruiseRemaining, const Duration(seconds: 1500));
+    });
+
+    test('the reserve is held back even at the very start', () async {
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      await _boot(clock, storage: storage);
+      await _setEnergy(storage, 100);
+      final c = await _boot(clock, storage: storage);
+      await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+      // Every last drop is already spoken for, so there is no cruise to run.
+      expect(c.cruiseRemaining, Duration.zero);
+    });
+  });
 }

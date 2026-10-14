@@ -429,21 +429,19 @@ class GameController extends ChangeNotifier {
     if (braking > 0) _settleBraking(braking);
   }
 
-  /// The player's energy right now, in EN.
+  /// The live balance: what the player can spend right now.
   ///
-  /// While a voyage is in progress this is the fuel still aboard: the balance
-  /// minus what the engine has burned so far. Voyage fuel is not deducted at
-  /// launch, so this getter is the only place the burn is applied — which is
-  /// what makes the reading tick down in real time and still be correct after
-  /// the app is killed and restarted. A braking burn is the exception: it is a
-  /// departure-time charge and is already out of `energyBalance` by the time
-  /// any of this runs.
+  /// Both a voyage and a cruise accrue their cost in real time and book it only
+  /// when the leg ends, so this subtracts the accrued-but-unbooked part. Without
+  /// the cruise branch a powered drift would look free until it stopped, and
+  /// every quote made mid-cruise would be against money already spent.
   int get energy {
     final j = _activeJourney;
-    if (j == null || j.status != JourneyStatus.inProgress) {
-      return _player.energyBalance;
+    if (j != null && j.status == JourneyStatus.inProgress) {
+      final left = _player.energyBalance - j.burnedAt(_now());
+      return left < 0 ? 0 : left;
     }
-    final left = _player.energyBalance - j.burnedAt(_now());
+    final left = _player.energyBalance - _cruiseBurnNow();
     return left < 0 ? 0 : left;
   }
 
@@ -951,6 +949,40 @@ class GameController extends ChangeNotifier {
   /// False only for a ship with momentum that cannot afford the braking burn — the
   /// UI uses this to disable the brake rather than letting the tap do nothing.
   bool get canBrake => !hasMomentum || _player.energyBalance >= brakingCost;
+
+  /// Energy the current cruise leg has burned but not yet booked.
+  ///
+  /// Zero for anything that is not a powered drift — including a cruise leg that
+  /// has just been re-pinned, where the honest answer is "nothing yet" rather
+  /// than `burnForSeconds(0)`, which is `minEnergyCost` and would book a phantom
+  /// light-year every time the ship stopped.
+  int _cruiseBurnNow() {
+    if (!isCruising) return 0;
+    final seconds = _driftSecondsAt(_now());
+    if (seconds <= 0) return 0;
+    return _ship.engine.burnForSeconds(seconds);
+  }
+
+  /// Energy a cruise must keep in the tank so it can always buy its own stop.
+  ///
+  /// State-independent on purpose: it is a property of the engine and the speed
+  /// a cruise runs at, not of where the ship happens to be, so the exhaustion
+  /// rule and the readout cannot disagree about it.
+  int get cruiseReserve =>
+      _ship.engine.brakingCostFor(_ship.engine.cruiseSpeedLyPerSec);
+
+  /// How long the tank can keep driving the current cruise, counting the reserve
+  /// it has to hold back. Zero when parked, coasting, or already at the reserve.
+  Duration get cruiseRemaining {
+    if (!isCruising) return Duration.zero;
+    final budget = energy - cruiseReserve;
+    if (budget <= 0) return Duration.zero;
+    return Duration(
+      microseconds: (_ship.engine.secondsForEnergy(budget) *
+              Duration.microsecondsPerSecond)
+          .round(),
+    );
+  }
 
   /// Brings the ship to rest where it is, whatever is moving it.
   ///
