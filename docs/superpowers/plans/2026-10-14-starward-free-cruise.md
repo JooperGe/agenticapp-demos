@@ -1286,8 +1286,12 @@ Append to `starward/test/cruise_test.dart` (add `import 'package:starward/data/m
       final clock = FakeClock(DateTime(2026));
       final c = await _boot(clock);
       await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
-      clock.advance(const Duration(seconds: 4500));
-      // The reserve is all that is left, and it is spoken for.
+      // The reserve is all that is left, and it is spoken for. 3000 s is 80 ly is
+      // 200 EN — the whole spendable budget — so this is the exhaustion point
+      // itself, not a point past it. Advancing further would burn the reserve too
+      // and leave nothing, which is a state the finished game never reaches:
+      // Task 8's `tick` resolves the cruise at exactly this moment.
+      clock.advance(const Duration(seconds: 3000));
       expect(c.energy, 100);
       final far = c.planets
           .where((p) => p.id != c.currentPlanetId)
