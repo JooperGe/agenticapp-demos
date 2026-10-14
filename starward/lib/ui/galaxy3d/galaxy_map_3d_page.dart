@@ -12,6 +12,7 @@ import '../journey/fuel_choice_dialog.dart';
 import '../shell/shell_scope.dart';
 import '../widgets/common.dart';
 import 'camera3d.dart';
+import 'cockpit_hud.dart';
 import 'galaxy3d_painter.dart';
 import 'galaxy3d_scene.dart';
 import 'star_system_sheet.dart';
@@ -202,6 +203,65 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
       case LaunchResult.success:
         return '出发！';
     }
+  }
+
+  /// Lights the engine along whatever the reticle is on.
+  ///
+  /// `FuelPolicy.coast` rather than `halt`: a free cruise that runs out of power
+  /// keeps drifting, which is what the player asked for by choosing a
+  /// destination-less cruise. Stopping dead in the dark is a surprise, not a
+  /// default.
+  Future<void> _igniteFromCockpit() async {
+    final result =
+        await _c.igniteCruise(_camera.forward, onEmpty: FuelPolicy.coast);
+    if (!mounted) return;
+    if (result != LaunchResult.success) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(_launchMessage(result))));
+    }
+  }
+
+  Future<void> _correctFromCockpit() async {
+    final heading = _camera.forward;
+    final cost = _c.turnCostTo(heading);
+    final ok = await _c.correctHeading(heading);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(ok ? '航向已修正（$cost EN）' : '能量不足，无法修正航向'),
+    ));
+  }
+
+  Future<void> _brakeFromCockpit() async {
+    await _c.stopShip();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('已制动停下')));
+  }
+
+  /// What the cockpit points at: the recommended destination — beyond the
+  /// sensor range if the player has lowered it, which is precisely the case the
+  /// star map could not show — plus the galactic centre as a fixed reference.
+  ///
+  /// The recommendation comes from the same 20-ly-stale working set the voyage
+  /// dock reads, so the marker's *identity* can lag by up to 20 ly of drift; its
+  /// *position* is read fresh from the scene. The marker makes that lag visible,
+  /// but it is not a regression — the dock has always read the same set.
+  List<HudMarker> _hudMarkers(Galaxy3DScene scene) {
+    final out = <HudMarker>[];
+    final rec = _c.recommendedDestination;
+    if (rec != null && scene.planetPositions.containsKey(rec.id)) {
+      out.add(HudMarker(
+        world: scene.positionOf(rec.id),
+        label: rec.name,
+        color: StarColors.gold,
+      ));
+    }
+    out.add(const HudMarker(
+      world: Vec3(0, 0, 0),
+      label: '银心',
+      color: StarColors.cyan,
+    ));
+    return out;
   }
 
   /// Launches to a star system, asking how the voyage should end when the
@@ -472,10 +532,22 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
                   ),
                   // Cockpit framing — a through-the-viewport feel in first
                   // person. Non-interactive so gestures pass through.
-                  if (_camera.mode == CameraMode.cockpit)
+                  if (_camera.mode == CameraMode.cockpit) ...<Widget>[
                     const Positioned.fill(
                       child: IgnorePointer(child: _CockpitOverlay()),
                     ),
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: CustomPaint(
+                          size: Size.infinite,
+                          painter: CockpitHudPainter(
+                            camera: _camera,
+                            markers: _hudMarkers(scene),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                   _TopBar(controller: _c, mode: _camera.mode),
                   _SideControls(
                     mode: _camera.mode,
@@ -491,6 +563,15 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
                       originLabel: endpoints.$1,
                       destinationLabel: endpoints.$2,
                       onFocusRoute: () => _focusRoute(vp),
+                    )
+                  else if (_camera.mode == CameraMode.cockpit)
+                    _HeadingBar(
+                      controller: _c,
+                      camera: _camera,
+                      onActivate: () => _c.activate(),
+                      onIgnite: _igniteFromCockpit,
+                      onCorrect: _correctFromCockpit,
+                      onBrake: _brakeFromCockpit,
                     )
                   else
                     _BottomControls(
@@ -964,6 +1045,173 @@ class _ReadoutRow extends StatelessWidget {
                 fontWeight: FontWeight.w600),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The cockpit's bottom panel: where the reticle is pointing, what it would
+/// cost to go there, and the one button that does it.
+///
+/// Replaces the sensor slider in this mode — a sensor range is a property of
+/// the star map's detail level, and the cockpit's question is "which way",
+/// which the marker overlay answers better.
+class _HeadingBar extends StatelessWidget {
+  const _HeadingBar({
+    required this.controller,
+    required this.camera,
+    required this.onActivate,
+    required this.onIgnite,
+    required this.onCorrect,
+    required this.onBrake,
+  });
+
+  final GameController controller;
+  final Camera3D camera;
+  final VoidCallback onActivate;
+  final VoidCallback onIgnite;
+  final VoidCallback onCorrect;
+  final VoidCallback onBrake;
+
+  @override
+  Widget build(BuildContext context) {
+    final heading = camera.forward;
+    final label = headingLabel(heading);
+    final dormant = controller.isDormant;
+    final moving = controller.hasMomentum;
+    final turnCost = controller.turnCostTo(heading);
+    final braking = controller.brakingCost;
+    // A turn past 60° costs more than stopping and re-lighting the engine, and
+    // that is the real Δv, not a pricing mistake — but a player who does not
+    // know it is being offered the expensive option first. So say the cheap one
+    // out loud, and make it tappable.
+    final turningIsDearer = moving && !dormant && turnCost > braking;
+
+    return SafeArea(
+      // Keyed because `HomeShell` mounts all four pages in an `IndexedStack`,
+      // so an unscoped `find.text` in a widget test matches this bar *and* the
+      // voyage tab's dock behind it. The assertions on this bar's own text in
+      // `cruise_ui_test.dart` scope to this key.
+      key: const Key('cockpit-heading-bar'),
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: StarPanel(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    const Icon(Icons.gps_fixed_rounded,
+                        color: StarColors.cyan, size: 16),
+                    const SizedBox(width: 8),
+                    const Text('准星航向',
+                        style: TextStyle(
+                            color: StarColors.offWhite,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600)),
+                    const Spacer(),
+                    Text('${label.bearing}  ${label.elevation}',
+                        style: const TextStyle(
+                            color: StarColors.gold,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                if (dormant)
+                  _HudButton(
+                    label: '激活引擎',
+                    detail: '${controller.ship.engine.activationCost} EN',
+                    icon: Icons.power_settings_new_rounded,
+                    onPressed: onActivate,
+                  )
+                else if (!moving)
+                  _HudButton(
+                    label: '点火巡航',
+                    detail: '沿准星方向',
+                    icon: Icons.rocket_launch_rounded,
+                    onPressed: onIgnite,
+                  )
+                else
+                  _HudButton(
+                    label: '修正航向',
+                    detail: '$turnCost EN',
+                    icon: Icons.alt_route_rounded,
+                    onPressed: onCorrect,
+                  ),
+                if (turningIsDearer) ...<Widget>[
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: onBrake,
+                    behavior: HitTestBehavior.opaque,
+                    child: Text('制动停下只需 $braking EN',
+                        style: const TextStyle(
+                            color: StarColors.cyan,
+                            fontSize: 11,
+                            decoration: TextDecoration.underline)),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                Text(
+                  switch ((dormant, moving)) {
+                    (true, _) => '引擎已休眠，飞船仍在滑行。激活后才能再次点火或改向。',
+                    (false, false) => '拖动环视 · 准星所指即点火方向 · 双指调整视场',
+                    (false, true) => '拖动环视 · 修正航向不减速，按转角收费 · 双指调整视场',
+                  },
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: StarColors.faint, fontSize: 10.5),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A full-width labelled button for the cockpit panel.
+class _HudButton extends StatelessWidget {
+  const _HudButton({
+    required this.label,
+    required this.detail,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String label;
+  final String detail;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: panelDecoration(radius: 12, color: StarColors.panelLight),
+        child: Row(
+          children: <Widget>[
+            Icon(icon, color: StarColors.cyan, size: 18),
+            const SizedBox(width: 10),
+            Text(label,
+                style: const TextStyle(
+                    color: StarColors.offWhite,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700)),
+            const Spacer(),
+            Text(detail,
+                style: const TextStyle(
+                    color: StarColors.gold,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600)),
+          ],
+        ),
       ),
     );
   }

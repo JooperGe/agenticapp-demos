@@ -7,6 +7,7 @@ import 'package:starward/data/game_repository.dart';
 import 'package:starward/data/models/journey.dart';
 import 'package:starward/data/storage/storage_backend.dart';
 import 'package:starward/state/game_controller.dart';
+import 'package:starward/ui/galaxy3d/cockpit_hud.dart';
 import 'package:starward/ui/game_scope.dart';
 import 'package:starward/ui/shell/home_shell.dart';
 
@@ -39,6 +40,30 @@ Future<void> _pumpVoyage(WidgetTester tester, GameController c) async {
   ));
   await tester.pump();
   await tester.tap(find.text('航行'));
+  await tester.pump(const Duration(milliseconds: 100));
+}
+
+/// Enters the star map's cockpit mode from the 座舱 side control.
+///
+/// One bounded pump is enough: `_setMode` `setState`s synchronously in the tap
+/// handler, unlike the post-frame cockpit-request path the regression test above
+/// pumps twice for.
+Future<void> _enterCockpit(WidgetTester tester) async {
+  await tester.tap(find.text('座舱'));
+  await tester.pump(const Duration(milliseconds: 100));
+}
+
+/// Pumps the shell and lands on the star map tab — `IndexedStack` child 0, and
+/// the default — so the cockpit is on stage.
+///
+/// Bounded pumps, never `pumpAndSettle`: the starfield runs a repeating
+/// animation controller, so the tree never settles.
+Future<void> _pumpStarMap(WidgetTester tester, GameController c) async {
+  await tester.pumpWidget(MaterialApp(
+    home: GameScope(controller: c, child: const HomeShell()),
+  ));
+  await tester.pump();
+  await tester.tap(find.text('星图'));
   await tester.pump(const Duration(milliseconds: 100));
 }
 
@@ -219,5 +244,117 @@ void main() {
     expect(find.text('停止巡航'), findsOneWidget);
     expect(find.textContaining('本次巡航'), findsOneWidget);
     expect(find.text('停止滑行'), findsNothing);
+  });
+
+  /// The cockpit's heading bar, scoped by key.
+  ///
+  /// `HomeShell` mounts all four pages in an `IndexedStack`, so the voyage tab's
+  /// dock is in the tree at the same time as this bar — and while cruising both
+  /// show a button labelled 修正航向. An unscoped `find.text` would match both
+  /// and the test would pass or fail for the wrong reason.
+  final cockpit = find.byKey(const Key('cockpit-heading-bar'));
+
+  /// Text inside the heading bar only.
+  Finder inCockpit(String text) =>
+      find.descendant(of: cockpit, matching: find.text(text));
+
+  testWidgets('the cockpit reads the heading the reticle is pointing at',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    expect(cockpit, findsOneWidget);
+    // Entering the cockpit aims at the galactic centre, so the readout is
+    // whatever that bearing is — the point is that it is a real reading and not
+    // a placeholder. A placeholder renders the whole readout as '—  —', so this
+    // scopes an em-dash search to the bar's subtree: the readout is the only
+    // `Text` in the bar whose data can contain one (the elevation sign is
+    // U+2212, a different character), so this fails if the label ever falls
+    // back to the placeholder.
+    expect(inCockpit('准星航向'), findsOneWidget);
+    expect(find.descendant(of: cockpit, matching: find.textContaining('—')),
+        findsNothing);
+    expect(find.text('对准银心'), findsOneWidget,
+        reason: 'the recenter button changes meaning in this mode');
+
+    // The marker layer is on the cockpit, carrying the galactic centre as its
+    // fixed reference. (Task 15's `cockpit_hud_test.dart` covers where each
+    // marker lands; this pins that the layer is mounted at all.)
+    final hudPainters = tester.widgetList<CustomPaint>(find.byWidgetPredicate(
+        (w) => w is CustomPaint && w.painter is CockpitHudPainter));
+    expect(hudPainters, hasLength(1),
+        reason: 'the cockpit mounts exactly one marker layer');
+    final markers =
+        (hudPainters.single.painter! as CockpitHudPainter).markers;
+    expect(markers.map((m) => m.label), contains('银心'),
+        reason: 'the galactic centre is the cockpit\'s fixed reference');
+  });
+
+  testWidgets('a parked ship is offered ignition from the cockpit',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    expect(inCockpit('点火巡航'), findsOneWidget);
+    expect(inCockpit('修正航向'), findsNothing);
+
+    await tester.tap(inCockpit('点火巡航'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(c.isCruising, isTrue);
+    expect(c.hasMomentum, isTrue);
+  });
+
+  testWidgets('a cruising ship is quoted the turn and can take it',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+    clock.advance(const Duration(seconds: 1500));
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    // The ship drifted 40 ly out along +X from a spawn within 0.9 ly of Sol, so
+    // aiming back at the galactic centre is an ≈ 180° turn from the current
+    // heading — not exactly 180° — which rounds to 200 EN. That is more than the
+    // 100 EN a stop costs, so the brake hint must be showing.
+    expect(inCockpit('修正航向'), findsOneWidget);
+    expect(find.descendant(of: cockpit, matching: find.text('200 EN')),
+        findsOneWidget);
+    expect(inCockpit('制动停下只需 100 EN'), findsOneWidget);
+
+    await tester.tap(inCockpit('修正航向'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(c.energy, 0, reason: '300 − 100 burned − 200 turned');
+    expect(c.driftVelocity.x, lessThan(0),
+        reason: 'now flying the other way');
+  });
+
+  testWidgets('a dormant engine is offered activation, not ignition',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.coast);
+    clock.advance(const Duration(seconds: 3000));
+    c.tick();
+    expect(c.isDormant, isTrue, reason: 'precondition');
+    // Running dry queues a fuel-out report whose modal sheet would cover the
+    // tab bar, so the 座舱 tap would dismiss the sheet instead of entering the
+    // cockpit. Dismiss it here, as the coast test above does.
+    await c.acknowledgeDriftReport();
+
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    expect(inCockpit('激活引擎'), findsOneWidget);
+    expect(inCockpit('修正航向'), findsNothing);
+
+    await tester.tap(inCockpit('激活引擎'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(c.isDormant, isFalse);
+    expect(c.energy, 95);
   });
 }
