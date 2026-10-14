@@ -107,7 +107,8 @@ class Engine {
   /// The inverse of [burnForSeconds] on the quantised scale, and the form the
   /// exhaustion check has to use: comparing `burnForSeconds(elapsed) >= budget`
   /// fires a tick early, because EN is rounded to whole units. Division keeps it
-  /// exact — `secondsForEnergy(200)` is 3000.0, not 3000.0000000000005.
+  /// exact — `secondsForEnergy(200)` is 3000.0, whereas the first instant
+  /// [burnForSeconds] actually reaches 200 is 2992.5 s.
   double secondsForEnergy(int energy) => energy / powerDrawPerSecond;
 
   /// Energy to swing the heading by [radians] while under way.
