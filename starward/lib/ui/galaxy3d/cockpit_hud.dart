@@ -134,7 +134,7 @@ class CockpitHudPainter extends CustomPainter {
         textDirection: TextDirection.ltr,
       )..layout();
       // The label sits to the right of the marker, but a marker clamped at the
-      // right edge would start its label past `size.width`, where it is clipped
+      // right edge would run its label past `size.width`, where it is clipped
       // away; flip it to the left of the marker when it would overflow.
       final labelX = clamped.dx + 14 + text.width > size.width
           ? clamped.dx - 14 - text.width
