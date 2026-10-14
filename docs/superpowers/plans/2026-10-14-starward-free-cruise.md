@@ -4707,23 +4707,33 @@ step (shown after them).
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    // §4.2: the choice cannot be deferred — by the time the tank is dry the ship
-    // has no energy to brake with — so `halt` is only available as a decision
-    // made now.
+    // §4.2: the choice cannot be deferred — once the cruise is under way nothing
+    // in the UI changes the policy, so this is the only moment it can be made.
+    // (Not because the ship loses the ability to brake: a cruise keeps its
+    // reserve, so at exhaustion `canBrake` is `100 >= 100` and is true.)
     expect(find.text('耗尽后停下'), findsOneWidget);
     expect(find.text('耗尽后滑行'), findsOneWidget);
+    // The sheet's own numbers, pinned: `energy` is 300, `cruiseReserve` is 100,
+    // so the budget is 200 EN and the reach 200 / 2.5 = 80.0 ly. Without these
+    // a regression to `brakingCost` — always 0 for a parked ship — quotes
+    // 「0 EN 是制动储备 … 可以飞 120.0 ly」 and no test fails.
+    expect(find.textContaining('100 EN 是制动储备'), findsOneWidget);
+    expect(find.textContaining('可以飞 80.0 ly'), findsOneWidget);
     // §4.2 offers no `refuse` on a cruise: refusing means "I cannot afford this
     // whole trip", and a cruise has no whole trip.
     expect(find.text('放弃航行'), findsNothing);
     expect(c.isCruising, isFalse, reason: 'nothing happens until a policy is chosen');
 
-    await tester.tap(find.text('耗尽后停下'));
+    // 耗尽后滑行, not 耗尽后停下: `halt` is `PlayerState.cruisePolicy`'s own
+    // default (`player_state.dart:24`), so choosing it cannot tell "stored" from
+    // "defaulted" and the assertion below would pass either way.
+    await tester.tap(find.text('耗尽后滑行'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(c.isCruising, isTrue);
     expect(c.hasMomentum, isTrue);
-    expect(c.player.cruisePolicy, FuelPolicy.halt,
+    expect(c.player.cruisePolicy, FuelPolicy.coast,
         reason: 'the chosen policy is stored, not defaulted');
   });
 
@@ -4875,7 +4885,8 @@ Future<FuelPolicy?> showCruiseFuelChoiceDialog(
               Text(
                 '你只有 $energy EN，其中 $braking EN 是制动储备，'
                 '巡航可用 $budget EN，可以飞 ${reach.toStringAsFixed(1)} ly。'
-                '两条路都在这里耗尽并进入休眠，区别只在耗尽的那一刻。',
+                '两条路都在这里耗尽并进入休眠，区别只在耗尽之后：'
+                '一个停下，一个继续滑行。',
                 style: const TextStyle(
                   color: StarColors.muted,
                   fontSize: 13,
@@ -4885,10 +4896,13 @@ Future<FuelPolicy?> showCruiseFuelChoiceDialog(
               const SizedBox(height: 18),
               _Choice(
                 label: '耗尽后停下',
-                // `$braking`, never a literal: the reserve is
-                // `Engine.brakingCostFor`, so a ship with a different engine
-                // would be quoted a number that is not its own. Every other
-                // number in this sheet interpolates for the same reason.
+                // `$braking`, never a literal, so a ship with a different engine
+                // is quoted its own number. What arrives is `cruiseReserve` —
+                // `brakingCostFor(cruiseSpeedLyPerSec)` — and **not**
+                // `brakingCost`, which is `brakingCostFor(driftVelocity.length)`
+                // and is 0 for the parked ship this sheet is opened from.
+                // Every other number in this sheet interpolates for the same
+                // reason.
                 detail: '电量耗尽前引擎先制动停下，保留 $braking EN 的制动储备',
                 icon: Icons.anchor_rounded,
                 onTap: () => Navigator.of(sheetContext).pop(FuelPolicy.halt),
@@ -4917,8 +4931,8 @@ Future<FuelPolicy?> showCruiseFuelChoiceDialog(
 ```
 
 The body says the one thing that surprises people: **both policies reach the same distance**, because
-deviation 5 gives both the same budget (`energy - braking`). The choice is about the moment of
-exhaustion, not the range.
+deviation 5 gives both the same budget (`energy - cruiseReserve`). What differs is the ship's state
+after exhaustion — stopped, or still drifting — not when it happens or how far it got.
 
 - [ ] **Step 4: Route the cockpit's ignition through it**
 
@@ -4928,14 +4942,23 @@ Replace `_igniteFromCockpit` and its comment in `starward/lib/ui/galaxy3d/galaxy
   /// Lights the engine along whatever the reticle is on, after asking what the
   /// cruise should do when the tank runs dry.
   ///
-  /// It asks because the choice cannot be deferred: by the time the tank is dry
-  /// the ship has no energy to brake with, so `halt` is only available as a
-  /// decision made *now*. That is also why the policy is a stored field.
+  /// It asks because the choice cannot be deferred: once the cruise is under way
+  /// nothing in the UI changes the policy, so this is the only moment it can be
+  /// made — and it is a stored field for that reason. It is **not** because the
+  /// ship loses the ability to brake: a cruise keeps its reserve, so at
+  /// exhaustion `energyBalance == cruiseReserve` and `canBrake` is `100 >= 100`.
+  ///
+  /// The reserve passed to the sheet is [GameController.cruiseReserve], not
+  /// `brakingCost`. This method is only reachable from the 点火巡航 button, which
+  /// renders only while the ship is stationary (`else if (!moving)`), and
+  /// `brakingCost` is `hasMomentum ? brakingCostFor(driftVelocity.length) : 0` —
+  /// so it is always 0 here and the sheet would quote 「0 EN 是制动储备 …
+  /// 可以飞 120.0 ly」 on a full tank.
   Future<void> _igniteFromCockpit() async {
     final policy = await showCruiseFuelChoiceDialog(
       context,
       energy: _c.energy,
-      braking: _c.brakingCost,
+      braking: _c.cruiseReserve,
       engine: _c.ship.engine,
     );
     if (policy == null || !mounted) return;
@@ -5506,13 +5529,33 @@ predicate: 「能量不足时的指引沿用 `journey_page.dart:822` 的既有�
 - Test: `starward/test/cruise_ui_test.dart`
 
 **Interfaces:**
-- Consumes: `GameController.energy`, `.brakingCost`, `.canBrake` (`game_controller.dart:983`, `!hasMomentum || energyBalance >= brakingCost`), `.turnCostTo`, `.ship.engine.activationCost`; `ShellScope.go(BuildContext, int)` (`lib/ui/shell/shell_scope.dart:15`); `TrainingPage` (`lib/ui/training/training_page.dart:18`).
+- Consumes: `GameController.energy`, `.brakingCost`, `.cruiseReserve` (`game_controller.dart:1239`, `brakingCostFor(cruiseSpeedLyPerSec)`), `.canBrake` (`game_controller.dart:983`, `!hasMomentum || energyBalance >= brakingCost`), `.turnCostTo`, `.ship.engine.activationCost`; `ShellScope.go(BuildContext, int)` (`lib/ui/shell/shell_scope.dart:15`); `TrainingPage` (`lib/ui/training/training_page.dart:18`).
 - Produces: `_HudButton.enabled` / `.disabledDetail`.
 
-**The two predicates are the controller's own, not new ones.** `correctHeading` requires
-`energy >= cost` (`game_controller.dart:1356`) and `activate()` requires `energyBalance >= cost`
-(`:1218`). The buttons must be gated on exactly those, or a button will offer an action that then
-refuses.
+**The three predicates are the controller's own, not new ones.** `correctHeading` requires
+`energy >= cost` (`game_controller.dart:1356`), `activate()` requires `energyBalance >= cost`
+(`:1218`), and `igniteCruise` requires `energy > cruiseReserve` (`:1316`). The buttons must be gated
+on exactly those, or a button will offer an action that then refuses.
+
+**The third one is the one this task exists to close, and it is reachable.** `点火巡航` costs
+nothing, so it is tempting to leave the button ungated — but `igniteCruise`'s *last* guard is
+`if (energy <= cruiseReserve) return LaunchResult.insufficientEnergy;`. Two reachable states trip it,
+and both come from the same lenient `activate()`: a dormant ship holding exactly 5 EN wakes up
+**awake with 0 EN**, and a ship that exhausted a cruise under `halt` wakes up awake with the
+`cruiseReserve` itself, 95 EN after the fee. Either way it is parked in deep space, not dormant and
+not on a voyage, so `_HeadingBar`'s `else if (!moving)` branch renders `点火巡航` and every tap ends
+in a refusal snackbar. Step 1's fourth test reaches the second state, because it is the one a fixed
+clock can pin exactly. The gate is `energy > cruiseReserve` — strictly greater, matching the guard,
+and the reserve is read from the controller rather than hardcoded so a different engine moves both
+together.
+
+**What this task deliberately does *not* gate: `igniteCruise`'s `alreadyHere` and `alreadyTraveling`
+refusals.** The button is also rendered while the ship is docked at a planet, and possibly while a
+voyage is in progress, and both of those refuse too. Gating them changes which buttons the cockpit
+*shows*, not just which are disabled — §5.3's table scopes its row to 「静止（深空）」 and §1 scopes
+the whole feature to deep space, so hiding or disabling the button elsewhere is a product decision
+this plan has no authority to make. It is recorded as a deferred item for the final whole-branch
+review instead.
 
 `activate()`'s guard is **lenient**, not strict — `if (_player.energyBalance < cost) return false;`,
 so a player holding exactly 5 EN can spend their last drop waking the engine. That deviates from
@@ -5594,6 +5637,45 @@ disabled state. So the gate is `>=`, matching `activate()`.
     // only while its tab is the selected one.
     expect(find.byType(TrainingPage), findsOneWidget);
   });
+
+  testWidgets('ignition is disabled when the tank cannot hold the reserve',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+    clock.advance(const Duration(seconds: 3000));
+    c.tick();
+    // `halt` spends the momentum instead of the energy, so the ship stops with
+    // the reserve intact: 300 − 200 burned, dormant, velocity zero.
+    await c.acknowledgeDriftReport();
+    expect(c.energy, 100, reason: 'precondition');
+    expect(c.hasMomentum, isFalse, reason: 'precondition: halt stops the ship');
+    // The state the ignition gate exists for, and the one `activate()` makes
+    // reachable on purpose: waking the engine with the last 5 EN leaves it
+    // running on 95 EN, and `igniteCruise` refuses below `cruiseReserve` (100).
+    await c.activate();
+    expect(c.isDormant, isFalse, reason: 'precondition');
+    expect(c.energy, 95, reason: 'precondition: 100 − 5');
+
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    expect(inCockpit('点火巡航'), findsOneWidget);
+    expect(inCockpit('需要 100 EN 巡航储备（现有 95 EN）'), findsOneWidget);
+    expect(find.text('前往训练补充能量'), findsOneWidget);
+
+    await tester.tap(inCockpit('点火巡航'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // The dialog is what an *enabled* button opens, so its absence is the
+    // assertion that carries the disabled state. `isCruising` alone cannot:
+    // the sheet's own 取消点火 back-out also leaves the ship parked, so a
+    // button that opened the dialog and a button that did nothing look the
+    // same to it.
+    expect(find.text('耗尽后停下'), findsNothing);
+    expect(c.isCruising, isFalse);
+    expect(c.energy, 95, reason: 'nothing was spent');
+  });
 ```
 
 Add `import 'package:starward/ui/training/training_page.dart';` to the test file.
@@ -5601,7 +5683,7 @@ Add `import 'package:starward/ui/training/training_page.dart';` to the test file
 - [ ] **Step 2: Run them to verify they fail**
 
 Run: `cd starward && flutter test test/cruise_ui_test.dart`
-Expected: FAIL — each test stops at its first missing surface, and in all three that is a surface
+Expected: FAIL — each test stops at its first missing surface, and in all four that is a surface
 that does not exist yet, so read the failures rather than counting them:
 
 - Test 1 fails on `expect(inCockpit('需要 200 EN（现有 140 EN）'), findsOneWidget)` — there is no
@@ -5609,6 +5691,10 @@ that does not exist yet, so read the failures rather than counting them:
 - Test 2 fails the same way, on `需要 5 EN（现有 0 EN）`: the dormant button renders `'5 EN'`.
 - Test 3 fails at `tester.tap(find.text('前往训练补充能量'))` — the finder matches nothing and the tap
   throws.
+- Test 4 fails the same way, on `需要 100 EN 巡航储备（现有 95 EN）`: the ignition button renders its
+  enabled detail `'沿准星方向'`. It reaches that line, which is worth confirming — the four
+  `reason: 'precondition'` assertions above it are what establish that the state is reachable at
+  all, and if one of them fails the test is testing the wrong thing, not a missing surface.
 
 The tap-and-assert blocks in tests 1 and 2 sit *below* their failing lines, so they do not run yet.
 They become live once the disabled state exists, and they are the assertions that pin the point: a
@@ -5692,11 +5778,17 @@ In `_HeadingBar.build`:
     // `correctHeading` refuses when `energy < cost`, so the button may offer a
     // turn that spends the last drop — but not one that cannot be paid for.
     final canTurn = energy >= turnCost;
+    // Ignition is free, but it is not unconditional: `igniteCruise` refuses when
+    // `energy <= cruiseReserve` (`:1316`), because a cruise that could not hold
+    // the reserve back would exhaust on its first tick. Strictly greater, and
+    // read off the controller rather than hardcoded, so a different engine moves
+    // the gate and the guard together.
+    final canIgnite = energy > controller.cruiseReserve;
 ```
 
 Then:
 - dormant branch: `_HudButton(label: '激活引擎', detail: '$activationCost EN', enabled: canActivate, disabledDetail: '需要 $activationCost EN（现有 $energy EN）', …)`
-- `!moving` branch: unchanged (`点火巡航` is free; the dormant case never reaches it).
+- `!moving` branch: `enabled: canIgnite, disabledDetail: '需要 ${controller.cruiseReserve} EN 巡航储备（现有 $energy EN）'`. The wording names the reserve rather than saying 「需要 100 EN」, which would read as a price — ignition costs nothing, and §5.3's own row calls it 「点火巡航（免费）」.
 - moving branch: `enabled: canTurn, disabledDetail: '需要 $turnCost EN（现有 $energy EN）'`
 
 And the brake hint must not offer something the ship cannot take either:
@@ -5721,7 +5813,9 @@ Replace `if (turningIsDearer)` with `if (showBrakeHint)`.
 Below the button (and below the brake hint when it is showing), in the same `Column`:
 
 ```dart
-                if (!dormant ? !canTurn && moving : !canActivate) ...<Widget>[
+                if (!dormant
+                    ? (moving ? !canTurn : !canIgnite)
+                    : !canActivate) ...<Widget>[
                   const SizedBox(height: 8),
                   GestureDetector(
                     onTap: () => ShellScope.go(context, 3),
@@ -5735,11 +5829,17 @@ Below the button (and below the brake hint when it is showing), in the same `Col
                 ],
 ```
 
-Write it as a named local instead of that nested conditional if it reads better:
+Write it as a named local instead of that nested conditional if it reads better — the three cases
+are exactly the bar's three branches, so the local mirrors the branch above it:
 
 ```dart
-    // The same escape hatch the voyage dock offers when a button is short.
-    final shortOfEnergy = dormant ? !canActivate : (moving && !canTurn);
+    // The same escape hatch the voyage dock offers when a button is short. One
+    // term per branch of the button switch, in the same order: a dormant engine
+    // needs `canActivate`, a moving ship needs `canTurn`, a parked one needs
+    // `canIgnite`. Every branch that can be short must be listed here, or the
+    // disabled button states its price with no way to earn it.
+    final shortOfEnergy =
+        dormant ? !canActivate : (moving ? !canTurn : !canIgnite);
 ```
 
 and `if (shortOfEnergy) ...<Widget>[ … ]`.
@@ -5971,7 +6071,7 @@ rewording, **stop and report** rather than changing behaviour.
 | L6 | `cockpit_hud_test.dart:42` | "only a normalised vector gives the true `asin(3/5) = +37°`" | `asin(3/5)` is 36.87°; the readout rounds it to `+37°` | say `36.87°`, which the readout rounds to `+37°` |
 | L7 | `cockpit_hud_test.dart:76-78` | "the existing `galaxy3d_projection_test.dart` asserts only `\|dx − centre\| > 1`" | **Ambiguous, not false — re-derive before "fixing" this one.** The "only" is scoped to the dx assertion and is *true*: that test's dx assertion is `(p.screen.dx - 400).abs() > 1` (`galaxy3d_projection_test.dart:44`), which states the magnitude and not the sign — the comment's whole point. But "asserts only" reads as if it described that whole test, and it also asserts `visible` and `dy` (`:43`, `:45`). Those are in *that* file, not this one | disambiguate without asserting anything false: "states the magnitude `\|dx − centre\| > 1` but not its sign". Do **not** add `visible`/`dy` to this comment — they are the other file's assertions, and listing them here would create a new false claim |
 | L8 | `camera_aim_test.dart:44` | "the two `const` expressions canonicalise" | there is one `const` expression in that comparison, so there is no second instance to canonicalise with | say what the comparison really is (identity, via `const` canonicalisation of the single instance both sides name) |
-| L9 | `heading_test.dart:93-95` | "Half a degree is the tightest step the EN grid can express here" | false, and the true figure is a band, not a number. `turnCostFor` is `round(200·sin(θ/2))`, so it reads exactly 100 for `θ ∈ [59.673°, 60.165°]` — **0.327° below 60° and 0.165° above it**, so the tightest half-step is **0.165°**, not 0.5°. The assertion's ±0.5° is safe; it is just not the tightest | state the band rather than a superlative: "the 100 EN band here is θ ∈ [59.67°, 60.17°], so ±0.5° leaves it on both sides" — which is what actually justifies the two assertions |
+| L9 | `heading_test.dart:93-95` | "Half a degree is the tightest step the EN grid can express here" | false, and the true figure is a band, not a number. `turnCostFor` is `round(200·sin(θ/2))`, so it reads exactly 100 for `θ ∈ [59.6695°, 60.3311°]` — **0.3305° below 60° and 0.3311° above it**, so the tightest half-step is **0.331°**, not 0.5°. The two sides differ because `sin` is not linear across the band. The assertion's ±0.5° is safe; it is just not the tightest | state the band rather than a superlative: "the 100 EN band here is θ ∈ [59.67°, 60.33°], so ±0.5° leaves it on both sides" — which is what actually justifies the two assertions |
 | L10 | `cruise_test.dart:655` | "still the **nearest** candidate" | `recommendedDestination` prefers hand-authored hero worlds, so the winner need not be nearest (`game_controller.dart:988-991`) | say "the featured candidate", or whatever the assertion actually pins |
 | L11 | `galaxy_map_3d_page.dart:407` | `_aimCockpit`'s doc says the cruising aim is the current heading, "exactly" | `aimCameraAt` ends with `camera.clampPitch()` (`camera3d.dart:268`), which pins the pitch to `±(π/2 − 0.05)` (`:80`), so the aim is the precise inverse only for a heading more than `0.05 rad = 2.865°` from a pole. Unreachable through the cockpit's own ignition path — the drag clamp is the same one, so `driftVelocity` cannot land there — but false as written | keep the "precise inverse" sentence, which is true of the unclamped path, and qualify the "exactly": "up to the pole clamp `aimCameraAt` shares with every other aim" |
 | L12 | `galaxy_map_3d_page.dart:437-439` | `_recenter`'s comment says what the button means "depends on whether the ship is **under way**" | a coasting ship is under way — it has momentum — and `_aimCockpit` gives it the galactic centre, not its heading. The predicate the code actually branches on is `isCruising`, and the very next clause enumerates the two cases correctly, so only the name is wrong | name the predicate instead of a synonym for it: "depends on whether the ship is **cruising**". Do not touch `_aimCockpit`, which is right |
