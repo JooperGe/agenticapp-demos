@@ -250,8 +250,10 @@ void main() {
   ///
   /// `HomeShell` mounts all four pages in an `IndexedStack`, so the voyage tab's
   /// dock is in the tree at the same time as this bar — and while cruising both
-  /// show a button labelled 修正航向. An unscoped `find.text` would match both
-  /// and the test would pass or fail for the wrong reason.
+  /// show a button labelled 修正航向. Default finders skip offstage children, and
+  /// an `IndexedStack` only visits its selected one, so an unscoped `find.text`
+  /// still finds one; the scoping is defensive, so that a later change to the
+  /// finder (or to the shell) cannot quietly start matching the dock's button.
   final cockpit = find.byKey(const Key('cockpit-heading-bar'));
 
   /// Text inside the heading bar only.
@@ -341,9 +343,13 @@ void main() {
     clock.advance(const Duration(seconds: 3000));
     c.tick();
     expect(c.isDormant, isTrue, reason: 'precondition');
-    // Running dry queues a fuel-out report whose modal sheet would cover the
-    // tab bar, so the 座舱 tap would dismiss the sheet instead of entering the
-    // cockpit. Dismiss it here, as the coast test above does.
+    // Running dry queues a fuel-out report. Left queued, the voyage page —
+    // built as an `IndexedStack` child — pushes its modal sheet, whose barrier
+    // covers the tab bar: `_pumpStarMap`'s tap on 星图 lands on the barrier
+    // instead of the nav item (harmless here, the star map is already the
+    // default tab) and Flutter logs a hit-test warning. Dismissing the report
+    // first keeps the test off that tap timing; the coast test above does the
+    // same.
     await c.acknowledgeDriftReport();
 
     await _pumpStarMap(tester, c);

@@ -1089,9 +1089,11 @@ class _HeadingBar extends StatelessWidget {
 
     return SafeArea(
       // Keyed because `HomeShell` mounts all four pages in an `IndexedStack`,
-      // so an unscoped `find.text` in a widget test matches this bar *and* the
-      // voyage tab's dock behind it. The assertions on this bar's own text in
-      // `cruise_ui_test.dart` scope to this key.
+      // so the voyage tab's dock is in the tree behind this bar. Default finders
+      // skip offstage children, and an `IndexedStack` only visits its selected
+      // one, so an unscoped `find.text` in a widget test still finds one; the
+      // key lets the assertions on this bar's own text in `cruise_ui_test.dart`
+      // stay scoped to it even if the finder or the shell changes.
       key: const Key('cockpit-heading-bar'),
       child: Align(
         alignment: Alignment.bottomCenter,
