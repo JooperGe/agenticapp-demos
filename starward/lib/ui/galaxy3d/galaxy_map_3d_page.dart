@@ -278,24 +278,41 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
         .showSnackBar(const SnackBar(content: Text('已制动停下')));
   }
 
-  /// What the cockpit points at: the recommended destination — beyond the
-  /// sensor range if the player has lowered it, which is precisely the case the
-  /// star map could not show — plus the galactic centre as a fixed reference.
+  /// What the cockpit points at: §6's two out-of-range destinations — the
+  /// recommended destination and the active voyage's own destination — plus the
+  /// galactic centre as a fixed reference.
   ///
   /// The recommendation comes from the same 20-ly-stale working set the voyage
   /// dock reads, so the marker's *identity* can lag by up to 20 ly of drift; its
   /// *position* is read fresh from the scene. The marker makes that lag visible,
   /// but it is not a regression — the dock has always read the same set.
+  ///
+  /// Both §6 markers carry direction, name and distance, as the spec's worked
+  /// example (`推荐目的地 · 玄戈四 · 912 ly`) asks. The voyage destination is only
+  /// reachable mid-voyage, and the cockpit is (the 星图 tab's 座舱 chip), so it is
+  /// drawn under the same `planetPositions` existence guard the recommendation
+  /// uses.
   List<HudMarker> _hudMarkers(Galaxy3DScene scene) {
     final out = <HudMarker>[];
     final rec = _c.recommendedDestination;
     if (rec != null && scene.planetPositions.containsKey(rec.id)) {
       out.add(HudMarker(
         world: scene.positionOf(rec.id),
-        label: rec.name,
+        label: '推荐目的地 · ${rec.name} · ${_markerDistance(scene, rec.id)}',
         color: StarColors.gold,
       ));
     }
+    final dest = _c.activeJourney?.destinationPlanetId;
+    if (dest != null && scene.planetPositions.containsKey(dest)) {
+      out.add(HudMarker(
+        world: scene.positionOf(dest),
+        label: '航线目的地 · ${_c.locationLabel(dest)} · '
+            '${_markerDistance(scene, dest)}',
+        color: StarColors.gold,
+      ));
+    }
+    // 银心 is deliberate and outside §6's two sources: a fixed reference the
+    // plan added, not a destination the spec asked for. Left bare on purpose.
     out.add(const HudMarker(
       world: Vec3(0, 0, 0),
       label: '银心',
@@ -303,6 +320,15 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
     ));
     return out;
   }
+
+  /// The distance from the ship to a marker target, formatted for a label.
+  ///
+  /// Both sides are read in *world* units — [Galaxy3DScene] positions are scaled
+  /// by `_worldScale`, and so is the ship's [_shipPos] — so the quotient is the
+  /// true distance in light-years. `playerPosition3D` is already in ly and must
+  /// not be mixed in here.
+  String _markerDistance(Galaxy3DScene scene, String id) => StarLabels.distance(
+      (_shipPos - scene.positionOf(id)).length / _worldScale);
 
   /// Launches to a star system, asking how the voyage should end when the
   /// ship cannot afford the whole trip.

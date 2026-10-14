@@ -11,6 +11,7 @@ import 'package:starward/ui/galaxy3d/cockpit_hud.dart';
 import 'package:starward/ui/game_scope.dart';
 import 'package:starward/ui/shell/home_shell.dart';
 import 'package:starward/ui/training/training_page.dart';
+import 'package:starward/ui/widgets/common.dart';
 
 class FakeClock {
   FakeClock(this._now);
@@ -293,6 +294,54 @@ void main() {
         (hudPainters.single.painter! as CockpitHudPainter).markers;
     expect(markers.map((m) => m.label), contains('银心'),
         reason: 'the galactic centre is the cockpit\'s fixed reference');
+  });
+
+  /// The cockpit's marker layer, read off the one `CockpitHudPainter` on screen.
+  List<String> markerLabels(WidgetTester tester) => (tester
+          .widgetList<CustomPaint>(find.byWidgetPredicate(
+              (w) => w is CustomPaint && w.painter is CockpitHudPainter))
+          .single
+          .painter! as CockpitHudPainter)
+      .markers
+      .map((m) => m.label)
+      .toList();
+
+  testWidgets('the cockpit labels the recommended destination with its distance',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    final rec = c.recommendedDestination;
+    expect(rec, isNotNull, reason: 'precondition: there is a recommendation');
+    // §6 asks each marker for 方向、名字、距离, with the middle dot this codebase
+    // already uses (`星图 · 座舱视角`). The expected distance is derived from the
+    // same inputs the widget reads — the ship's position and the planet's — so
+    // this cannot pass by matching a literal that happens to agree.
+    final expected =
+        '推荐目的地 · ${rec!.name} · ${StarLabels.distance(c.distanceTo(rec))}';
+    expect(markerLabels(tester), contains(expected));
+  });
+
+  testWidgets('the cockpit marks the voyage destination, with its distance',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    final near = c.planets.firstWhere((p) => p.id != c.currentPlanetId);
+    expect(await c.launchJourney(near), LaunchResult.success,
+        reason: 'precondition: the voyage is under way');
+    expect(c.isTraveling, isTrue, reason: 'precondition: still en route');
+
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    // §6's second data source, reachable only mid-voyage — which the cockpit is.
+    // Same derivation as the recommended marker above: the name comes from the
+    // controller's own label, the distance from the ship to the planet.
+    final expected = '航线目的地 · ${c.locationLabel(near.id)} · '
+        '${StarLabels.distance(c.distanceTo(near))}';
+    expect(markerLabels(tester), contains(expected));
   });
 
   testWidgets('ignition asks how the cruise should end', (tester) async {
