@@ -29,10 +29,10 @@ enum LaunchResult {
   noSelection,
   insufficientEnergy,
 
-  /// The tank has energy in it, but the engine shut down when it last ran dry
-  /// and has not been activated since. A separate result from
-  /// [insufficientEnergy] because it is a different problem with a different
-  /// answer: training will not help, only activation will.
+  /// The engine shut down when it last ran dry and has not been activated since.
+  /// A separate result from [insufficientEnergy] because it is a different
+  /// problem with a different answer: training will not help, only activation
+  /// will.
   engineDormant,
 
   alreadyTraveling,
@@ -1023,11 +1023,8 @@ class GameController extends ChangeNotifier {
   ///
   /// The `budget <= 0` branch returns "now", so a cruise with nothing spendable
   /// resolves on the next tick rather than dividing by nothing. It is
-  /// defence-in-depth: ignition is meant to be gated on a spendable budget
-  /// (`energy <= cruiseReserve` → `insufficientEnergy`), and once it is, a
-  /// cruising ship always has budget to spend and the branch is unreachable from
-  /// the public API. Today `igniteCruise` only rejects `energy <= 0`, so a ship
-  /// can still be lit with `0 < energy <= cruiseReserve`.
+  /// defence-in-depth: the primary guard is the ignition gate, which refuses
+  /// `energy <= cruiseReserve` with `insufficientEnergy`.
   ///
   /// Compared on *time*, not on energy: `burnForSeconds` rounds to whole EN, so
   /// testing `burnForSeconds(elapsed) >= budget` fires a tick early — at a

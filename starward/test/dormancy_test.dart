@@ -235,14 +235,24 @@ void main() {
         () async {
       final clock = FakeClock(DateTime(2026));
       final c = await _exhaustedCruise(clock);
-      expect(c.energy, 100, reason: 'precondition: it can afford a short hop');
+      // The tank has to clear the launch gate on its own, or the refusal would
+      // not be attributable to dormancy: a coasting ship's `brakingCost` is the
+      // 100 EN brake, so 100 EN sits exactly on the gate's `available <= braking`
+      // boundary and would be refused on energy. Training 40 EN lifts the tank to
+      // 140, strictly past it.
+      expect(c.isDormant, isTrue, reason: 'precondition: the engine is down');
+      expect(c.isCoasting, isTrue, reason: 'precondition: still drifting');
+      final session = await c.startCourse('walk');
+      await c.completeCourse(session.id, 40);
+      expect(c.energy, 140, reason: 'precondition: the tank is refuelled');
+      expect(c.energy, greaterThan(c.brakingCost));
 
       final near = c.planets.firstWhere((p) => p.id != c.currentPlanetId);
       expect(await c.launchJourney(near, onEmpty: FuelPolicy.halt),
           LaunchResult.engineDormant,
-          reason: 'the tank is not the problem — the engine is');
+          reason: 'the tank clears the gate, so only the engine can refuse');
       expect(c.activeJourney, isNull);
-      expect(c.energy, 100, reason: 'a refusal spends nothing');
+      expect(c.energy, 140, reason: 'a refusal spends nothing');
     });
 
     test('a star launch is refused the same way', () async {
@@ -255,14 +265,24 @@ void main() {
     test('ignition is refused too', () async {
       final clock = FakeClock(DateTime(2026));
       final c = await _exhaustedCruise(clock);
-      // Parked first, so that the dormancy guard is the only one that can
-      // refuse. `igniteCruise` checks dormancy *before* `hasMomentum` (Task 5's
-      // block puts it directly after the zero-heading check), so a still-coasting
-      // ship would answer `engineDormant` as well — but this test is about the
-      // engine, and parking removes motion as an alternative explanation.
+      // Phase 1: still coasting. `igniteCruise` checks dormancy *before*
+      // `hasMomentum`, so a moving dormant ship is answered `engineDormant`; if
+      // the two guards were swapped, `hasMomentum` would answer
+      // `alreadyTraveling` instead, which is what pins the order.
+      expect(c.hasMomentum, isTrue, reason: 'precondition: still drifting');
+      expect(c.isDormant, isTrue, reason: 'precondition: the engine is down');
+      expect(
+        await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt),
+        LaunchResult.engineDormant,
+      );
+
+      // Phase 2: parked, and the brake has spent the whole 100 EN reserve, so
+      // the tank is empty. The dormancy guard sits *before* the energy gate, so
+      // the answer is still `engineDormant` — the energy gate would have said
+      // `insufficientEnergy`.
       await c.stopShip();
       expect(c.hasMomentum, isFalse);
-      expect(c.isDormant, isTrue);
+      expect(c.energy, 0, reason: 'the reserve bought the stop');
       expect(
         await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt),
         LaunchResult.engineDormant,
