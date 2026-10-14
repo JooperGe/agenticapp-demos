@@ -143,7 +143,7 @@ Future<FuelPolicy?> showCruiseFuelChoiceDialog(
               Text(
                 '你只有 $energy EN，其中 $braking EN 是制动储备，'
                 '巡航可用 $budget EN，可以飞 ${reach.toStringAsFixed(1)} ly。'
-                '两条路都在这里耗尽并进入休眠，区别只在耗尽的那一刻。',
+                '两条路都在这里耗尽并进入休眠，区别只在耗尽之后：停下，还是继续滑行。',
                 style: const TextStyle(
                   color: StarColors.muted,
                   fontSize: 13,
@@ -153,10 +153,12 @@ Future<FuelPolicy?> showCruiseFuelChoiceDialog(
               const SizedBox(height: 18),
               _Choice(
                 label: '耗尽后停下',
-                // `$braking`, never a literal: the reserve is
-                // `Engine.brakingCostFor`, so a ship with a different engine
-                // would be quoted a number that is not its own. Every other
-                // number in this sheet interpolates for the same reason.
+                // `$braking`, never a literal: the reserve is the caller's
+                // `GameController.cruiseReserve`, i.e. `brakingCostFor` of the
+                // engine's *cruise speed* — not `brakingCost`, which is priced
+                // off a moving ship's drift speed and is 0 while parked. So a
+                // different engine is quoted its own number. Every other number
+                // in this sheet interpolates for the same reason.
                 detail: '电量耗尽前引擎先制动停下，保留 $braking EN 的制动储备',
                 icon: Icons.anchor_rounded,
                 onTap: () => Navigator.of(sheetContext).pop(FuelPolicy.halt),

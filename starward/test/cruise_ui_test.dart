@@ -306,24 +306,33 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    // §4.2: the choice cannot be deferred — by the time the tank is dry the ship
-    // has no energy to brake with — so `halt` is only available as a decision
-    // made now.
+    // §4.2 asks the question at ignition because the policy is fixed for the
+    // whole cruise from then on — nothing in the UI changes it afterwards — so
+    // this is the only moment it can be chosen. The two answers do not differ in
+    // when the tank empties (both spend the same budget); they differ in what
+    // the ship does after it: stop, or keep drifting.
     expect(find.text('耗尽后停下'), findsOneWidget);
     expect(find.text('耗尽后滑行'), findsOneWidget);
     // §4.2 offers no `refuse` on a cruise: refusing means "I cannot afford this
     // whole trip", and a cruise has no whole trip.
     expect(find.text('放弃航行'), findsNothing);
+    // The sheet quotes the cruise's own reserve, not the parked ship's
+    // `brakingCost` (which is 0). With 300 EN and a 100 EN reserve the budget is
+    // 200 EN, and `reachableLyFor(200)` at 2.5 EN/ly is 80.0 ly.
+    expect(find.textContaining('100 EN 是制动储备'), findsOneWidget);
+    expect(find.textContaining('可以飞 80.0 ly'), findsOneWidget);
     expect(c.isCruising, isFalse, reason: 'nothing happens until a policy is chosen');
 
-    await tester.tap(find.text('耗尽后停下'));
+    await tester.tap(find.text('耗尽后滑行'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(c.isCruising, isTrue);
     expect(c.hasMomentum, isTrue);
-    expect(c.player.cruisePolicy, FuelPolicy.halt,
-        reason: 'the chosen policy is stored, not defaulted');
+    expect(c.player.cruisePolicy, FuelPolicy.coast,
+        reason: 'the chosen policy is stored, not defaulted — `coast` is not '
+            'the default (`halt` is), so this can only pass if ignition '
+            'recorded the choice');
   });
 
   testWidgets('backing out of the ignition dialog does not ignite',

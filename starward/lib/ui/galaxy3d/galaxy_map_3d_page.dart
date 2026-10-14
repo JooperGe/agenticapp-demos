@@ -208,14 +208,18 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
   /// Lights the engine along whatever the reticle is on, after asking what the
   /// cruise should do when the tank runs dry.
   ///
-  /// It asks because the choice cannot be deferred: by the time the tank is dry
-  /// the ship has no energy to brake with, so `halt` is only available as a
-  /// decision made *now*. That is also why the policy is a stored field.
+  /// It asks because the policy is fixed for the whole cruise once ignited —
+  /// nothing in the UI changes it afterwards — so this is the only moment the
+  /// player can choose it. The two answers do not differ in *when* the tank
+  /// empties (both spend the same budget), only in what the ship does next:
+  /// stop, or keep drifting. The reserve is `cruiseReserve`, the energy a cruise
+  /// always holds back to buy its own stop, not `brakingCost`, which is what a
+  /// *moving* ship would spend and is 0 for the parked ship this button serves.
   Future<void> _igniteFromCockpit() async {
     final policy = await showCruiseFuelChoiceDialog(
       context,
       energy: _c.energy,
-      braking: _c.brakingCost,
+      braking: _c.cruiseReserve,
       engine: _c.ship.engine,
     );
     if (policy == null || !mounted) return;
