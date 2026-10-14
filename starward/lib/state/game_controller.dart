@@ -323,6 +323,25 @@ class GameController extends ChangeNotifier {
   double _driftSecondsAt(DateTime at) =>
       at.difference(_player.driftStartedAt).inMilliseconds / 1000;
 
+  /// Re-pins the drift leg to the ship's current position and the current
+  /// instant, optionally replacing the velocity.
+  ///
+  /// `(startX/Y/Z, driftStartedAt, driftVelocity)` are one fact — a line through
+  /// space — and changing any one of them invalidates the other two. This is the
+  /// single place that repairs them together, so no rule can move one without
+  /// the others. The position is read *before* the anchor is overwritten; that
+  /// ordering is the whole trick.
+  void _repinLeg({Vec3? velocity, DateTime? at}) {
+    final pos = playerPosition3D;
+    _player = _player.copyWith(
+      startX: pos.x,
+      startY: pos.y,
+      startZ: pos.z,
+      driftStartedAt: at ?? _now(),
+      driftVelocity: velocity ?? _player.driftVelocity,
+    );
+  }
+
   /// What the current drift has passed so far, for the coasting readout.
   ///
   /// A full catalogue scan — read it once per tick, never per frame.
@@ -957,6 +976,33 @@ class GameController extends ChangeNotifier {
     _anchorHere();
     await _persist();
     notifyListeners();
+  }
+
+  /// Lights the engine with no destination: the ship accelerates to cruise speed
+  /// along [heading] and starts burning the tank every second.
+  ///
+  /// Ignition itself is free — the price of a cruise is the power it draws, and
+  /// charging twice for the same departure would make free cruise a worse deal
+  /// than a voyage to nowhere. [onEmpty] is *required* rather than defaulted
+  /// because a cruise has no arrival to fall back on: what happens when the tank
+  /// runs dry has to be decided before it does, and it is persisted on the
+  /// player because that moment can be hours later, or after a restart.
+  Future<LaunchResult> igniteCruise(
+    Vec3 heading, {
+    required FuelPolicy onEmpty,
+  }) async {
+    final direction = heading.normalized;
+    if (direction.length <= 0) return LaunchResult.noSelection;
+    if (hasMomentum) return LaunchResult.alreadyTraveling;
+    if (isTraveling) return LaunchResult.alreadyTraveling;
+    if (!_player.inDeepSpace) return LaunchResult.alreadyHere;
+    if (_player.energyBalance <= 0) return LaunchResult.insufficientEnergy;
+
+    _repinLeg(velocity: direction * _ship.engine.cruiseSpeedLyPerSec);
+    _player = _player.copyWith(driftPowered: true, cruisePolicy: onEmpty);
+    await _persist();
+    notifyListeners();
+    return LaunchResult.success;
   }
 
   /// Turns the ship around mid-flight: launches a fresh journey from the point

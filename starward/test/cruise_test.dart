@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:starward/core/vec3.dart';
 import 'package:starward/data/game_repository.dart';
 import 'package:starward/data/models/engine.dart';
+import 'package:starward/data/models/journey.dart';
 import 'package:starward/data/storage/storage_backend.dart';
 import 'package:starward/state/game_controller.dart';
 
@@ -45,6 +46,27 @@ Future<void> _setDrift(
   player['driftStartedAt'] = startedAt.millisecondsSinceEpoch;
   player['driftPowered'] = powered;
   await storage.write('starward.save.v2', jsonEncode(json));
+}
+
+/// Rewrites the saved balance, so a test can start from a tank it chooses.
+Future<void> _setEnergy(MemoryStorage storage, int balance) async {
+  final raw = await storage.read('starward.save.v2');
+  final json = jsonDecode(raw!) as Map<String, dynamic>;
+  (json['player'] as Map<String, dynamic>)['energyBalance'] = balance;
+  await storage.write('starward.save.v2', jsonEncode(json));
+}
+
+/// Flies to the nearest planet and arrives, so the ship is docked.
+Future<GameController> _docked(FakeClock clock, MemoryStorage storage) async {
+  final c = await _boot(clock, storage: storage);
+  final near = c.planets.firstWhere((p) => p.id != c.currentPlanetId);
+  expect(await c.launchJourney(near), LaunchResult.success,
+      reason: 'precondition: the nearest planet is affordable from a full tank');
+  clock.advance(const Duration(hours: 12));
+  c.tick();
+  await c.acknowledgeArrival();
+  expect(c.currentPlanetId, near.id, reason: 'precondition: docked');
+  return _boot(clock, storage: storage);
 }
 
 void main() {
@@ -162,6 +184,96 @@ void main() {
       // the same quote to shed it. If this were zero, "cruise out, then launch
       // a voyage" would be a free ferry.
       expect(c.brakingCost, 100);
+    });
+  });
+
+  group('igniteCruise', () {
+    test('lights the engine along the chosen heading and starts the meter',
+        () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      final before = c.playerPosition3D;
+
+      expect(await c.igniteCruise(const Vec3(1, 0, 0),
+          onEmpty: FuelPolicy.coast), LaunchResult.success);
+
+      expect(c.isCruising, isTrue);
+      expect(c.isCoasting, isFalse);
+      expect(c.driftVelocity.length,
+          closeTo(c.ship.engine.cruiseSpeedLyPerSec, 1e-12));
+      // The heading is a direction, not a speed: a caller that passes a long
+      // vector must still get cruise speed, not a multiple of it.
+      expect(c.driftVelocity.y, closeTo(0, 1e-12));
+      expect(c.driftVelocity.z, closeTo(0, 1e-12));
+      expect(c.player.cruisePolicy, FuelPolicy.coast,
+          reason: 'the choice is made at ignition and acted on much later');
+      // The anchor is re-pinned to where the ship already is, so lighting the
+      // engine does not teleport it back to its last anchor.
+      expect((c.playerPosition3D - before).length, lessThan(1e-9));
+      expect(c.driftElapsed, Duration.zero);
+    });
+
+    test('ignition itself is free — the price is the power it draws', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      await c.igniteCruise(const Vec3(0, 0, 1), onEmpty: FuelPolicy.halt);
+      expect(c.energy, 300, reason: 'nothing is charged at t=0');
+      expect(c.energyLedger, isEmpty);
+    });
+
+    test('a normalised heading of any length gives the same cruise', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      await c.igniteCruise(const Vec3(0, 0, 7), onEmpty: FuelPolicy.halt);
+      expect(c.driftVelocity.length,
+          closeTo(c.ship.engine.cruiseSpeedLyPerSec, 1e-12));
+      expect(c.driftVelocity.z, closeTo(c.ship.engine.cruiseSpeedLyPerSec, 1e-12));
+    });
+
+    test('refuses a zero heading', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      expect(await c.igniteCruise(const Vec3(0, 0, 0), onEmpty: FuelPolicy.halt),
+          LaunchResult.noSelection);
+      expect(c.hasMomentum, isFalse);
+    });
+
+    test('refuses to light an engine that is already moving the ship', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+      expect(await c.igniteCruise(const Vec3(0, 0, 1), onEmpty: FuelPolicy.halt),
+          LaunchResult.alreadyTraveling);
+      expect(c.driftVelocity.x, greaterThan(0),
+          reason: 'the original heading is untouched');
+    });
+
+    test('refuses while a voyage is in progress', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      final target = c.planets.firstWhere((p) => p.id != c.currentPlanetId);
+      await c.launchJourney(target);
+      expect(await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt),
+          LaunchResult.alreadyTraveling);
+    });
+
+    test('refuses at a planet — a docked ship is not stranded', () async {
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      final c = await _docked(clock, storage);
+      expect(await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt),
+          LaunchResult.alreadyHere);
+    });
+
+    test('refuses on an empty tank', () async {
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      await _boot(clock, storage: storage);
+      await _setEnergy(storage, 0);
+      final c = await _boot(clock, storage: storage);
+      expect(c.energy, 0, reason: 'precondition: the tank is dry');
+      expect(await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt),
+          LaunchResult.insufficientEnergy);
     });
   });
 }
