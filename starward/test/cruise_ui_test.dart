@@ -409,8 +409,9 @@ void main() {
     // `pitch = asin(0.0)`, so `forward` comes back `(1.0, 0.0, 6.123e-17)` and
     // its dot product with `(1.0, 0.0, 0.0)` is exactly 1.0, giving
     // `acos(1.0) == 0.0`. Matches the plan's own table: `turnCostFor(0°)` = 0.
-    expect(inCockpit('0 EN'), findsOneWidget,
+    expect(inCockpit('0° · 0 EN'), findsOneWidget,
         reason: 'a zero-angle turn is free, by turnCostFor\'s own guard');
+    expect(find.text('偏离 0° · 0 EN'), findsOneWidget);
     expect(c.driftVelocity.x, greaterThan(0), reason: 'precondition');
   });
 
@@ -422,7 +423,7 @@ void main() {
     clock.advance(const Duration(seconds: 1500));
     await _pumpStarMap(tester, c);
     await _enterCockpit(tester);
-    expect(inCockpit('0 EN'), findsOneWidget, reason: 'precondition: on heading');
+    expect(inCockpit('0° · 0 EN'), findsOneWidget, reason: 'precondition: on heading');
 
     // Swing the reticle right round. The cockpit's look factor is
     // `0.006 * (fov / 60)` and the default fov is 60, so a horizontal drag of
@@ -436,7 +437,10 @@ void main() {
     // `headingDeviationDegrees`' own unit test, and the on-heading test above
     // (0°). Task 19 adds a `偏离 N°` readout for the degrees to be matched
     // against by shape; it does not exist yet in Task 17.
-    expect(inCockpit('200 EN'), findsOneWidget,
+    expect(find.textContaining(RegExp(r'偏离 \d+° · 200 EN')), findsOneWidget);
+    expect(
+        find.descendant(of: cockpit, matching: find.textContaining('· 200 EN')),
+        findsOneWidget,
         reason: 'a turn this wide costs more than the 100 EN a stop costs');
     expect(inCockpit('制动停下只需 100 EN'), findsOneWidget,
         reason: 'the cheap option must be offered next to the dear one');
@@ -466,7 +470,7 @@ void main() {
 
     await tester.dragFrom(const Offset(600, 300), const Offset(-120, 0));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(inCockpit('0 EN'), findsNothing, reason: 'the drag moved it off');
+    expect(inCockpit('0° · 0 EN'), findsNothing, reason: 'the drag moved it off');
 
     // Tap the button, not its label. At the 800×600 test viewport the side
     // controls sit at the vertical centre and the heading bar's panel reaches up
@@ -475,7 +479,7 @@ void main() {
     // clear of it, and it is the same `_RoundButton` gesture target.
     await tester.tap(find.byIcon(Icons.my_location_rounded));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(inCockpit('0 EN'), findsOneWidget, reason: 'back on the heading');
+    expect(inCockpit('0° · 0 EN'), findsOneWidget, reason: 'back on the heading');
   });
 
   testWidgets('a dormant engine is offered activation, not ignition',
@@ -505,5 +509,51 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(c.isDormant, isFalse);
     expect(c.energy, 95);
+  });
+
+  testWidgets('the cockpit marks the current heading on the HUD', (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+    clock.advance(const Duration(seconds: 1500));
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    final painter = tester
+        .widgetList<CustomPaint>(find.byWidgetPredicate(
+            (w) => w is CustomPaint && w.painter is CockpitHudPainter))
+        .single
+        .painter! as CockpitHudPainter;
+    expect(painter.heading, isNotNull, reason: 'cruising has a course to mark');
+    expect(painter.heading!.normalized.x, closeTo(1.0, 1e-9),
+        reason: 'driftVelocity is +X');
+  });
+
+  testWidgets('a dormant ship marks no course and quotes no turn price',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.coast);
+    clock.advance(const Duration(seconds: 3000));
+    c.tick();
+    await c.acknowledgeDriftReport();
+    expect(c.isDormant, isTrue, reason: 'precondition');
+    expect(c.hasMomentum, isTrue,
+        reason: 'precondition: a coast keeps its velocity, so this is not '
+            'the parked case');
+
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    final painter = tester
+        .widgetList<CustomPaint>(find.byWidgetPredicate(
+            (w) => w is CustomPaint && w.painter is CockpitHudPainter))
+        .single
+        .painter! as CockpitHudPainter;
+    expect(painter.heading, isNull,
+        reason: 'the bar offers only 激活引擎, so there is no turn to mark');
+    expect(find.textContaining('偏离'), findsNothing,
+        reason: 'nor a turn to price');
+    expect(inCockpit('激活引擎'), findsOneWidget, reason: 'and the bar says so');
   });
 }

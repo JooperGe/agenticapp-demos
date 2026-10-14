@@ -542,6 +542,22 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
       body: AnimatedBuilder(
         animation: _c,
         builder: (context, _) {
+          // The bar's own condition for offering 修正航向: `_HeadingBar` falls through
+          // to that button only when the ship is moving and not dormant
+          // (`galaxy_map_3d_page.dart:1252-1272`). It is deliberately **not**
+          // `isCruising`: a coasting ship is `hasMomentum && !driftPowered`, so it
+          // takes that same `else` branch and is offered a real, priced turn —
+          // `correctHeading` re-lights the engine as it burns — which means the
+          // triangle and the readout have to be there for it too. A *dormant* ship is
+          // the one case that must not show them: its bar offers only 激活引擎, and a
+          // turn price beside that button would offer something it cannot do.
+          //
+          // Declared here rather than at the top of `build`: this builder is what
+          // re-runs on every controller notification, so a `hasCourse` captured
+          // outside it would go stale the moment the burn runs dry on screen —
+          // the bar would rebuild to 激活引擎 while the readout and triangle
+          // stayed up, which is the disagreement this value exists to prevent.
+          final hasCourse = _c.hasMomentum && !_c.isDormant;
           if (!_initedCamera) _initCamera();
           final scene = _buildScene();
           _scene = scene;
@@ -592,8 +608,17 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
                   // Cockpit framing — a through-the-viewport feel in first
                   // person. Non-interactive so gestures pass through.
                   if (_camera.mode == CameraMode.cockpit) ...<Widget>[
-                    const Positioned.fill(
-                      child: IgnorePointer(child: _CockpitOverlay()),
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: _CockpitOverlay(
+                          deviationDegrees: headingDeviationDegrees(
+                            current: _c.driftVelocity,
+                            proposed: _camera.forward,
+                          ),
+                          turnCost: _c.turnCostTo(_camera.forward),
+                          hasCourse: hasCourse,
+                        ),
+                      ),
                     ),
                     Positioned.fill(
                       child: IgnorePointer(
@@ -602,6 +627,8 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
                           painter: CockpitHudPainter(
                             camera: _camera,
                             markers: _hudMarkers(scene),
+                            heading: hasCourse ? _c.driftVelocity : null,
+                            headingColor: StarColors.gold,
                           ),
                         ),
                       ),
@@ -874,11 +901,42 @@ class _BottomControls extends StatelessWidget {
 /// frame with corner struts, and a faint central reticle — so looking around in
 /// cockpit mode feels like peering out of the ship's canopy.
 class _CockpitOverlay extends StatelessWidget {
-  const _CockpitOverlay();
+  const _CockpitOverlay({
+    required this.deviationDegrees,
+    required this.turnCost,
+    required this.hasCourse,
+  });
+
+  /// The angle between the ship's course and the reticle, and what the turn
+  /// would cost — the two numbers §5.3 calls the only ones the player needs.
+  final int deviationDegrees;
+  final int turnCost;
+
+  /// False when the bar is not offering a turn, in which case there is no
+  /// readout: quoting a turn price beside a 激活引擎 button would offer
+  /// something that button cannot do.
+  final bool hasCourse;
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(size: Size.infinite, painter: _CockpitPainter());
+    return Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        CustomPaint(size: Size.infinite, painter: _CockpitPainter()),
+        if (hasCourse)
+          Align(
+            alignment: const Alignment(0, 0.18),
+            child: Text(
+              '偏离 $deviationDegrees° · $turnCost EN',
+              style: const TextStyle(
+                color: StarColors.gold,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }
 
@@ -1144,6 +1202,10 @@ class _HeadingBar extends StatelessWidget {
     final dormant = controller.isDormant;
     final moving = controller.hasMomentum;
     final turnCost = controller.turnCostTo(heading);
+    final deviation = headingDeviationDegrees(
+      current: controller.driftVelocity,
+      proposed: heading,
+    );
     final braking = controller.brakingCost;
     // A turn past 60° costs more than stopping and re-lighting the engine, and
     // that is the real Δv, not a pricing mistake — but a player who does not
@@ -1204,7 +1266,7 @@ class _HeadingBar extends StatelessWidget {
                 else
                   _HudButton(
                     label: '修正航向',
-                    detail: '$turnCost EN',
+                    detail: '$deviation° · $turnCost EN',
                     icon: Icons.alt_route_rounded,
                     onPressed: onCorrect,
                   ),

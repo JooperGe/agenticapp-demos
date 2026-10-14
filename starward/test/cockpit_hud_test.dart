@@ -165,4 +165,85 @@ void main() {
       0,
     );
   });
+
+  group('clampHudPoint', () {
+    test('leaves a point inside the safe area alone', () {
+      final r = clampHudPoint(const Offset(200, 400), _vp);
+      expect(r.at, const Offset(200, 400));
+      expect(r.offScreen, isFalse);
+    });
+
+    test('pins each edge at the frame and bottom-panel margin', () {
+      // 26 clear of the sides, 74 below the top strut, 132 above the bottom.
+      expect(clampHudPoint(const Offset(-40, 400), _vp).at, const Offset(26, 400));
+      expect(clampHudPoint(const Offset(900, 400), _vp).at, const Offset(374, 400));
+      expect(clampHudPoint(const Offset(200, -10), _vp).at, const Offset(200, 74));
+      expect(clampHudPoint(const Offset(200, 900), _vp).at, const Offset(200, 668));
+    });
+
+    test('reports whether it had to move', () {
+      expect(clampHudPoint(const Offset(-40, 400), _vp).offScreen, isTrue);
+      expect(clampHudPoint(const Offset(26, 400), _vp).offScreen, isFalse);
+    });
+  });
+
+  group('headingMarkerPoint', () {
+    test('sits on the reticle when the course is the aim', () {
+      final at = headingMarkerPoint(
+        camera: _lookingForward(),
+        heading: const Vec3(0, 0, 1),
+        viewport: _vp,
+      )!;
+      expect(at.dx, moreOrLessEquals(200, epsilon: 0.5));
+      expect(at.dy, moreOrLessEquals(400, epsilon: 0.5));
+    });
+
+    test('pins to the side edge for a course abeam', () {
+      // The whole reason for the forward nudge. The raw point at exactly 90° has
+      // `camZ == 0` and is culled — and so is every course out to dead astern,
+      // because the cull is at `camZ <= 1.0` and the raw `camZ` is only
+      // `400·cos θ`. The nudge moves that boundary out to 104.33°, so a course
+      // abeam gets a real screen position instead of the bottom-edge fallback.
+      //
+      // It lands on the **left** edge, not the right. `Camera3D.project` builds
+      // `right = forward × up`, which for a forward of +Z is −X — so world −X is
+      // screen-right, and a +X course lands left of centre. The existing
+      // 'puts a point off to the right of centre' test pins that convention for
+      // the same reason: it is not the one you would guess.
+      final at = headingMarkerPoint(
+        camera: _lookingForward(),
+        heading: const Vec3(1, 0, 0),
+        viewport: _vp,
+      )!;
+      expect(at, const Offset(26, 400));
+    });
+
+    test('pins to the top edge for a course straight up', () {
+      final at = headingMarkerPoint(
+        camera: _lookingForward(),
+        heading: const Vec3(0, 1, 0),
+        viewport: _vp,
+      )!;
+      expect(at, const Offset(200, 74));
+    });
+
+    test('pins to the bottom edge for a course dead astern', () {
+      final at = headingMarkerPoint(
+        camera: _lookingForward(),
+        heading: const Vec3(0, 0, -1),
+        viewport: _vp,
+      )!;
+      expect(at, const Offset(200, 668));
+    });
+
+    test('has no position without a course', () {
+      expect(
+        headingMarkerPoint(
+            camera: _lookingForward(),
+            heading: const Vec3(0, 0, 0),
+            viewport: _vp),
+        isNull,
+      );
+    });
+  });
 }

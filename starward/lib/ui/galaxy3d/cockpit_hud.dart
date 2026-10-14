@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
+import '../../core/theme.dart';
 import 'camera3d.dart';
 
 /// The heading as a compass-style readout: a bearing in the galactic plane and
@@ -73,6 +74,68 @@ Offset? hudMarkerPoint({
   return p.visible ? p.screen : null;
 }
 
+/// How far the marker's world point sits ahead of the eye. Only the direction
+/// matters for where it lands — the screen offset is `focal · tan(angle)`,
+/// independent of distance — but the point has to be beyond the near plane.
+const double _headingMarkerDistance = 400;
+
+/// Nudges the marked direction toward the aim so a course exactly abeam still
+/// has a forward component to project.
+///
+/// `Camera3D.project` culls at `camZ <= 1.0`, and at [_headingMarkerDistance] the
+/// raw `camZ` is only `400·cos θ` — so without the nudge every course from
+/// `acos(1/400) = 89.86°` off the aim out to dead astern is culled, which is the
+/// whole rear hemisphere and not a sliver around abeam. The nudge moves that
+/// boundary out to 104.33°, and that ~14.5° is what it buys.
+const double _headingMarkerForwardNudge = 0.25;
+
+/// Where a HUD point lands once it is kept clear of the cockpit frame and the
+/// bottom control panel, plus whether it had to move.
+///
+/// The clamp is the point: [hudMarkerPoint] returns null only at or behind the
+/// near plane, so a point in front of the camera but outside the field of view
+/// projects to coordinates outside the canvas, where drawing is invisible. A
+/// clamped point still answers "which way", which is the question the player is
+/// asking.
+///
+/// Shared by every HUD layer so the two painters cannot disagree about the safe
+/// area. `_CockpitPainter` insets its window by 14 on the sides and a further
+/// 48 / 40 at the top and bottom; the bottom margin also has to clear
+/// `_BottomControls`, the panel pinned to the bottom of the screen.
+({Offset at, bool offScreen}) clampHudPoint(Offset at, Size2 size) {
+  final clamped = Offset(
+    at.dx.clamp(26.0, size.width - 26.0),
+    at.dy.clamp(74.0, size.height - 132.0),
+  );
+  return (at: clamped, offScreen: clamped != at);
+}
+
+/// Where the current-heading triangle sits, or null when there is no course to
+/// mark.
+///
+/// A heading still culled after the nudge — anything past 104.33° off the aim, a
+/// 75.7° band around dead astern — is pinned to the bottom edge, the conventional
+/// "behind you" position. The readout beside it carries the exact angle, so
+/// nothing is lost that the player needs.
+Offset? headingMarkerPoint({
+  required Camera3D camera,
+  required Vec3 heading,
+  required Size2 viewport,
+}) {
+  final h = heading.normalized;
+  if (h.length <= 0) return null;
+  final nudged = (h + camera.forward * _headingMarkerForwardNudge).normalized;
+  final at = hudMarkerPoint(
+    camera: camera,
+    world: camera.eye + nudged * _headingMarkerDistance,
+    viewport: viewport,
+  );
+  if (at == null) {
+    return clampHudPoint(Offset(viewport.width / 2, viewport.height), viewport).at;
+  }
+  return clampHudPoint(at, viewport).at;
+}
+
 /// One thing worth pointing at from the cockpit.
 class HudMarker {
   const HudMarker({
@@ -96,10 +159,21 @@ class HudMarker {
 /// feature exists to fix. A clamped marker still answers "which way", which is
 /// the question the player is asking.
 class CockpitHudPainter extends CustomPainter {
-  const CockpitHudPainter({required this.camera, required this.markers});
+  const CockpitHudPainter({
+    required this.camera,
+    required this.markers,
+    this.heading,
+    this.headingColor = StarColors.cyan,
+  });
 
   final Camera3D camera;
   final List<HudMarker> markers;
+
+  /// The ship's current course, marked with a filled triangle. Null when the
+  /// bar is not offering a turn — parked, or dormant — which is the same
+  /// condition the bar's own button uses.
+  final Vec3? heading;
+  final Color headingColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -111,11 +185,8 @@ class CockpitHudPainter extends CustomPainter {
       // Keep clear of the cockpit frame — `_CockpitPainter` insets its window
       // by 14 on the sides and by a further 48 / 40 at the top and bottom — and
       // of `_BottomControls`, the panel pinned to the bottom of the screen.
-      final clamped = Offset(
-        at.dx.clamp(26.0, size.width - 26.0),
-        at.dy.clamp(74.0, size.height - 132.0),
-      );
-      final offScreen = clamped != at;
+      final c = clampHudPoint(at, vp);
+      final offScreen = c.offScreen;
 
       final paint = Paint()
         ..style = PaintingStyle.stroke
@@ -125,13 +196,13 @@ class CockpitHudPainter extends CustomPainter {
       if (offScreen) {
         // A chevron pointing the way, so an off-screen marker reads as a
         // direction rather than as a target sitting at the edge.
-        final dir = at - clamped;
+        final dir = at - c.at;
         final len = dir.distance;
         if (len > 1e-6) {
           final u = dir / len;
-          final tip = clamped + u * 11;
-          final left = clamped + Offset(-u.dy, u.dx) * 7;
-          final right = clamped + Offset(u.dy, -u.dx) * 7;
+          final tip = c.at + u * 11;
+          final left = c.at + Offset(-u.dy, u.dx) * 7;
+          final right = c.at + Offset(u.dy, -u.dx) * 7;
           canvas.drawPath(
             Path()
               ..moveTo(tip.dx, tip.dy)
@@ -142,8 +213,8 @@ class CockpitHudPainter extends CustomPainter {
           );
         }
       } else {
-        canvas.drawCircle(clamped, 9, paint);
-        canvas.drawCircle(clamped, 2, Paint()..color = m.color);
+        canvas.drawCircle(c.at, 9, paint);
+        canvas.drawCircle(c.at, 2, Paint()..color = m.color);
       }
 
       final text = TextPainter(
@@ -160,10 +231,30 @@ class CockpitHudPainter extends CustomPainter {
       // The label sits to the right of the marker, but a marker clamped at the
       // right edge would run its label past `size.width`, where it is clipped
       // away; flip it to the left of the marker when it would overflow.
-      final labelX = clamped.dx + 14 + text.width > size.width
-          ? clamped.dx - 14 - text.width
-          : clamped.dx + 14;
-      text.paint(canvas, Offset(labelX, clamped.dy - 6));
+      final labelX = c.at.dx + 14 + text.width > size.width
+          ? c.at.dx - 14 - text.width
+          : c.at.dx + 14;
+      text.paint(canvas, Offset(labelX, c.at.dy - 6));
+    }
+
+    final h = heading?.normalized;
+    if (h != null && h.length > 0) {
+      final at = headingMarkerPoint(camera: camera, heading: h, viewport: vp);
+      if (at != null) {
+        final offScreen = clampHudPoint(at, vp).offScreen;
+        final paint = Paint()
+          ..color = headingColor.withValues(alpha: offScreen ? 0.45 : 0.9);
+        // A filled triangle, deliberately unlike the ring markers: the current
+        // course must never read as a destination.
+        canvas.drawPath(
+          Path()
+            ..moveTo(at.dx, at.dy - 9)
+            ..lineTo(at.dx - 7.5, at.dy + 5.5)
+            ..lineTo(at.dx + 7.5, at.dy + 5.5)
+            ..close(),
+          paint,
+        );
+      }
     }
   }
 
