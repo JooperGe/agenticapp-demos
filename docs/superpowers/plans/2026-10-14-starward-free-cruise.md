@@ -3458,7 +3458,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 - Test: `starward/test/cockpit_hud_test.dart` (create)
 
 **Interfaces:**
-- Consumes: `Camera3D.project`, `Camera3D.eye`, `Projected.visible`, `focalFor`, `Size2`, `Vec3`, `StarColors`.
+- Consumes: `Camera3D.project`, `Camera3D.eye`, `Projected.visible`, `focalFor`, `Size2`, `Vec3`.
 - Produces: `({String bearing, String elevation}) headingLabel(Vec3)`; `Offset? hudMarkerPoint({required Camera3D camera, required Vec3 world, required Size2 viewport})`; `class HudMarker`; `class CockpitHudPainter`.
 
 - [ ] **Step 1: Write the failing test**
@@ -3593,7 +3593,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
-import '../../core/theme.dart';
 import '../../core/vec3.dart';
 import 'camera3d.dart';
 
