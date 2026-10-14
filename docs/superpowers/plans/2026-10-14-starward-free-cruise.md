@@ -665,7 +665,7 @@ Future<void> _setDrift(
   player['driftVelocityX'] = velocity.x;
   player['driftVelocityY'] = velocity.y;
   player['driftVelocityZ'] = velocity.z;
-  player['driftStartedAt'] = startedAt.toIso8601String();
+  player['driftStartedAt'] = startedAt.millisecondsSinceEpoch;
   player['driftPowered'] = powered;
   await storage.write('starward.save.v2', jsonEncode(json));
 }
@@ -756,7 +756,7 @@ In `starward/lib/state/game_controller.dart`, replace the block from `/// Whethe
 
   /// What it costs to bring the ship out of its current motion, in EN.
   ///
-  /// Zero for a ship at rest — docked, parked in deep space, or under power.
+  /// Zero for a ship at rest — docked, parked in deep space, or on a voyage.
   /// Only a ship with momentum has any to shed.
   int get brakingCost => hasMomentum
       ? _ship.engine.brakingCostFor(_player.driftVelocity.length)
