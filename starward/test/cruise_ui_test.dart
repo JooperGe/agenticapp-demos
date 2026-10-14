@@ -709,4 +709,80 @@ void main() {
     expect(c.isCruising, isFalse);
     expect(c.energy, 95, reason: 'nothing was spent');
   });
+
+  testWidgets('a dormant parked ship gets an activation panel on the voyage tab',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.coast);
+    clock.advance(const Duration(seconds: 3000));
+    c.tick();
+    // Braking is not blocked by dormancy (§4.3), so this reaches a parked,
+    // dormant, empty ship on the voyage tab's standby dock.
+    await c.stopShip();
+    await c.acknowledgeDriftReport();
+    expect(c.isDormant, isTrue, reason: 'precondition');
+    expect(c.hasMomentum, isFalse, reason: 'precondition: parked');
+    expect(c.energy, 0, reason: '300 − 200 burned − 100 braked');
+
+    await _pumpVoyage(tester, c);
+
+    expect(find.text('引擎休眠中 · 生命维持与照明已停止'), findsOneWidget);
+    // Short of the fee, so the panel quotes the shortfall rather than the price
+    // — `canActivate` is `energy >= cost`, and `0 >= 5` is false.
+    expect(find.text('需要 5 EN（现有 0 EN）'), findsOneWidget);
+    expect(find.text('激活引擎'), findsOneWidget);
+    // …and the button is off, with the escape hatch offered in its place.
+    //
+    // `onTap` is read off the `InkWell` rather than inferred from a tap: a live
+    // button wired straight to `onActivate` also leaves `isDormant` true here,
+    // because `activate()` refuses on its own (`0 < 5`), so tapping cannot tell
+    // the two apart. `_ActionButton` renders `onTap: onPressed`
+    // (`journey_page.dart:1270`), null exactly when disabled — the same read
+    // `braking_test.dart:493` uses for the unaffordable brake.
+    final activate = tester.widget<InkWell>(find.ancestor(
+      of: find.text('激活引擎'),
+      matching: find.byType(InkWell),
+    ));
+    expect(activate.onTap, isNull, reason: 'the fee is unaffordable');
+    expect(find.text('前往训练补充能量'), findsOneWidget);
+  });
+
+  testWidgets('activating from the voyage panel wakes the engine',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.coast);
+    clock.advance(const Duration(seconds: 3000));
+    c.tick();
+    await c.acknowledgeDriftReport();
+    expect(c.isDormant, isTrue, reason: 'precondition');
+    expect(c.hasMomentum, isTrue, reason: 'still coasting, so 100 EN is left');
+
+    await _pumpVoyage(tester, c);
+    expect(find.text('激活引擎'), findsOneWidget);
+    // Affordable, so the panel quotes the price and offers no escape hatch.
+    // This is the other half of the branch test 1 pins: `100 >= 5` is true.
+    expect(find.text('需要 5 EN 激活'), findsOneWidget);
+    // Two separate guards keep this string off the screen, and only the first is
+    // this task's. `_CoastDock` renders here (the ship is coasting, not parked)
+    // and has its own 前往训练补充能量 button — but that one is gated on
+    // `!canBrake`, and a coasting ship's unburned balance is exactly the 100 EN
+    // reserve, so `canBrake` is `100 >= 100` and its button is hidden too.
+    expect(find.text('前往训练补充能量'), findsNothing,
+        reason: 'the ship can afford the fee, so nothing is short');
+
+    // The panel is mounted below the coast dock's readouts and buttons, so on
+    // the 800×600 test surface its button sits just past the bottom edge — the
+    // brief's `below its existing content` places it there on purpose. Scroll it
+    // into view before tapping, the same way `details_launch_test.dart:46`
+    // reaches its own below-the-fold button.
+    await tester.ensureVisible(find.text('激活引擎'));
+    await tester.pump();
+    await tester.tap(find.text('激活引擎'));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(c.isDormant, isFalse);
+    expect(c.energy, 95, reason: '100 − activationCost');
+  });
 }

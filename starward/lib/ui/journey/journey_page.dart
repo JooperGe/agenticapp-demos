@@ -375,11 +375,13 @@ class _JourneyPageState extends State<JourneyPage>
                     onBrake: () => _brakeCoast(c),
                     onChangeCourse: () => _brakeAndChangeCourse(c),
                     onSteer: () => _steerFromCockpit(c),
+                    onActivate: () => c.activate(),
                   )
                 else if (drifting)
                   _DriftDock(
                     controller: c,
                     onIgnite: () => _steerFromCockpit(c),
+                    onActivate: () => c.activate(),
                   )
                 else
                   _CurrentDock(planet: current),
@@ -672,10 +674,15 @@ class _CurrentDock extends StatelessWidget {
 /// Shown in the standby state when the player is still drifting in deep space
 /// (before the first arrival): the ship's randomised galactic coordinates.
 class _DriftDock extends StatelessWidget {
-  const _DriftDock({required this.controller, required this.onIgnite});
+  const _DriftDock({
+    required this.controller,
+    required this.onIgnite,
+    required this.onActivate,
+  });
 
   final GameController controller;
   final VoidCallback onIgnite;
+  final VoidCallback onActivate;
 
   @override
   Widget build(BuildContext context) {
@@ -732,6 +739,68 @@ class _DriftDock extends StatelessWidget {
             '方向在星图 · 座舱模式中用准星选定。',
             style: TextStyle(color: StarColors.faint, fontSize: 11, height: 1.5),
           ),
+          if (controller.isDormant) ...<Widget>[
+            const SizedBox(height: 14),
+            _EnginePanel(controller: controller, onActivate: onActivate),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The dormant engine's panel: what happened, what it costs to undo, and the
+/// button that does it.
+///
+/// Shared by both standby docks — `_DriftDock` (parked) and `_CoastDock`
+/// (drifting) can both be dormant, and §9.3 asks for one component rather than
+/// the same activation entry written twice.
+///
+/// The gate is `energy >= activationCost`, matching `activate()`'s own guard
+/// (`game_controller.dart:1218` is `if (_player.energyBalance < cost)`), so the
+/// panel is never short of a fee the controller would have accepted.
+class _EnginePanel extends StatelessWidget {
+  const _EnginePanel({required this.controller, required this.onActivate});
+
+  final GameController controller;
+  final VoidCallback onActivate;
+
+  @override
+  Widget build(BuildContext context) {
+    final cost = controller.ship.engine.activationCost;
+    final energy = controller.energy;
+    final canActivate = energy >= cost;
+    return StarPanel(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          const Text('引擎休眠中 · 生命维持与照明已停止',
+              style: TextStyle(
+                  color: StarColors.offWhite,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text(canActivate ? '需要 $cost EN 激活' : '需要 $cost EN（现有 $energy EN）',
+              style: const TextStyle(color: StarColors.faint, fontSize: 11)),
+          const SizedBox(height: 12),
+          _ActionButton(
+            label: '激活引擎',
+            icon: Icons.power_settings_new_rounded,
+            onPressed: canActivate ? onActivate : null,
+          ),
+          if (!canActivate) ...<Widget>[
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => ShellScope.go(context, 3),
+              behavior: HitTestBehavior.opaque,
+              child: const Text('前往训练补充能量',
+                  style: TextStyle(
+                      color: StarColors.cyan,
+                      fontSize: 11,
+                      decoration: TextDecoration.underline)),
+            ),
+          ],
         ],
       ),
     );
@@ -749,6 +818,7 @@ class _CoastDock extends StatelessWidget {
     required this.onBrake,
     required this.onChangeCourse,
     required this.onSteer,
+    required this.onActivate,
   });
 
   final GameController controller;
@@ -761,6 +831,7 @@ class _CoastDock extends StatelessWidget {
   final VoidCallback onBrake;
   final VoidCallback onChangeCourse;
   final VoidCallback onSteer;
+  final VoidCallback onActivate;
 
   @override
   Widget build(BuildContext context) {
@@ -878,6 +949,10 @@ class _CoastDock extends StatelessWidget {
               filled: false,
               onPressed: () => ShellScope.go(context, 3),
             ),
+          ],
+          if (controller.isDormant) ...<Widget>[
+            const SizedBox(height: 14),
+            _EnginePanel(controller: controller, onActivate: onActivate),
           ],
         ],
       ),
