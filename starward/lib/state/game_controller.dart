@@ -1179,11 +1179,14 @@ class GameController extends ChangeNotifier {
 
   /// Shuts the engine down when a settlement has left the tank empty.
   ///
-  /// Called at the end of every settlement that moves energy, so no rule can
-  /// spend the last drop without the shutdown following. Two settlements can
-  /// return before reaching the sync — `_settleBurn` when `burned <= 0`, and
-  /// `_settleCruise` when the ship is not cruising — which is harmless: a
-  /// settlement that moves no energy cannot create a new dormancy.
+  /// Called at the end of every settlement that moves energy, so no settlement
+  /// can leave the tank at zero with the engine still running. A rule that
+  /// spends *outside* a settlement is responsible for calling this itself:
+  /// [correctHeading] does, and [activate] deliberately does not.
+  /// Two settlements can return before reaching the sync — `_settleBurn` when
+  /// `burned <= 0`, and `_settleCruise` when the ship is not cruising — which
+  /// is harmless: a settlement that moves no energy cannot create a new
+  /// dormancy.
   /// Deliberately *not* called from `_addEnergy`: training refills the tank but
   /// does not restart the engine — that is what [activate] is for, and it is
   /// the difference between a setback and a free recovery.
@@ -1317,6 +1320,76 @@ class GameController extends ChangeNotifier {
     await _persist();
     notifyListeners();
     return LaunchResult.success;
+  }
+
+  /// The angle between the ship's current course and [heading], in radians.
+  ///
+  /// Zero when the ship is not moving: a parked ship has no course to be off,
+  /// which is what makes `turnCostTo` read 0 rather than quoting a turn that
+  /// would in fact be an ignition.
+  double turnAngleTo(Vec3 heading) {
+    if (!hasMomentum) return 0;
+    final to = heading.normalized;
+    if (to.length <= 0) return 0;
+    final from = _player.driftVelocity.normalized;
+    return math.acos(from.dot(to).clamp(-1.0, 1.0));
+  }
+
+  /// What it would cost to swing the ship onto [heading] without stopping.
+  int turnCostTo(Vec3 heading) =>
+      _ship.engine.turnCostFor(turnAngleTo(heading));
+
+  /// Swings the ship onto [heading] without stopping, for a fee priced by the
+  /// angle turned. Returns false when the manoeuvre is not available: no course
+  /// to correct, a dormant engine, or a tank that cannot cover the fee.
+  ///
+  /// The fee is charged *after* the burn is settled, and the guard reads the
+  /// live [energy] — which already has the burn subtracted. Checking against
+  /// `_player.energyBalance` instead would quote the player a budget they spent
+  /// an hour ago.
+  Future<bool> correctHeading(Vec3 heading) async {
+    if (!hasMomentum) return false;
+    if (isDormant) return false;
+    final direction = heading.normalized;
+    if (direction.length <= 0) return false;
+
+    final cost = _ship.engine.turnCostFor(turnAngleTo(direction));
+    if (energy < cost) return false;
+
+    _settleCruise();
+    _player = _player.copyWith(
+      energyBalance: _player.energyBalance - cost,
+      // Same speed, new direction — a turn is a rotation of the velocity, not a
+      // re-launch. The engine is now running, so the burn resumes.
+      driftVelocity: direction * _player.driftVelocity.length,
+      driftPowered: true,
+    );
+    if (cost > 0) {
+      _energyLedger.add(EnergyTransaction(
+        id: _newId('en'),
+        type: EnergyTxType.turn,
+        amount: -cost,
+        createdAt: _now(),
+      ));
+    }
+    // Required even though `_settleCruise` just re-pinned: it returns early
+    // when the ship is *coasting*, leaving the anchor at the original ignition.
+    // Rotating the velocity under a stale anchor would teleport the ship to
+    // where it would be if it had always flown the new heading.
+    _repinLeg(at: _now());
+    // A turn is a rule that spends, and it can spend the last drop — the guard
+    // above only checks `energy < cost`, so `energy == cost` goes through and
+    // leaves the tank at zero. `_syncDormancy`'s contract is that no *settlement*
+    // can leave the tank at zero with the engine still running, and
+    // `_settleCruise` cannot honour it here: it ran *before* the deduction, when
+    // the tank still held the fee. Without this call the ship reads as cruising
+    // on an empty tank until the next `tick()` happens to resolve it. `activate`
+    // is the one rule allowed to skip this: it wakes the engine on the last 5 EN
+    // on purpose, and re-dormanting the player would take their decision back.
+    _syncDormancy();
+    await _persist();
+    notifyListeners();
+    return true;
   }
 
   /// Turns the ship around mid-flight: launches a fresh journey from the point
