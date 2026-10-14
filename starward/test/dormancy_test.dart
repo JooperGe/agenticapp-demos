@@ -103,7 +103,7 @@ void main() {
 
     test('a voyage resolving against an already-empty tank still shuts down',
         () async {
-      // The input has to be hand-built: `_setEnergy(storage, 0)` edits a dry
+      // The input is hand-built: `_setEnergy(storage, 0)` edits a dry
       // tank into the save while a voyage is under way, so that the reload's
       // `_settleTank` sees `drained == 0` and takes the branch that only syncs
       // dormancy. Resolution is left to `init()` rather than a `tick()` because
@@ -227,6 +227,96 @@ void main() {
       final reloaded = await _boot(clock, storage: storage);
       expect(reloaded.isDormant, isFalse);
       expect(reloaded.energy, 95);
+    });
+  });
+
+  group('a dormant engine cannot burn', () {
+    test('a voyage is refused with its own result, not "not enough energy"',
+        () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _exhaustedCruise(clock);
+      expect(c.energy, 100, reason: 'precondition: it can afford a short hop');
+
+      final near = c.planets.firstWhere((p) => p.id != c.currentPlanetId);
+      expect(await c.launchJourney(near, onEmpty: FuelPolicy.halt),
+          LaunchResult.engineDormant,
+          reason: 'the tank is not the problem — the engine is');
+      expect(c.activeJourney, isNull);
+      expect(c.energy, 100, reason: 'a refusal spends nothing');
+    });
+
+    test('a star launch is refused the same way', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _exhaustedCruise(clock);
+      expect(await c.launchToStar(c.stars.starId[0], onEmpty: FuelPolicy.halt),
+          LaunchResult.engineDormant);
+    });
+
+    test('ignition is refused too', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _exhaustedCruise(clock);
+      // Parked first, so that the dormancy guard is the only one that can
+      // refuse. `igniteCruise` checks dormancy *before* `hasMomentum` (Task 5's
+      // block puts it directly after the zero-heading check), so a still-coasting
+      // ship would answer `engineDormant` as well — but this test is about the
+      // engine, and parking removes motion as an alternative explanation.
+      await c.stopShip();
+      expect(c.hasMomentum, isFalse);
+      expect(c.isDormant, isTrue);
+      expect(
+        await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt),
+        LaunchResult.engineDormant,
+      );
+    });
+
+    test('activation clears the block', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _exhaustedCruise(clock);
+      await c.stopShip();
+      // Braking spends the *entire* reserve — `cruiseReserve` is defined as
+      // `brakingCostFor(cruiseSpeed)`, which is the same 100 EN the brake
+      // quotes — so the tank is empty at this point and `activate()` cannot
+      // afford its own 5 EN fee. Training is the cheapest way back to a tank
+      // that can, and it doubles as proof that refuelling does not wake the
+      // engine on its own.
+      expect(c.energy, 0, reason: 'the reserve bought the stop');
+      final session = await c.startCourse('walk');
+      await c.completeCourse(session.id, 40);
+      expect(c.energy, 40);
+      expect(c.isDormant, isTrue, reason: 'training does not restart it');
+      expect(await c.activate(), isTrue);
+      expect(c.energy, 35);
+      // Awake is not the same as ready to fly. 35 EN is less than the 100 EN
+      // reserve, so a cruise would have no seconds of burn to buy — and would
+      // exhaust on its first tick, handing the player a fuel-out report for a
+      // leg of 0 ly. The refusal is about energy, not about dormancy, which the
+      // activation above already cleared.
+      expect(
+        await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt),
+        LaunchResult.insufficientEnergy,
+      );
+      // One more course clears the reserve, and the block really is gone.
+      final second = await c.startCourse('walk');
+      await c.completeCourse(second.id, 80);
+      expect(c.energy, 115);
+      expect(
+        await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt),
+        LaunchResult.success,
+      );
+    });
+
+    test('the launch gate is checked after dormancy, so the message is right',
+        () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _exhaustedCruise(clock);
+      // Both conditions hold — dormant *and* unable to afford a long hop. The
+      // player needs to be told the one they can act on cheaply.
+      final far = c.planets
+          .where((p) => p.id != c.currentPlanetId)
+          .reduce((a, b) => c.distanceTo(a) > c.distanceTo(b) ? a : b);
+      expect(c.energyCostTo(far), greaterThan(c.energy));
+      expect(await c.launchJourney(far, onEmpty: FuelPolicy.refuse),
+          LaunchResult.engineDormant);
     });
   });
 }

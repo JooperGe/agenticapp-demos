@@ -28,6 +28,13 @@ enum LaunchResult {
   success,
   noSelection,
   insufficientEnergy,
+
+  /// The tank has energy in it, but the engine shut down when it last ran dry
+  /// and has not been activated since. A separate result from
+  /// [insufficientEnergy] because it is a different problem with a different
+  /// answer: training will not help, only activation will.
+  engineDormant,
+
   alreadyTraveling,
   alreadyHere,
 }
@@ -805,6 +812,7 @@ class GameController extends ChangeNotifier {
   }) async {
     if (target.id == _player.currentPlanetId) return LaunchResult.alreadyHere;
     if (isTraveling) return LaunchResult.alreadyTraveling;
+    if (_player.engineDormant) return LaunchResult.engineDormant;
     // The voyage's fuel only — deliberately not `energyCostTo`, which also
     // carries the braking burn and would leak it into the burn curve below.
     final voyageFuel = _ship.engine.energyCostFor(distanceTo(target));
@@ -853,6 +861,7 @@ class GameController extends ChangeNotifier {
     final target = _universe.starArrivalPoint(hygId);
     if (target == null) return LaunchResult.noSelection;
     if (isTraveling) return LaunchResult.alreadyTraveling;
+    if (_player.engineDormant) return LaunchResult.engineDormant;
     final dist = (playerPosition3D - target).length;
     if (dist < 0.5) return LaunchResult.alreadyHere;
     final voyageFuel = _ship.engine.energyCostFor(dist);
@@ -1239,10 +1248,19 @@ class GameController extends ChangeNotifier {
   }) async {
     final direction = heading.normalized;
     if (direction.length <= 0) return LaunchResult.noSelection;
+    if (_player.engineDormant) return LaunchResult.engineDormant;
     if (hasMomentum) return LaunchResult.alreadyTraveling;
     if (isTraveling) return LaunchResult.alreadyTraveling;
     if (!_player.inDeepSpace) return LaunchResult.alreadyHere;
-    if (_player.energyBalance <= 0) return LaunchResult.insufficientEnergy;
+    // Nothing spendable, so nothing to cruise: a cruise holds back the 100 EN
+    // braking reserve (`cruiseReserve`) and `_cruiseExhaustTime` reads a budget of
+    // `balance - reserve`. Igniting with less than the reserve would exhaust on the
+    // very first tick — a zero-length leg, a `fuelOut` report for 0 ly, and under
+    // `coast` a free perpetual drift, because the exhaustion bills `balance -
+    // reserve`, which is negative and so books nothing at all. Refuse instead.
+    // Same rule as `_launchGate`'s `available > braking`, which spec §4.2 calls
+    // the same rule.
+    if (energy <= cruiseReserve) return LaunchResult.insufficientEnergy;
 
     _repinLeg(velocity: direction * _ship.engine.cruiseSpeedLyPerSec);
     _player = _player.copyWith(driftPowered: true, cruisePolicy: onEmpty);

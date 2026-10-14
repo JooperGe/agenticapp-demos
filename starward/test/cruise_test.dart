@@ -338,15 +338,24 @@ void main() {
       expect(c.cruiseRemaining, const Duration(seconds: 1500));
     });
 
-    test('the reserve is held back even at the very start', () async {
+    test('a tank that is all reserve is not enough to cruise', () async {
       final clock = FakeClock(DateTime(2026));
       final storage = MemoryStorage();
       await _boot(clock, storage: storage);
       await _setEnergy(storage, 100);
       final c = await _boot(clock, storage: storage);
-      await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
-      // Every last drop is already spoken for, so there is no cruise to run.
+      // Every last drop is already spoken for, so there is no cruise to run —
+      // and none to start: `igniteCruise` refuses on a spendable budget of zero
+      // (Task 10), which is the same rule `_launchGate` applies as `> braking`.
+      expect(await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt),
+          LaunchResult.insufficientEnergy);
       expect(c.cruiseRemaining, Duration.zero);
+
+      // One EN past the reserve is a real, if tiny, cruise: 1 EN is 15 s.
+      await _setEnergy(storage, 101);
+      final c2 = await _boot(clock, storage: storage);
+      await c2.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+      expect(c2.cruiseRemaining, const Duration(seconds: 15));
     });
   });
 
