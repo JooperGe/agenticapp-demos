@@ -4719,7 +4719,7 @@ step (shown after them).
 
     expect(c.isCruising, isTrue);
     expect(c.hasMomentum, isTrue);
-    expect(c.cruisePolicy, FuelPolicy.halt,
+    expect(c.player.cruisePolicy, FuelPolicy.halt,
         reason: 'the chosen policy is stored, not defaulted');
   });
 
@@ -4857,7 +4857,11 @@ Future<FuelPolicy?> showCruiseFuelChoiceDialog(
               const SizedBox(height: 18),
               _Choice(
                 label: '耗尽后停下',
-                detail: '电量耗尽前引擎先制动停下，保留 100 EN 的制动储备',
+                // `$braking`, never a literal: the reserve is
+                // `Engine.brakingCostFor`, so a ship with a different engine
+                // would be quoted a number that is not its own. Every other
+                // number in this sheet interpolates for the same reason.
+                detail: '电量耗尽前引擎先制动停下，保留 $braking EN 的制动储备',
                 icon: Icons.anchor_rounded,
                 onTap: () => Navigator.of(sheetContext).pop(FuelPolicy.halt),
               ),
