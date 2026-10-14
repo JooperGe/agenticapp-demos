@@ -57,6 +57,14 @@ Future<void> _setEnergy(MemoryStorage storage, int balance) async {
   await storage.write('starward.save.v2', jsonEncode(json));
 }
 
+/// The persisted `driftPowered` flag — the only way to observe it once the
+/// velocity has been cleared, since `hasMomentum` is false either way then.
+Future<bool> _savedPowered(MemoryStorage storage) async {
+  final raw = await storage.read('starward.save.v2');
+  final json = jsonDecode(raw!) as Map<String, dynamic>;
+  return (json['player'] as Map<String, dynamic>)['driftPowered'] as bool;
+}
+
 /// Flies to the nearest planet and arrives, so the ship is docked.
 Future<GameController> _docked(FakeClock clock, MemoryStorage storage) async {
   final c = await _boot(clock, storage: storage);
@@ -368,12 +376,16 @@ void main() {
       final c = await _boot(clock);
       await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
       clock.advance(const Duration(seconds: 1500));
-      // `_anchorHere` settles too, so `stopShip`'s own settle must be a no-op
-      // the second time round — a double booking here would be silent.
+      // `_anchorHere` settles too, so `stopShip`'s own settle has to be a no-op
+      // the second time round — a double booking here would be silent. Exactly
+      // two entries and not three: the leg once, the brake once.
       await c.stopShip();
-      final entries = c.energyLedger.length;
+      expect(c.energyLedger, hasLength(2));
+      expect(c.energy, 100);
+      // A repeat stop is a no-op at the parked guard, so it must not add an
+      // entry either.
       await c.stopShip();
-      expect(c.energyLedger, hasLength(entries));
+      expect(c.energyLedger, hasLength(2));
       expect(c.energy, 100);
     });
 
@@ -412,6 +424,48 @@ void main() {
       expect(await c.launchJourney(far, onEmpty: FuelPolicy.halt),
           LaunchResult.insufficientEnergy,
           reason: 'a lenient launch still needs more than the braking reserve');
+    });
+
+    test('braking a cruise clears the powered flag in the save', () async {
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      await _boot(clock, storage: storage);
+      await _setDrift(storage, const Vec3(1 / 37.5, 0, 0), clock(),
+          powered: true);
+      final c = await _boot(clock, storage: storage);
+      expect(c.isCruising, isTrue, reason: 'precondition: under power');
+
+      await c.stopShip();
+
+      // Read from the save rather than from the getters: `_anchorHere` clears
+      // the velocity too, so `hasMomentum` is false whether or not the engine was
+      // declared off. Only the persisted flag can tell the difference, and a ship
+      // left `driftPowered` would be misread as under power the next time it
+      // drifts without igniting.
+      expect(await _savedPowered(storage), isFalse);
+    });
+
+    test('a voyage that runs dry after a cruise is a coast, not a cruise',
+        () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+      clock.advance(const Duration(seconds: 1500));
+
+      final far = c.planets
+          .where((p) => p.id != c.currentPlanetId)
+          .reduce((a, b) => c.distanceTo(a) > c.distanceTo(b) ? a : b);
+      expect(await c.launchJourney(far, onEmpty: FuelPolicy.coast),
+          LaunchResult.success);
+      expect(c.energyCostTo(far), greaterThan(c.energy),
+          reason: 'precondition: the voyage must run dry, not arrive');
+
+      clock.advance(const Duration(hours: 1));
+      c.tick();
+
+      expect(c.hasMomentum, isTrue, reason: 'the coast left the ship moving');
+      expect(c.isCoasting, isTrue);
+      expect(c.isCruising, isFalse);
     });
   });
 }

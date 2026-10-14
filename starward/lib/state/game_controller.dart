@@ -406,12 +406,24 @@ class GameController extends ChangeNotifier {
 
   /// Brings the ship to rest where it is, billing any momentum it has to shed.
   ///
-  /// The cruise settle comes first, and it has to: `brakingCost` is quoted from
-  /// the velocity, but what the tank actually holds is the balance *minus* the
-  /// leg's accrued burn. Settling after reading the cost would spend the same
-  /// energy twice.
+  /// Every launch must do this: [_originPosOf] reads the anchor, so a coasting
+  /// ship that launched without re-anchoring would plot its route from a stale
+  /// coordinate and arrive somewhere it never was.
+  ///
+  /// This is also the one place a drift is billed. Putting the charge here
+  /// rather than on the "stop" button is what keeps the exits honest: the star
+  /// map is a way out of a drift, and if it were free the player would learn to
+  /// route around the paid button sitting next to it.
+  ///
+  /// The cruise settle comes first, and it has to: the `copyWith` below clears
+  /// `driftVelocity`, and once it is zero `isCruising` is false and the leg's
+  /// accrued burn can never be booked at all. It is *not* about `brakingCost` —
+  /// that is a pure function of the velocity the settle preserves, so reading it
+  /// is free and order-independent.
   void _anchorHere() {
     _settleCruise();
+    // Read the price before the velocity is cleared below — braking is quoted
+    // off the speed the ship is actually carrying.
     final braking = brakingCost;
     final pos = playerPosition3D;
     _player = _player.copyWith(
