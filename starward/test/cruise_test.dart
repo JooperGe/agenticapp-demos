@@ -544,6 +544,9 @@ void main() {
       c.tick();
       expect(c.energy, 100);
       expect(c.energyLedger.single.amount, -200);
+      expect(c.energyLedger.single.createdAt,
+          DateTime(2026).add(const Duration(seconds: 3000)),
+          reason: 'booked at the exhaust instant, not the day-late notice');
       // And the ship is where it should have stopped, not where a full day of
       // cruise would have taken it.
       expect(c.driftElapsed, Duration.zero, reason: 'halt cleared the drift');
