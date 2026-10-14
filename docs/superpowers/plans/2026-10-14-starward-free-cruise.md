@@ -6208,7 +6208,9 @@ Also fix the plan's own three stale claims, all in
 `docs/superpowers/plans/2026-10-14-starward-free-cruise.md` rather than in code:
 
 1. The Self-Review's claim that "Every numbered requirement in the spec maps to a task" is false —
-   Phase 5 is the evidence — so correct it and point the Self-Review at Phase 5.
+   Phase 5 is the evidence — so correct it and point the Self-Review at Phase 5. The same paragraph
+   (`:4329`) ends "§11 (staging) → the four phases", which is false in the same way for the same
+   reason: there are five. Fix both clauses while you are in the sentence.
 2. The closing 「与 spec 的偏差汇总」 opens "Four deviations, all documented in place at the top of
    the plan; repeated here so an executor who reads only the closing section still sees them." The
    top of the plan has **six**, so that sentence is false twice over: the count, and the "all".
@@ -6218,13 +6220,32 @@ Also fix the plan's own three stale claims, all in
    own comment, 6 in `activate()`'s doc. Do not pad the table to six. If that account of why 5 and 6
    are safe to omit does not survive checking against those three sites, say so in the report rather
    than writing it.
-3. The Execution Handoff says "**Sixteen** tasks across **four** phases". The plan has **22** tasks,
-   and the six Phase 5 tasks — 17 through 22 — have no `## Phase 5` heading at all: they sit under
-   Phase 4's, below the Self-Review and the Execution Handoff, which is why the count reads sixteen
-   to anyone scanning headings. Add a `## Phase 5` heading above Task 17 naming what the phase is
-   for (the six findings the first whole-branch review returned), and correct the count and the
-   phase description in the Execution Handoff. This one is a heading plus a sentence; do not
-   renumber tasks or move anything.
+3. The Execution Handoff (`:4368`) says "**Sixteen** tasks across **four** phases". Both numbers are
+   wrong: the plan has **22** tasks across **five** phases. **The Phase 5 heading does exist** — an
+   earlier draft of this item claimed it did not, and that claim was checked against
+   `git show 5be654e~1` and found false, so do not add a second one. It reads
+   `# Phase 5 — the spec's UI requirements the first sixteen tasks never reached` and sits
+   immediately above Task 17. Two things about the plan's outline are wrong anyway, and together they
+   are why the count reads sixteen to anyone scanning headings:
+
+   - **The heading is an h1 (`#`), where all four earlier phase headings are h2 (`##`)** — those are
+     at `:91`, `:821`, `:1769` and `:2957`. So a `grep '^## Phase'` finds four phases, and Phase 5
+     does not sit in the same outline as its siblings. **Promote `# Phase 5` to `## Phase 5`**; do
+     not add a heading.
+   - **The block sits below the four closing sections** — `## Self-Review` (`:4325`), `## 已知取舍`
+     (`:4337`), `## 与 spec 的偏差汇总` (`:4351`) and `## Execution Handoff` (`:4364`) — so an
+     executor reading top to bottom reaches the handoff's "Which approach?" and only then meets six
+     more tasks. **Do not move the block**: relocating ~1800 lines is not worth the risk, and its
+     position is honest about the phase being a second pass added after the first whole-branch
+     review. Make the handoff say so instead.
+
+   So: promote the heading, then in the Execution Handoff's option 1 sentence correct "Sixteen tasks
+   across four phases" to 22 across five, and add one sentence naming Phase 5 as the six findings the
+   first whole-branch review returned, whose tasks follow the closing sections. That same sentence
+   carries a parenthetical enumerating what each phase does — "Phase 1 changes no behaviour, Phase 2
+   adds no UI, Phase 3 adds the entry points, Phase 4 adds the cockpit" — which needs its Phase 5
+   term as well, or the sentence will say five phases and then list four. This is a heading level, a
+   count, and a sentence; do not renumber tasks or move anything.
 
 - [ ] **Step 2: Prove nothing changed**
 
