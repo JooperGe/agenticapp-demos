@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:starward/core/vec3.dart';
 import 'package:starward/data/game_repository.dart';
+import 'package:starward/data/models/drift_report.dart';
 import 'package:starward/data/models/energy_transaction.dart';
 import 'package:starward/data/models/engine.dart';
 import 'package:starward/data/models/journey.dart';
@@ -466,6 +467,126 @@ void main() {
       expect(c.hasMomentum, isTrue, reason: 'the coast left the ship moving');
       expect(c.isCoasting, isTrue);
       expect(c.isCruising, isFalse);
+    });
+  });
+
+  group('running the tank dry mid-cruise', () {
+    /// Ignites [c] with a full tank and runs the cruise to its exhaustion point.
+    ///
+    /// Takes the controller rather than building one. `_boot` makes a fresh
+    /// `MemoryStorage` on every call, so two boots are two controllers over two
+    /// separate saves — a helper that booted its own would leave the caller
+    /// asserting against a ship that never moved.
+    Future<void> exhausted(
+      GameController c,
+      FakeClock clock,
+      FuelPolicy policy,
+    ) async {
+      await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: policy);
+      // 300 EN less the 100 EN reserve is 200 EN, which is exactly 3000 s.
+      clock.advance(const Duration(seconds: 3000));
+      c.tick();
+    }
+
+    test('halt stops the ship exactly at the quoted 80 ly', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      final start = c.playerPosition3D;
+      await exhausted(c, clock, FuelPolicy.halt);
+
+      expect(c.hasMomentum, isFalse, reason: 'halt parks the ship');
+      expect(c.energy, 100, reason: 'the reserve is kept, not burned');
+      expect(c.isDormant, isTrue, reason: 'the tank is out of spendable energy');
+      // 3000 s at 1/37.5 ly/s. The exhaustion check compares *seconds*, not
+      // energy: `burnForSeconds(elapsed) >= 200` first reaches 200 at 2992.5 s
+      // and lands 0.2 ly short of this.
+      expect((c.playerPosition3D - start).length, closeTo(80.0, 0.01));
+    });
+
+    test('coast keeps the ship moving with the engine off', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      final start = c.playerPosition3D;
+      await exhausted(c, clock, FuelPolicy.coast);
+
+      expect(c.hasMomentum, isTrue);
+      expect(c.isCoasting, isTrue, reason: 'out of power, still moving');
+      expect(c.isCruising, isFalse);
+      expect(c.isDormant, isTrue);
+      expect(c.energy, 100);
+      expect(c.driftVelocity.length,
+          closeTo(c.ship.engine.cruiseSpeedLyPerSec, 1e-12));
+      expect((c.playerPosition3D - start).length, closeTo(80.0, 0.01));
+
+      // And it keeps going, for free, from the exhaust point.
+      clock.advance(const Duration(seconds: 1500));
+      expect(c.energy, 100);
+      expect((c.playerPosition3D - start).length, closeTo(120.0, 0.01));
+    });
+
+    test('the whole spendable budget is booked, exactly once', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      await exhausted(c, clock, FuelPolicy.halt);
+      expect(c.energyLedger, hasLength(1));
+      expect(c.energyLedger.first.type, EnergyTxType.cruiseCost);
+      expect(c.energyLedger.first.amount, -200);
+    });
+
+    test('the burn is not charged for the interval after the tank ran dry',
+        () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+      // Notice a full day late: the ship had no spendable energy for 23 of those
+      // hours, so charging for them would invent a burn that never happened.
+      clock.advance(const Duration(days: 1));
+      c.tick();
+      expect(c.energy, 100);
+      expect(c.energyLedger.single.amount, -200);
+      // And the ship is where it should have stopped, not where a full day of
+      // cruise would have taken it.
+      expect(c.driftElapsed, Duration.zero, reason: 'halt cleared the drift');
+    });
+
+    test('a coast noticed late still anchors at the exhaust point', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      final start = c.playerPosition3D;
+      await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.coast);
+      clock.advance(const Duration(days: 1));
+      c.tick();
+
+      // 80 ly of powered cruise, then the rest of the day coasting: a day is
+      // 86400 s, so 83400 s of coast at cruise speed is a further 2224 ly.
+      expect(c.energy, 100);
+      expect(c.isCoasting, isTrue);
+      expect((c.playerPosition3D - start).length, closeTo(80 + 83400 / 37.5, 1.0));
+    });
+
+    test('a fuel-out report is queued for the leg that just ended', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      await exhausted(c, clock, FuelPolicy.coast);
+      final report = c.pendingDriftReport;
+      expect(report, isNotNull);
+      expect(report!.kind, DriftReportKind.fuelOut);
+      expect(report.distanceLy, closeTo(80.0, 0.01));
+      expect(report.elapsed, const Duration(seconds: 3000));
+      expect((report.toPos - report.fromPos).length, closeTo(80.0, 0.01));
+      expect(report.hitBoundary, isFalse);
+    });
+
+    test('tick is a no-op for a cruise that still has time on the clock',
+        () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+      clock.advance(const Duration(seconds: 2999));
+      c.tick();
+      expect(c.isCruising, isTrue);
+      expect(c.isDormant, isFalse);
+      expect(c.energyLedger, isEmpty, reason: 'nothing is booked mid-leg');
     });
   });
 }

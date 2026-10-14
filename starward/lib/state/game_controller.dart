@@ -779,8 +779,17 @@ class GameController extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    // Still travelling, or coasting: repaint without persisting. A coasting
-    // ship may also have crossed into a new neighbourhood.
+    // A cruise resolves by the clock too, not by a timer — same reason as a
+    // voyage: the answer has to be the same whether the app was open for it or
+    // killed through it. Checked on the instant rather than through a flag, so a
+    // tick that arrives early is simply a tick that does nothing.
+    final exhaustAt = _cruiseExhaustTime();
+    if (exhaustAt != null && !_now().isBefore(exhaustAt)) {
+      _reconcileCruise();
+      return;
+    }
+    // Still travelling, cruising or coasting: repaint without persisting. A
+    // drifting ship may also have crossed into a new neighbourhood.
     _maybeRescanNearby();
     notifyListeners();
   }
@@ -997,6 +1006,107 @@ class GameController extends ChangeNotifier {
     }
     _repinLeg(at: now);
     return burned;
+  }
+
+  /// The instant the current cruise runs out of the energy it is allowed to
+  /// spend, or null if it is not cruising / never will.
+  ///
+  /// Compared on *time*, not on energy: `burnForSeconds` rounds to whole EN, so
+  /// testing `burnForSeconds(elapsed) >= budget` fires a tick early — at a
+  /// budget of 200 it first reaches 200 at 2992.5 s, and the halt point lands
+  /// 0.2 ly short of the 80 ly the readout promised. Division keeps it exact:
+  /// `secondsForEnergy(200)` is 3000.0.
+  DateTime? _cruiseExhaustTime() {
+    if (!isCruising) return null;
+    final budget = _player.energyBalance - cruiseReserve;
+    if (budget <= 0) return _player.driftStartedAt;
+    final seconds = _ship.engine.secondsForEnergy(budget);
+    return _player.driftStartedAt.add(
+      Duration(
+          microseconds:
+              (seconds * Duration.microsecondsPerSecond).round()),
+    );
+  }
+
+  /// The report for the leg of a cruise that just ran the tank dry.
+  ///
+  /// A cruise has no destination, so there is no route to report against — the
+  /// leg between the last turn (or ignition) and the exhaust point is the whole
+  /// of what happened. `bound` is huge for the same reason `_applyFuelOut` uses
+  /// `1e12`: the leg is a straight line that cannot reach the shell in the time
+  /// it has.
+  DriftReport _cruiseDriftReport(DateTime exhaustAt, Vec3 fromPos, Vec3 toPos) {
+    final start = Vec3(_player.startX, _player.startY, _player.startZ);
+    final leg = DriftPath(
+      start: start,
+      velocity: _player.driftVelocity,
+      bound: 1e12,
+    );
+    final seconds =
+        exhaustAt.difference(_player.driftStartedAt).inMilliseconds / 1000;
+    final passed = _universe.passedSystemsAlong(path: leg, upToSeconds: seconds);
+    return DriftReport(
+      kind: DriftReportKind.fuelOut,
+      from: _player.driftStartedAt,
+      to: exhaustAt,
+      elapsed: exhaustAt.difference(_player.driftStartedAt),
+      distanceLy: leg.travelledBetween(0, seconds),
+      fromPos: fromPos,
+      toPos: toPos,
+      passedCount: passed.count,
+      nearest: passed.nearest,
+      hitBoundary: false,
+    );
+  }
+
+  /// Closes out a cruise whose tank has run dry, at the moment it ran dry.
+  ///
+  /// Like [_reconcileJourney] this is a pure function of the clock: it can run a
+  /// second late, a day late, or after the app was killed, and still place the
+  /// ship, the ledger and the report where they belong. It leaves the ship
+  /// *dormant* with the braking reserve intact — a cruise always keeps enough to
+  /// buy its own stop, which is the whole reason the reserve exists.
+  Future<void> _reconcileCruise() async {
+    final exhaustAt = _cruiseExhaustTime();
+    if (exhaustAt == null) return;
+    if (_now().isBefore(exhaustAt)) return;
+    final path = driftPath!;
+    final exhaustSeconds = _driftSecondsAt(exhaustAt);
+    final fromPos = path.positionAt(0);
+    final exhaustPos = path.positionAt(exhaustSeconds);
+    // Built before the anchor moves: the report reads the same anchor the path
+    // was built from, so doing this afterwards would report a zero-length leg.
+    _pendingDriftReport = _cruiseDriftReport(exhaustAt, fromPos, exhaustPos);
+
+    // Bill the leg up to the moment the tank ran dry — never up to `now`, which
+    // can be a day later. The ship had no spendable energy for the whole of that
+    // interval, so charging for it would invent a burn that never happened.
+    final burned = _player.energyBalance - cruiseReserve;
+    if (burned > 0) {
+      _player = _player.copyWith(energyBalance: _player.energyBalance - burned);
+      _energyLedger.add(EnergyTransaction(
+        id: _newId('en'),
+        type: EnergyTxType.cruiseCost,
+        amount: -burned,
+        createdAt: exhaustAt,
+      ));
+    }
+
+    // `halt` spends the momentum instead of the energy; `coast` keeps it and
+    // drifts on with the engine off. Either way the engine is done.
+    final halt = _player.cruisePolicy == FuelPolicy.halt;
+    _player = _player.copyWith(
+      startX: exhaustPos.x,
+      startY: exhaustPos.y,
+      startZ: exhaustPos.z,
+      driftStartedAt: exhaustAt,
+      driftVelocity: halt ? const Vec3(0, 0, 0) : _player.driftVelocity,
+      driftPowered: false,
+      engineDormant: true,
+    );
+    _rebuildNearby();
+    await _persist();
+    notifyListeners();
   }
 
   /// Energy a cruise must keep in the tank so it can always buy its own stop.
