@@ -2141,7 +2141,19 @@ Append to `starward/test/dormancy_test.dart`:
       final clock = FakeClock(DateTime(2026));
       final c = await _exhaustedCruise(clock);
       await c.stopShip();
-      await c.activate();
+      // Braking spends the *entire* reserve — `cruiseReserve` is defined as
+      // `brakingCostFor(cruiseSpeed)`, which is the same 100 EN the brake
+      // quotes — so the tank is empty at this point and `activate()` cannot
+      // afford its own 5 EN fee. Training is the cheapest way back to a tank
+      // that can, and it doubles as proof that refuelling does not wake the
+      // engine on its own.
+      expect(c.energy, 0, reason: 'the reserve bought the stop');
+      final session = await c.startCourse('walk');
+      await c.completeCourse(session.id, 40);
+      expect(c.energy, 40);
+      expect(c.isDormant, isTrue, reason: 'training does not restart it');
+      expect(await c.activate(), isTrue);
+      expect(c.energy, 35);
       expect(
         await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt),
         LaunchResult.success,
