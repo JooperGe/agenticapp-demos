@@ -1,7 +1,51 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:starward/core/vec3.dart';
+import 'package:starward/data/game_repository.dart';
 import 'package:starward/data/models/engine.dart';
+import 'package:starward/data/storage/storage_backend.dart';
+import 'package:starward/state/game_controller.dart';
+
+class FakeClock {
+  FakeClock(this._now);
+  DateTime _now;
+  DateTime call() => _now;
+  void advance(Duration d) => _now = _now.add(d);
+}
+
+Future<GameController> _boot(FakeClock clock, {StorageBackend? storage}) async {
+  final c = GameController(
+    repository: GameRepository(storage ?? MemoryStorage()),
+    clock: clock.call,
+    random: math.Random(3),
+  );
+  await c.init();
+  return c;
+}
+
+/// Writes a drift into the save, so a test can start from a ship already moving.
+///
+/// [powered] is written too: a hand-built save is the only way to reach a
+/// cruising ship without going through `igniteCruise`, which is exactly what
+/// makes it a useful fixture for the read-only tests below.
+Future<void> _setDrift(
+  MemoryStorage storage,
+  Vec3 velocity,
+  DateTime startedAt, {
+  bool powered = false,
+}) async {
+  final raw = await storage.read('starward.save.v2');
+  final json = jsonDecode(raw!) as Map<String, dynamic>;
+  final player = json['player'] as Map<String, dynamic>;
+  player['driftVelocityX'] = velocity.x;
+  player['driftVelocityY'] = velocity.y;
+  player['driftVelocityZ'] = velocity.z;
+  player['driftStartedAt'] = startedAt.millisecondsSinceEpoch;
+  player['driftPowered'] = powered;
+  await storage.write('starward.save.v2', jsonEncode(json));
+}
 
 void main() {
   group('Engine cruise pricing', () {
@@ -67,6 +111,57 @@ void main() {
       expect(json.containsKey('activationCost'), isFalse,
           reason: 'precondition: this is what an old save looks like');
       expect(Engine.fromJson(json).activationCost, Engine.standard.activationCost);
+    });
+  });
+
+  group('drift vocabulary', () {
+    test('a parked ship has no momentum and is neither coasting nor cruising',
+        () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      expect(c.hasMomentum, isFalse);
+      expect(c.isCoasting, isFalse);
+      expect(c.isCruising, isFalse);
+      expect(c.isDormant, isFalse);
+    });
+
+    test('an unpowered drift is a coast, and reads exactly as it did before',
+        () async {
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      await _boot(clock, storage: storage);
+      await _setDrift(storage, const Vec3(1 / 37.5, 0, 0), clock());
+      final c = await _boot(clock, storage: storage);
+
+      expect(c.hasMomentum, isTrue);
+      expect(c.isCoasting, isTrue);
+      expect(c.isCruising, isFalse);
+
+      // The three getters that used to key off `isCoasting` must give the same
+      // answers they always did for a save that predates this feature.
+      clock.advance(const Duration(seconds: 100));
+      expect(c.driftElapsed, const Duration(seconds: 100));
+      expect(c.driftDistanceLy, closeTo(100 / 37.5, 1e-9));
+      expect(c.driftPath, isNotNull);
+      expect(c.brakingCost, 100);
+      expect(c.canBrake, isTrue);
+    });
+
+    test('a powered drift is a cruise, not a coast', () async {
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      await _boot(clock, storage: storage);
+      await _setDrift(storage, const Vec3(1 / 37.5, 0, 0), clock(),
+          powered: true);
+      final c = await _boot(clock, storage: storage);
+
+      expect(c.hasMomentum, isTrue);
+      expect(c.isCruising, isTrue);
+      expect(c.isCoasting, isFalse);
+      // A cruising ship is still moving, so it still has momentum to shed and
+      // the same quote to shed it. If this were zero, "cruise out, then launch
+      // a voyage" would be a free ferry.
+      expect(c.brakingCost, 100);
     });
   });
 }

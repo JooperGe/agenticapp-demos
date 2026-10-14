@@ -265,28 +265,43 @@ class GameController extends ChangeNotifier {
     );
   }
 
-  /// Whether the ship is coasting — moving without burning anything.
+  /// Whether the ship is moving through deep space at all — under power or not.
   ///
-  /// Zero velocity means parked in deep space, which is a different state: a
-  /// parked ship has nowhere to be and nothing to report.
-  bool get isCoasting => _player.driftVelocity.length > 0;
+  /// This, not [isCoasting], is the question every movement rule actually asks:
+  /// a cruising ship has just as much momentum to shed as a coasting one, and
+  /// quoting it a zero braking cost would make "cruise out, then launch a
+  /// voyage" a free ferry.
+  bool get hasMomentum => _player.driftVelocity.length > 0;
+
+  /// Whether the ship is drifting with the engine off. Zero velocity means
+  /// parked in deep space, which is a different state: a parked ship has nowhere
+  /// to be and nothing to report.
+  bool get isCoasting => hasMomentum && !_player.driftPowered;
+
+  /// Whether the ship is drifting *under power*, burning the tank as it goes.
+  bool get isCruising => hasMomentum && _player.driftPowered;
+
+  /// Whether the engine has shut down for want of energy. Only [activate] clears
+  /// it — training refills the tank but does not restart the engine.
+  bool get isDormant => _player.engineDormant;
 
   /// What it costs to bring the ship out of its current motion, in EN.
   ///
-  /// Zero for a ship at rest — docked, parked in deep space, or under power.
-  /// Only a coasting ship has momentum to shed.
-  int get brakingCost => isCoasting
+  /// Zero for a ship at rest — docked, parked in deep space, or on a voyage.
+  /// Only a ship with momentum has any to shed.
+  int get brakingCost => hasMomentum
       ? _ship.engine.brakingCostFor(_player.driftVelocity.length)
       : 0;
 
   /// How long the current drift has been running, or zero when parked.
-  Duration get driftElapsed => isCoasting
+  Duration get driftElapsed => hasMomentum
       ? _now().difference(_player.driftStartedAt)
       : Duration.zero;
 
   /// How far the current drift has carried the ship, in light-years.
-  double get driftDistanceLy =>
-      isCoasting ? _player.driftVelocity.length * driftElapsed.inMilliseconds / 1000 : 0;
+  double get driftDistanceLy => hasMomentum
+      ? _player.driftVelocity.length * driftElapsed.inMilliseconds / 1000
+      : 0;
 
   /// The path the current drift follows, or null when the ship is parked.
   ///
@@ -295,7 +310,7 @@ class GameController extends ChangeNotifier {
   /// ship — but the max keeps the definition honest if it ever does, instead of
   /// teleporting the ship inward.
   DriftPath? get driftPath {
-    if (!isCoasting) return null;
+    if (!hasMomentum) return null;
     final start = Vec3(_player.startX, _player.startY, _player.startZ);
     return DriftPath(
       start: start,
@@ -914,9 +929,9 @@ class GameController extends ChangeNotifier {
 
   /// Whether the ship can currently be brought out of its motion.
   ///
-  /// False only for a coasting ship that cannot afford the braking burn — the
+  /// False only for a ship with momentum that cannot afford the braking burn — the
   /// UI uses this to disable the brake rather than letting the tap do nothing.
-  bool get canBrake => !isCoasting || _player.energyBalance >= brakingCost;
+  bool get canBrake => !hasMomentum || _player.energyBalance >= brakingCost;
 
   /// Brings the ship to rest where it is, whatever is moving it.
   ///
