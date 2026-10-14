@@ -294,20 +294,87 @@ void main() {
         reason: 'the galactic centre is the cockpit\'s fixed reference');
   });
 
-  testWidgets('a parked ship is offered ignition from the cockpit',
+  testWidgets('ignition asks how the cruise should end', (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    expect(inCockpit('点火巡航'), findsOneWidget, reason: 'precondition');
+
+    await tester.tap(inCockpit('点火巡航'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // §4.2: the choice cannot be deferred — by the time the tank is dry the ship
+    // has no energy to brake with — so `halt` is only available as a decision
+    // made now.
+    expect(find.text('耗尽后停下'), findsOneWidget);
+    expect(find.text('耗尽后滑行'), findsOneWidget);
+    // §4.2 offers no `refuse` on a cruise: refusing means "I cannot afford this
+    // whole trip", and a cruise has no whole trip.
+    expect(find.text('放弃航行'), findsNothing);
+    expect(c.isCruising, isFalse, reason: 'nothing happens until a policy is chosen');
+
+    await tester.tap(find.text('耗尽后停下'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(c.isCruising, isTrue);
+    expect(c.hasMomentum, isTrue);
+    expect(c.player.cruisePolicy, FuelPolicy.halt,
+        reason: 'the chosen policy is stored, not defaulted');
+  });
+
+  testWidgets('backing out of the ignition dialog does not ignite',
       (tester) async {
     final clock = FakeClock(DateTime(2026));
     final c = await _boot(clock, MemoryStorage());
     await _pumpStarMap(tester, c);
     await _enterCockpit(tester);
 
-    expect(inCockpit('点火巡航'), findsOneWidget);
-    expect(inCockpit('修正航向'), findsNothing);
-
     await tester.tap(inCockpit('点火巡航'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('取消点火'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(c.isCruising, isFalse);
+    expect(c.hasMomentum, isFalse);
+    expect(c.energy, 300, reason: 'ignition is free, and nothing was spent');
+  });
+
+  testWidgets('correcting course confirms before spending', (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+    clock.advance(const Duration(seconds: 1500));
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+    await tester.dragFrom(const Offset(600, 300), const Offset(-523.6, 0));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(c.isCruising, isTrue);
-    expect(c.hasMomentum, isTrue);
+    final before = c.energy;
+
+    await tester.tap(inCockpit('修正航向'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // §5.3's copy. The price is exact — `round(200·sin(θ/2))` is 200 for every
+    // θ ≥ ~172°, whatever the drag delivered — while the angle is matched by
+    // shape for the same reason as Task 17's drag test: the delivered
+    // displacement is `ScaleGestureRecognizer`'s business, not this test's.
+    expect(find.text('修正航向'), findsNWidgets(2),
+        reason: 'the bar button and the dialog title');
+    expect(find.textContaining(RegExp(r'飞船将从当前航向偏转 \d+°，消耗 200 EN。')),
+        findsOneWidget);
+    expect(c.energy, before, reason: 'nothing is spent until 修正 is tapped');
+
+    await tester.tap(find.text('取消'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(c.energy, before, reason: 'cancelling spends nothing');
+    expect(c.driftVelocity.x, greaterThan(0), reason: 'still on the old course');
   });
 
   testWidgets('the cockpit opens on the current heading while cruising',
@@ -366,7 +433,11 @@ void main() {
         reason: 'the cheap option must be offered next to the dear one');
 
     await tester.tap(inCockpit('修正航向'));
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('修正'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(c.energy, 0, reason: '300 − 100 burned − 200 turned');
     expect(c.driftVelocity.x, lessThan(0), reason: 'now flying the other way');
   });

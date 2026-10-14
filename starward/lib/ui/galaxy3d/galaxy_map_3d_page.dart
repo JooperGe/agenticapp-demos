@@ -205,15 +205,21 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
     }
   }
 
-  /// Lights the engine along whatever the reticle is on.
+  /// Lights the engine along whatever the reticle is on, after asking what the
+  /// cruise should do when the tank runs dry.
   ///
-  /// `FuelPolicy.coast` rather than `halt`: a free cruise that runs out of power
-  /// keeps drifting, which is what the player asked for by choosing a
-  /// destination-less cruise. Stopping dead in the dark is a surprise, not a
-  /// default.
+  /// It asks because the choice cannot be deferred: by the time the tank is dry
+  /// the ship has no energy to brake with, so `halt` is only available as a
+  /// decision made *now*. That is also why the policy is a stored field.
   Future<void> _igniteFromCockpit() async {
-    final result =
-        await _c.igniteCruise(_camera.forward, onEmpty: FuelPolicy.coast);
+    final policy = await showCruiseFuelChoiceDialog(
+      context,
+      energy: _c.energy,
+      braking: _c.brakingCost,
+      engine: _c.ship.engine,
+    );
+    if (policy == null || !mounted) return;
+    final result = await _c.igniteCruise(_camera.forward, onEmpty: policy);
     if (!mounted) return;
     if (result != LaunchResult.success) {
       ScaffoldMessenger.of(context)
@@ -221,13 +227,43 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
     }
   }
 
+  /// Turns the ship, after confirming — the action is priced up to 200 EN and
+  /// cannot be undone, so it asks for the same reason the dock's brake does.
   Future<void> _correctFromCockpit() async {
     final heading = _camera.forward;
     final cost = _c.turnCostTo(heading);
-    final ok = await _c.correctHeading(heading);
+    final degrees = headingDeviationDegrees(
+      current: _c.driftVelocity,
+      proposed: heading,
+    );
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: StarColors.deepNavy,
+        title: const Text('修正航向',
+            style: TextStyle(color: StarColors.offWhite)),
+        content: Text('飞船将从当前航向偏转 $degrees°，消耗 $cost EN。',
+            style: const TextStyle(color: StarColors.muted, height: 1.5)),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child:
+                const Text('取消', style: TextStyle(color: StarColors.faint)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('修正',
+                style: TextStyle(
+                    color: StarColors.cyan, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final turned = await _c.correctHeading(heading);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(ok ? '航向已修正（$cost EN）' : '能量不足，无法修正航向'),
+      content: Text(turned ? '航向已修正（$cost EN）' : '能量不足，无法修正航向'),
     ));
   }
 
