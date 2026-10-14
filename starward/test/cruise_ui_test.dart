@@ -435,8 +435,8 @@ void main() {
     // however many pixels the drag actually delivered — which is the claim that
     // matters. The exact angle is pinned elsewhere and without a drag:
     // `headingDeviationDegrees`' own unit test, and the on-heading test above
-    // (0°). Task 19 adds a `偏离 N°` readout for the degrees to be matched
-    // against by shape; it does not exist yet in Task 17.
+    // (0°). The `偏离 N°` readout below is matched by shape for the same
+    // reason.
     expect(find.textContaining(RegExp(r'偏离 \d+° · 200 EN')), findsOneWidget);
     expect(
         find.descendant(of: cockpit, matching: find.textContaining('· 200 EN')),
@@ -555,5 +555,46 @@ void main() {
     expect(find.textContaining('偏离'), findsNothing,
         reason: 'nor a turn to price');
     expect(inCockpit('激活引擎'), findsOneWidget, reason: 'and the bar says so');
+  });
+
+  testWidgets('a burn that runs dry on screen takes the readout with it',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.coast);
+    // 2900 s of the 3000 s the tank holds, so the burn runs dry *after* the
+    // cockpit is on screen rather than before it. `energy` is derived from the
+    // clock, so the readout is already live at this point without a `tick()`.
+    clock.advance(const Duration(seconds: 2900));
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+    expect(inCockpit('修正航向'), findsOneWidget, reason: 'precondition');
+    expect(find.textContaining('偏离'), findsOneWidget, reason: 'precondition');
+
+    // Nothing here calls `setState` on the page. `JourneyPage`'s one-second
+    // timer drives `tick()` from the star map's `IndexedStack` sibling
+    // (`journey_page.dart:104-107`) and this subtree rebuilds through
+    // `AnimatedBuilder(animation: _c)`, which does **not** re-run the enclosing
+    // `build` — so a `hasCourse` captured above it is still true here, and both
+    // assertions below fail against one.
+    clock.advance(const Duration(seconds: 200));
+    c.tick();
+    await tester.pump();
+
+    expect(c.isDormant, isTrue, reason: 'precondition: the burn ran dry');
+    expect(c.hasMomentum, isTrue,
+        reason: 'precondition: `coast` keeps the velocity, so the marker has '
+            'something to mark and only `!isDormant` can withhold it');
+    expect(inCockpit('激活引擎'), findsOneWidget, reason: 'the bar flipped');
+
+    final painter = tester
+        .widgetList<CustomPaint>(find.byWidgetPredicate(
+            (w) => w is CustomPaint && w.painter is CockpitHudPainter))
+        .single
+        .painter! as CockpitHudPainter;
+    expect(painter.heading, isNull, reason: 'the marker went with the bar');
+    expect(find.textContaining('偏离'), findsNothing,
+        reason: 'and so did the readout — the two cannot disagree, because '
+            'they read one local');
   });
 }
