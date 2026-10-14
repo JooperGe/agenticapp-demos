@@ -117,7 +117,12 @@ const double _headingMarkerForwardNudge = 0.25;
 /// 75.7° band around dead astern — is pinned to the bottom edge, the conventional
 /// "behind you" position. The readout beside it carries the exact angle, so
 /// nothing is lost that the player needs.
-Offset? headingMarkerPoint({
+///
+/// Reports `offScreen` alongside the point rather than returning the point alone.
+/// The point is clamped here, so a caller that re-clamped it would get
+/// `clamped == at` and an `offScreen` of `false` in every reachable state —
+/// which is how the triangle's dimming would come to be dead code.
+({Offset at, bool offScreen})? headingMarkerPoint({
   required Camera3D camera,
   required Vec3 heading,
   required Size2 viewport,
@@ -131,9 +136,9 @@ Offset? headingMarkerPoint({
     viewport: viewport,
   );
   if (at == null) {
-    return clampHudPoint(Offset(viewport.width / 2, viewport.height), viewport).at;
+    return clampHudPoint(Offset(viewport.width / 2, viewport.height), viewport);
   }
-  return clampHudPoint(at, viewport).at;
+  return clampHudPoint(at, viewport);
 }
 
 /// One thing worth pointing at from the cockpit.
@@ -239,11 +244,14 @@ class CockpitHudPainter extends CustomPainter {
 
     final h = heading?.normalized;
     if (h != null && h.length > 0) {
-      final at = headingMarkerPoint(camera: camera, heading: h, viewport: vp);
-      if (at != null) {
-        final offScreen = clampHudPoint(at, vp).offScreen;
+      final p = headingMarkerPoint(camera: camera, heading: h, viewport: vp);
+      if (p != null) {
+        // Read off `p`, not recomputed: the point is already clamped, so
+        // `clampHudPoint(p.at, vp).offScreen` is `false` by construction and the
+        // dimming below would never fire.
+        final at = p.at;
         final paint = Paint()
-          ..color = headingColor.withValues(alpha: offScreen ? 0.45 : 0.9);
+          ..color = headingColor.withValues(alpha: p.offScreen ? 0.45 : 0.9);
         // A filled triangle, deliberately unlike the ring markers: the current
         // course must never read as a destination.
         canvas.drawPath(

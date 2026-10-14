@@ -189,13 +189,14 @@ void main() {
 
   group('headingMarkerPoint', () {
     test('sits on the reticle when the course is the aim', () {
-      final at = headingMarkerPoint(
+      final p = headingMarkerPoint(
         camera: _lookingForward(),
         heading: const Vec3(0, 0, 1),
         viewport: _vp,
       )!;
-      expect(at.dx, moreOrLessEquals(200, epsilon: 0.5));
-      expect(at.dy, moreOrLessEquals(400, epsilon: 0.5));
+      expect(p.at.dx, moreOrLessEquals(200, epsilon: 0.5));
+      expect(p.at.dy, moreOrLessEquals(400, epsilon: 0.5));
+      expect(p.offScreen, isFalse);
     });
 
     test('pins to the side edge for a course abeam', () {
@@ -210,30 +211,36 @@ void main() {
       // screen-right, and a +X course lands left of centre. The existing
       // 'puts a point off to the right of centre' test pins that convention for
       // the same reason: it is not the one you would guess.
-      final at = headingMarkerPoint(
+      //
+      // The point being clamped is also why the triangle draws dimmed: it sits
+      // at the edge rather than at its true direction.
+      final p = headingMarkerPoint(
         camera: _lookingForward(),
         heading: const Vec3(1, 0, 0),
         viewport: _vp,
       )!;
-      expect(at, const Offset(26, 400));
+      expect(p.at, const Offset(26, 400));
+      expect(p.offScreen, isTrue);
     });
 
     test('pins to the top edge for a course straight up', () {
-      final at = headingMarkerPoint(
+      final p = headingMarkerPoint(
         camera: _lookingForward(),
         heading: const Vec3(0, 1, 0),
         viewport: _vp,
       )!;
-      expect(at, const Offset(200, 74));
+      expect(p.at, const Offset(200, 74));
+      expect(p.offScreen, isTrue);
     });
 
     test('pins to the bottom edge for a course dead astern', () {
-      final at = headingMarkerPoint(
+      final p = headingMarkerPoint(
         camera: _lookingForward(),
         heading: const Vec3(0, 0, -1),
         viewport: _vp,
       )!;
-      expect(at, const Offset(200, 668));
+      expect(p.at, const Offset(200, 668));
+      expect(p.offScreen, isTrue);
     });
 
     test('has no position without a course', () {
