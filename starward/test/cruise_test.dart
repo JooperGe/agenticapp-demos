@@ -8,6 +8,7 @@ import 'package:starward/data/models/drift_report.dart';
 import 'package:starward/data/models/energy_transaction.dart';
 import 'package:starward/data/models/engine.dart';
 import 'package:starward/data/models/journey.dart';
+import 'package:starward/data/models/planet.dart';
 import 'package:starward/data/storage/storage_backend.dart';
 import 'package:starward/state/game_controller.dart';
 
@@ -599,6 +600,67 @@ void main() {
       expect(c.isCruising, isTrue);
       expect(c.isDormant, isFalse);
       expect(c.energyLedger, isEmpty, reason: 'nothing is booked mid-leg');
+    });
+  });
+
+  group('recommendedDestination', () {
+    test('is never where the ship is, nor anywhere already explored', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      final rec = c.recommendedDestination;
+      expect(rec, isNotNull);
+      expect(rec!.id, isNot(c.currentPlanetId));
+      expect(c.stateOf(rec.id), isNot(DiscoveryState.explored));
+    });
+
+    test('is the nearest hero world, or the nearest world if there is none',
+        () async {
+      // A property, not a fixed answer: the universe is generated from a seed,
+      // and pinning one planet id would make this test a hostage of the
+      // generator rather than of the rule.
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      final rec = c.recommendedDestination!;
+      final candidates = c.planets
+          .where((p) => p.id != c.currentPlanetId)
+          .where((p) => c.stateOf(p.id) != DiscoveryState.explored)
+          .toList();
+      expect(candidates, contains(rec));
+      final featured = candidates.where((p) => p.featured).toList();
+      final pool = featured.isNotEmpty ? featured : candidates;
+      final nearest =
+          pool.reduce((a, b) => c.distanceTo(a) <= c.distanceTo(b) ? a : b);
+      expect(rec.id, nearest.id);
+    });
+  });
+
+  group('the cockpit request', () {
+    test('is set once, idempotent, and cleared by acknowledging', () async {
+      final clock = FakeClock(DateTime(2026));
+      final c = await _boot(clock);
+      expect(c.cockpitRequested, isFalse);
+
+      var notified = 0;
+      c.addListener(() => notified++);
+      c.requestCockpit();
+      expect(c.cockpitRequested, isTrue);
+      expect(notified, 1);
+      c.requestCockpit();
+      expect(notified, 1, reason: 'an already-set request is not news');
+
+      c.acknowledgeCockpitRequest();
+      expect(c.cockpitRequested, isFalse);
+      c.acknowledgeCockpitRequest();
+      expect(c.cockpitRequested, isFalse, reason: 'idempotent');
+    });
+
+    test('is not persisted — it is a hint for one screen transition', () async {
+      final clock = FakeClock(DateTime(2026));
+      final storage = MemoryStorage();
+      final c = await _boot(clock, storage: storage);
+      c.requestCockpit();
+      final reloaded = await _boot(clock, storage: storage);
+      expect(reloaded.cockpitRequested, isFalse);
     });
   });
 }

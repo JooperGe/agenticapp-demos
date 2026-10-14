@@ -98,6 +98,9 @@ class GameController extends ChangeNotifier {
   /// the drift happening and the sheet being opened does not lose it.
   DriftReport? _pendingDriftReport;
 
+  /// A one-shot hint from the voyage screen, never written to the save.
+  bool _cockpitRequested = false;
+
   final List<DiscoveryRecord> _discoveries = <DiscoveryRecord>[];
   final List<EnergyTransaction> _energyLedger = <EnergyTransaction>[];
   final List<TrainingSession> _trainingSessions = <TrainingSession>[];
@@ -977,6 +980,54 @@ class GameController extends ChangeNotifier {
   /// False only for a ship with momentum that cannot afford the braking burn — the
   /// UI uses this to disable the brake rather than letting the tap do nothing.
   bool get canBrake => !hasMomentum || _player.energyBalance >= brakingCost;
+
+  /// The planet the voyage screen should suggest as the next destination, or
+  /// null when there is nothing worth suggesting.
+  ///
+  /// Nearest not-yet-explored planet, preferring the hand-authored hero worlds
+  /// so the suggestion always leads somewhere with real content to discover.
+  /// Lifted out of the voyage screen so every surface that offers a "next
+  /// destination" reads one rule rather than keeping its own copy that could
+  /// drift out of step with the others.
+  Planet? get recommendedDestination {
+    Planet? best;
+    var bestDistance = double.infinity;
+    for (final p in _nearby) {
+      if (p.id == _player.currentPlanetId) continue;
+      if (stateOf(p.id) == DiscoveryState.explored) continue;
+      final distance = distanceTo(p);
+      final isBetter = best == null ||
+          (p.featured && !best.featured) ||
+          (p.featured == best.featured && distance < bestDistance);
+      if (isBetter) {
+        best = p;
+        bestDistance = distance;
+      }
+    }
+    return best;
+  }
+
+  /// True when another screen has asked the star map to open in cockpit mode.
+  bool get cockpitRequested => _cockpitRequested;
+
+  /// Asks the star map to open in cockpit mode the next time it is shown.
+  ///
+  /// Deliberately not persisted: it is a navigation hint for one screen
+  /// transition, not part of the save. A player who quits mid-request simply
+  /// lands on the star map in its default mode, which is a state they can get
+  /// out of with one tap.
+  void requestCockpit() {
+    if (_cockpitRequested) return;
+    _cockpitRequested = true;
+    notifyListeners();
+  }
+
+  /// Marks the cockpit request as served.
+  void acknowledgeCockpitRequest() {
+    if (!_cockpitRequested) return;
+    _cockpitRequested = false;
+    notifyListeners();
+  }
 
   /// Energy the current cruise leg has burned but not yet booked.
   ///

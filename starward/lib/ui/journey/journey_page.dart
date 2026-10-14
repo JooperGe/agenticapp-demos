@@ -286,32 +286,13 @@ class _JourneyPageState extends State<JourneyPage>
     );
   }
 
-  /// Nearest not-yet-explored planet, preferring the hand-authored hero worlds
-  /// so the suggestion always leads somewhere with real content to discover.
-  Planet? _recommendDestination(GameController c) {
-    Planet? best;
-    double bestDistance = double.infinity;
-    for (final p in c.planets) {
-      if (p.id == c.currentPlanetId) continue;
-      if (c.stateOf(p.id) == DiscoveryState.explored) continue;
-      final distance = c.distanceTo(p);
-      final isBetter = best == null ||
-          (p.featured && !best.featured) ||
-          (p.featured == best.featured && distance < bestDistance);
-      if (isBetter) {
-        best = p;
-        bestDistance = distance;
-      }
-    }
-    return best;
-  }
   // --- State 1: standby ----------------------------------------------------
 
   Widget _buildStandby(GameController c) {
     final current = c.currentPlanet;
     final coasting = c.isCoasting;
     final drifting = current == null;
-    final rec = _recommendDestination(c);
+    final rec = c.recommendedDestination;
     return Stack(
       fit: StackFit.expand,
       children: <Widget>[
