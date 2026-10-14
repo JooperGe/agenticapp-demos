@@ -4796,8 +4796,19 @@ final tap-and-assert block with the confirmed sequence:
 - [ ] **Step 2: Run them to verify they fail**
 
 Run: `cd starward && flutter test test/cruise_ui_test.dart`
-Expected: FAIL — no dialog appears (`find.text('耗尽后停下')` finds nothing) and the turn spends
-immediately, so `c.energy` is already 0 when the confirm test checks `before`.
+Expected: FAIL — each test stops at its first missing surface, and for three of them that is a
+surface that does not exist yet, so read the failures rather than counting them:
+
+- `'ignition asks how the cruise should end'` fails on `find.text('耗尽后停下')` finding nothing:
+  nothing opens the dialog yet, so `_igniteFromCockpit` still ignites directly.
+- `'backing out of the ignition dialog does not ignite'` fails at `tester.tap(find.text('取消点火'))`
+  — the finder matches nothing and the tap throws.
+- `'correcting course confirms before spending'` fails on `expect(find.text('修正航向'),
+  findsNWidgets(2))`, which reads 1: the bar's button is there, the dialog title is not. Note what
+  this means for the assertion two lines below it — `before` is captured *before* the tap, so it is
+  200 EN, and an unconfirmed turn spends it down to 0. That `expect(c.energy, before)` never runs,
+  because the count assertion fails first; it becomes live only once the dialog exists.
+- Task 17's drag test fails at `tester.tap(find.text('修正'))`, same as the back-out test.
 
 - [ ] **Step 3: Add the cruise variant of the dialog**
 
@@ -4805,6 +4816,17 @@ In `starward/lib/ui/journey/fuel_choice_dialog.dart`, add a second top-level fun
 private `_Choice` and the two option **labels** verbatim, because §4.2 says to reuse the dialog's
 「措辞与选项形状」; what changes is the pruning condition and the two details, which now describe the
 cruise's reserve rule.
+
+**A second function, not the existing one with a flag — and this is the one place the plan departs
+from §4.2's literal wording.** §4.2 says 「弹出与出发同一个 `showFuelChoiceDialog`」, and a reviewer
+will read that as "call the same function". It cannot be called as it stands: its signature requires
+`cost` and `distanceLy`, and its headline is `能量不足以飞完全程` — 「全程」 has no referent for a
+cruise, so reusing it means inventing a distance and printing a false headline above a true sheet.
+What §4.2 asks to reuse is the **wording and the option shape**, and that is what the new function
+reuses: the same `_Choice`, the same two labels, the same halt/coast pair, the same
+`Navigator.pop`-with-null back-out, and no `FuelPolicy.refuse` on either side of the fork. If you
+believe a flag is better, say so in your report rather than doing it — the shape is reviewed as one
+unit and the caller is the only other place that would change.
 
 ```dart
 /// Asks what a destination-less cruise should do when the tank runs dry.
