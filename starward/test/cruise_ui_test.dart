@@ -310,7 +310,7 @@ void main() {
     expect(c.hasMomentum, isTrue);
   });
 
-  testWidgets('a cruising ship is quoted the turn and can take it',
+  testWidgets('the cockpit opens on the current heading while cruising',
       (tester) async {
     final clock = FakeClock(DateTime(2026));
     final c = await _boot(clock, MemoryStorage());
@@ -319,20 +319,83 @@ void main() {
     await _pumpStarMap(tester, c);
     await _enterCockpit(tester);
 
-    // The ship drifted 40 ly out along +X from a spawn within 0.9 ly of Sol, so
-    // aiming back at the galactic centre is an ≈ 180° turn from the current
-    // heading — not exactly 180° — which rounds to 200 EN. That is more than the
-    // 100 EN a stop costs, so the brake hint must be showing.
-    expect(inCockpit('修正航向'), findsOneWidget);
-    expect(find.descendant(of: cockpit, matching: find.text('200 EN')),
-        findsOneWidget);
-    expect(inCockpit('制动停下只需 100 EN'), findsOneWidget);
+    // §5.3: cruising → the cockpit opens on the current heading, so the player
+    // starts where the ship is actually going instead of hunting for it.
+    // `driftVelocity` is +X, whose bearing is 90°, and `aimCameraAt` sets the
+    // pitch exactly, so the elevation reads +0°.
+    expect(find.descendant(of: cockpit, matching: find.textContaining('90°')),
+        findsOneWidget,
+        reason: 'the reticle bearing is the current heading');
+    // And the reticle is *on* it. The turn costs 0 EN, not the engine's 1 EN
+    // floor: `turnCostFor` opens with `if (radians <= 0) return 0;`, so the
+    // floor never applies to a zero-angle turn. The angle really is zero here,
+    // not merely small — `aimCameraAt` sets `yaw = atan2(1.0, 0.0)` and
+    // `pitch = asin(0.0)`, so `forward` comes back `(1.0, 0.0, 6.123e-17)` and
+    // its dot product with `(1.0, 0.0, 0.0)` is exactly 1.0, giving
+    // `acos(1.0) == 0.0`. Matches the plan's own table: `turnCostFor(0°)` = 0.
+    expect(inCockpit('0 EN'), findsOneWidget,
+        reason: 'a zero-angle turn is free, by turnCostFor\'s own guard');
+    expect(c.driftVelocity.x, greaterThan(0), reason: 'precondition');
+  });
+
+  testWidgets('dragging off the heading quotes a real turn and the brake hint',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+    clock.advance(const Duration(seconds: 1500));
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+    expect(inCockpit('0 EN'), findsOneWidget, reason: 'precondition: on heading');
+
+    // Swing the reticle right round. The cockpit's look factor is
+    // `0.006 * (fov / 60)` and the default fov is 60, so a horizontal drag of
+    // `-π / 0.006 ≈ -523.6 px` asks for a 180° turn: from +X to −X.
+    await tester.dragFrom(const Offset(600, 300), const Offset(-523.6, 0));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // `round(200·sin(θ/2))` is 200 for every θ ≥ ~172°, so the price is exact
+    // however many pixels the drag actually delivered — which is the claim that
+    // matters. The exact angle is pinned elsewhere and without a drag:
+    // `headingDeviationDegrees`' own unit test, and the on-heading test above
+    // (0°). Task 19 adds a `偏离 N°` readout for the degrees to be matched
+    // against by shape; it does not exist yet in Task 17.
+    expect(inCockpit('200 EN'), findsOneWidget,
+        reason: 'a turn this wide costs more than the 100 EN a stop costs');
+    expect(inCockpit('制动停下只需 100 EN'), findsOneWidget,
+        reason: 'the cheap option must be offered next to the dear one');
 
     await tester.tap(inCockpit('修正航向'));
     await tester.pump(const Duration(milliseconds: 100));
     expect(c.energy, 0, reason: '300 − 100 burned − 200 turned');
-    expect(c.driftVelocity.x, lessThan(0),
-        reason: 'now flying the other way');
+    expect(c.driftVelocity.x, lessThan(0), reason: 'now flying the other way');
+  });
+
+  testWidgets('recentering in the cockpit returns to the current heading',
+      (tester) async {
+    final clock = FakeClock(DateTime(2026));
+    final c = await _boot(clock, MemoryStorage());
+    await c.igniteCruise(const Vec3(1, 0, 0), onEmpty: FuelPolicy.halt);
+    clock.advance(const Duration(seconds: 1500));
+    await _pumpStarMap(tester, c);
+    await _enterCockpit(tester);
+
+    // The label follows what the button will actually do. Saying 对准银心 while
+    // it aims at the heading would be a false claim on a control.
+    expect(find.text('对准当前航向'), findsOneWidget);
+
+    await tester.dragFrom(const Offset(600, 300), const Offset(-120, 0));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(inCockpit('0 EN'), findsNothing, reason: 'the drag moved it off');
+
+    // Tap the button, not its label. At the 800×600 test viewport the side
+    // controls sit at the vertical centre and the heading bar's panel reaches up
+    // to y ≈ 396, covering the label's centre (y ≈ 403) — so a tap on the label
+    // lands on the panel and never reaches this button. The icon (y ≈ 369) is
+    // clear of it, and it is the same `_RoundButton` gesture target.
+    await tester.tap(find.byIcon(Icons.my_location_rounded));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(inCockpit('0 EN'), findsOneWidget, reason: 'back on the heading');
   });
 
   testWidgets('a dormant engine is offered activation, not ignition',

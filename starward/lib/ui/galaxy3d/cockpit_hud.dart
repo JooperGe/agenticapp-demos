@@ -31,6 +31,30 @@ import 'camera3d.dart';
   );
 }
 
+/// The angle between the ship's current course and a proposed heading, in whole
+/// degrees.
+///
+/// The same angle [GameController.turnAngleTo] prices the turn on — same
+/// normalisation, same `acos` of the clamped dot product — so the number the
+/// readout shows and the number the fee is computed from cannot drift apart.
+///
+/// Whole degrees because it is a readout, not a measurement: the fee is a step
+/// function of the angle, so quoting `36.87°` next to a `63 EN` price invites
+/// the reader to check arithmetic that does not exist.
+///
+/// A zero-length [current] means the ship has no course (it is parked), which
+/// `turnAngleTo` reads as 0; a zero-length [proposed] means the caller has no
+/// heading to offer. Both are 0.
+int headingDeviationDegrees({
+  required Vec3 current,
+  required Vec3 proposed,
+}) {
+  final from = current.normalized;
+  final to = proposed.normalized;
+  if (from.length <= 0 || to.length <= 0) return 0;
+  return (math.acos(from.dot(to).clamp(-1.0, 1.0)) * 180 / math.pi).round();
+}
+
 /// Where [world] lands on screen, in logical pixels, or null when it is at or
 /// behind the camera's near plane.
 ///

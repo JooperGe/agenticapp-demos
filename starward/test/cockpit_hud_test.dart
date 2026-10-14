@@ -132,4 +132,37 @@ void main() {
       expect(at.dy, closeTo(400, 1e-6));
     });
   });
+
+  test('headingDeviationDegrees is the angle the turn is priced on', () {
+    // A level quarter turn: +Z to +X.
+    expect(
+      headingDeviationDegrees(
+          current: const Vec3(0, 0, 1), proposed: const Vec3(1, 0, 0)),
+      90,
+    );
+    // Lengths are irrelevant — the helper normalises both sides, which is what
+    // `turnAngleTo` does before pricing.
+    expect(
+      headingDeviationDegrees(
+          current: const Vec3(0, 0, 3), proposed: const Vec3(7, 0, 0)),
+      90,
+    );
+    expect(
+      headingDeviationDegrees(
+          current: const Vec3(1, 0, 0), proposed: const Vec3(1, 0, 0)),
+      0,
+    );
+    expect(
+      headingDeviationDegrees(
+          current: const Vec3(1, 0, 0), proposed: const Vec3(-1, 0, 0)),
+      180,
+    );
+    // A parked ship has no course to deviate from. `turnAngleTo` returns 0 for
+    // it, and the readout has to agree with the price.
+    expect(
+      headingDeviationDegrees(
+          current: const Vec3(0, 0, 0), proposed: const Vec3(1, 0, 0)),
+      0,
+    );
+  });
 }

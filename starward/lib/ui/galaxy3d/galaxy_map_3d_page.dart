@@ -361,9 +361,10 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
         shipPosition: _shipPos,
         overviewDistance: _overviewDefaultDistance(vp),
       );
-      // Entering the cockpit points it at the galactic centre (origin); the
-      // other two modes are fully placed by placeCamera.
-      if (mode == CameraMode.cockpit) _aimCockpitAtOrigin();
+      // Entering the cockpit aims it by state — the current heading while
+      // cruising, the galactic centre otherwise; the other two modes are fully
+      // placed by placeCamera.
+      if (mode == CameraMode.cockpit) _aimCockpit();
     });
   }
 
@@ -400,6 +401,23 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
     });
   }
 
+  /// Points the cockpit where it should open.
+  ///
+  /// While cruising that is the current heading, exactly: `aimCameraAt` is the
+  /// precise inverse of [Camera3D.forward], which is what the reticle's
+  /// deviation reading is measured against. A decorative flattening here would
+  /// make Task 19's number disagree with the price it sits beside.
+  ///
+  /// Parked or coasting it stays the origin aim, whose `* 0.6` pitch flattening
+  /// is deliberate — it keeps the galactic plane visible.
+  void _aimCockpit() {
+    if (_c.isCruising) {
+      aimCameraAt(_camera, _c.driftVelocity);
+      return;
+    }
+    _aimCockpitAtOrigin();
+  }
+
   /// Points the cockpit at the galactic centre. A decorative default, not an
   /// exact aim: the `* 0.6` flattens the tilt so the view lands on the
   /// starfield rather than on the empty middle of the shell. Deliberately
@@ -417,8 +435,9 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
         // `placeCamera` only sets `eyeOverride` in this mode and never touches
         // the aim, so a plain recenter would leave the view pointing exactly
         // where it already points. What the button means here is "point me
-        // somewhere known".
-        _aimCockpitAtOrigin();
+        // somewhere known" — and what is known depends on whether the ship is
+        // under way: its own heading while cruising, the galactic centre otherwise.
+        _aimCockpit();
         return;
       }
       placeCamera(
@@ -551,6 +570,9 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
                   _TopBar(controller: _c, mode: _camera.mode),
                   _SideControls(
                     mode: _camera.mode,
+                    recenterLabel: _camera.mode == CameraMode.cockpit
+                        ? (_c.isCruising ? '对准当前航向' : '对准银心')
+                        : '居中',
                     onSelect: (m) => _setMode(m, vp),
                     onRecenter: () => _recenter(vp),
                   ),
@@ -633,11 +655,13 @@ class _TopBar extends StatelessWidget {
 class _SideControls extends StatelessWidget {
   const _SideControls({
     required this.mode,
+    required this.recenterLabel,
     required this.onSelect,
     required this.onRecenter,
   });
 
   final CameraMode mode;
+  final String recenterLabel;
   final ValueChanged<CameraMode> onSelect;
   final VoidCallback onRecenter;
 
@@ -678,9 +702,9 @@ class _SideControls extends StatelessWidget {
                 // the ship and never touches the aim — and the aim is what this
                 // mode is about, since the reticle at the centre of the screen
                 // *is* the heading. The useful "put me back on a known
-                // reference" here is therefore to re-aim at the galactic
-                // centre, which is why the label changes with the mode.
-                label: mode == CameraMode.cockpit ? '对准银心' : '居中',
+                // reference" here is therefore to re-aim at whatever the page
+                // calls known, so the page supplies the label that names it.
+                label: recenterLabel,
                 onTap: onRecenter,
               ),
             ],
