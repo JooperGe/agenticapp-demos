@@ -50,6 +50,15 @@ class StarGradients {
   );
 }
 
+/// The full-screen backdrop of the universe overview (星图 · 寰宇), which
+/// replaces [StarGradients.space] in that one camera mode.
+///
+/// It belongs to that view rather than to the app: the galaxy overview and the
+/// cockpit keep the gradient, because both frame a single star system and a
+/// whole-sky photograph behind them would read as a second, contradictory
+/// sky. Swap the file here and only the overview changes.
+const String kUniverseBackdropAsset = 'assets/backgrounds/bg_cosma.png';
+
 ThemeData buildStarwardTheme() {
   final base = ThemeData.dark(useMaterial3: true);
   return base.copyWith(

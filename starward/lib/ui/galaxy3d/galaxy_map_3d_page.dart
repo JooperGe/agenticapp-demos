@@ -597,9 +597,23 @@ class _GalaxyMap3DPageState extends State<GalaxyMap3DPage> {
               return Stack(
                 fit: StackFit.expand,
                 children: <Widget>[
-                  const DecoratedBox(
-                    decoration: BoxDecoration(gradient: StarGradients.space),
-                  ),
+                  // The backdrop sits under everything the painter draws — the
+                  // universe overview paints no opaque base of its own, so the
+                  // shell, the catalogue and the route all read straight off
+                  // it. Only 寰宇 gets the photograph; the other two modes
+                  // frame a single star system, where a whole-sky image would
+                  // contradict the sky the star field is drawing.
+                  if (_camera.mode == CameraMode.overview)
+                    Positioned.fill(
+                      child: Image.asset(
+                        kUniverseBackdropAsset,
+                        fit: BoxFit.cover,
+                      ),
+                    )
+                  else
+                    const DecoratedBox(
+                      decoration: BoxDecoration(gradient: StarGradients.space),
+                    ),
                   GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onScaleStart: _onScaleStart,

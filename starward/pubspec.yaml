@@ -72,6 +72,9 @@ flutter:
     - assets/stars/hyg.bin
     - assets/stars/hyg_named.json
 
+    # Universe-overview backdrop (星图 · 寰宇).
+    - assets/backgrounds/bg_cosma.png
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

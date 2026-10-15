@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:starward/core/theme.dart';
 import 'package:starward/data/game_repository.dart';
 import 'package:starward/data/storage/storage_backend.dart';
 import 'package:starward/state/game_controller.dart';
@@ -98,4 +99,48 @@ void main() {
     // With no active voyage there is no route row and no focus button.
     expect(find.text('聚焦航线'), findsNothing);
   });
+
+  testWidgets('the backdrop image is the page background, and only in 寰宇',
+      (tester) async {
+    final controller =
+        GameController(repository: GameRepository(MemoryStorage()));
+    await controller.init();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScope(controller: controller, child: const HomeShell()),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // The star map opens on the galaxy overview, which keeps the gradient.
+    expect(find.text('星图 · 总览'), findsOneWidget);
+    expect(_backdrop, findsNothing);
+
+    await tester.tap(find.text('寰宇'));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('星图 · 寰宇'), findsOneWidget);
+    expect(_backdrop, findsOneWidget);
+
+    // The other two modes are deliberately untouched by the backdrop.
+    await tester.tap(find.text('总览'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(_backdrop, findsNothing);
+
+    await tester.tap(find.text('座舱'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('星图 · 座舱视角'), findsOneWidget);
+    expect(_backdrop, findsNothing);
+  });
 }
+
+/// The universe-overview backdrop, matched by *asset* rather than by widget
+/// type: the view is free to carry it in an `Image` or a `DecoratedBox`, but a
+/// swap of the file itself has to be a deliberate edit here too.
+final Finder _backdrop = find.byWidgetPredicate(
+  (w) =>
+      w is Image &&
+      w.image is AssetImage &&
+      (w.image as AssetImage).assetName == kUniverseBackdropAsset,
+);
