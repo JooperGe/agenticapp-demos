@@ -2,12 +2,18 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import '../core/vec3.dart';
-import 'hyg_catalog.dart';
+import 'star_set.dart';
 
 /// Fictional galaxies added to the universe so the zoomed-out view isn't
 /// one-sided (the real HYG stars cluster along the Milky Way plane). Each one
 /// sits in a *different* direction, so they read as separate islands of stars
 /// scattered around the far sky.
+///
+/// Like the real catalogue they also ship as data files (`sg1.bin` /
+/// `sg2.bin`, written by `tool/build_synthetic_galaxies.dart` from the same
+/// parameters below — ids bit-identical either way). The app loads those via
+/// `SyntheticGalaxyCatalog`; this class remains pure Dart so the build tool
+/// can run it, and doubles as the offline fallback when assets are missing.
 ///
 /// Reuses [HygStars] so the renderer, planet generator and lookups treat them
 /// exactly like the real catalogue. Their stars get ids in reserved,
@@ -19,7 +25,8 @@ class SyntheticGalaxy {
   /// each galaxy gets its own million-wide block, so nothing ever clashes.
   static const int idBase = 10000000;
 
-  /// Every fictional galaxy in the universe. Add an entry to drop in another.
+  /// Every fictional galaxy in the universe, regenerated from parameters.
+  /// Add an entry to drop in another.
   static List<HygStars> all() => <HygStars>[
         // SG-1: cool blue spiral toward the sparse (+x, -y, +z) octant.
         build(),
