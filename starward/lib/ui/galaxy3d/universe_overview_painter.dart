@@ -87,6 +87,7 @@ class UniverseOverviewPainter extends CustomPainter {
         worldScale: ws,
         maxDraw: kGalaxyMaxDraw,
         distanceScaled: false,
+        style: StarFieldStyle.galaxy,
       );
     }
 

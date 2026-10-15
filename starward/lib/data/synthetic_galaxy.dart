@@ -100,6 +100,38 @@ class SyntheticGalaxy {
     const diskMagnitude = 5.0;
     const diskMagnitudeSpan = 3.6;
 
+    // Star-forming knots — the OB associations that trace a spiral's arms. The
+    // disk otherwise paints one uniform wash of colour, because a star's colour
+    // depends only on whether it rides an arm; knots give it structure.
+    //
+    // Their centres come from a *separate* rng. The star loop's draw count is
+    // already branch-dependent — the disk resamples past the rim a variable
+    // number of times, and takes either an arm azimuth or a free one — so
+    // save-safety cannot rest on a fixed count. It rests on this adding no
+    // draws to the main stream and changing none of its decisions: every
+    // position and magnitude, and therefore every `starId = idBase + dst`,
+    // stays bit-identical. Membership below is pure geometry, likewise zero
+    // draws.
+    final knotRng = math.Random(seed ^ 0x5F3A91);
+    final knotCount = 30 + knotRng.nextInt(21); // 30–50
+    final knotX = Float64List(knotCount);
+    final knotY = Float64List(knotCount);
+    final knotR2 = Float64List(knotCount);
+    for (var k = 0; k < knotCount; k++) {
+      // Centred on an arm ridge, between 0.30 and 0.75 R. A knot's radius is
+      // 0.035–0.055 R, so the outermost edge reaches 0.81 R — inside the 0.85 R
+      // that the disk's rim fade depends on.
+      final rFrac = 0.30 + knotRng.nextDouble() * 0.45;
+      final a = rFrac * windings * math.pi * 2 +
+          knotRng.nextInt(arms) * (math.pi * 2 / arms) +
+          _gauss(knotRng, 1) * armAngularSpread * 0.5;
+      final krad = rFrac * diskRadius;
+      knotX[k] = krad * math.cos(a);
+      knotY[k] = krad * math.sin(a);
+      final kr = diskRadius * (0.035 + knotRng.nextDouble() * 0.02);
+      knotR2[k] = kr * kr;
+    }
+
     final xs = <double>[];
     final ys = <double>[];
     final zs = <double>[];
@@ -147,14 +179,36 @@ class SyntheticGalaxy {
         inPlaneX = r * math.cos(a);
         inPlaneY = r * math.sin(a);
         offW = _gauss(rng, scaleHeight);
+        // Knot membership, from the position just drawn and nothing else. The
+        // vertical bound keeps a knot a thin-disk clump rather than a column
+        // through the whole thickness.
+        var inKnot = false;
+        if (offW.abs() < scaleHeight * 1.5) {
+          for (var k = 0; k < knotCount; k++) {
+            final dx = inPlaneX - knotX[k];
+            final dy = inPlaneY - knotY[k];
+            if (dx * dx + dy * dy < knotR2[k]) {
+              inKnot = true;
+              break;
+            }
+          }
+        }
         mag = diskMagnitude +
             rad / diskRadius * diskMagnitudeSpan +
             rng.nextDouble() * 1.2;
-        // SG-1 arms are blue; a "reddish" galaxy skews its arms warm/pink. The
-        // stars between the arms are older and warm in either galaxy.
-        color = onArm && jitter.abs() < 0.8
-            ? (reddish ? _pink(rng) : _blue(rng))
-            : _warm(rng);
+        // A knot is a colour, not a brightness: OB stars really are far more
+        // luminous, but raising `mag` here would reorder the brightest-first
+        // sort and renumber every `starId` after it, silently repointing saved
+        // destinations. Colour only.
+        //
+        // Exactly one `nextInt` on every path — the pools differ in length but
+        // `nextInt` consumes one state whatever it is asked for, so the stream
+        // downstream is unmoved.
+        color = inKnot
+            ? _knot(rng)
+            : (onArm && jitter.abs() < 0.8
+                ? (reddish ? _pink(rng) : _blue(rng))
+                : _warm(rng));
       }
       final pos = c + u * inPlaneX + v * inPlaneY + w * offW;
       xs.add(pos.x);
@@ -211,18 +265,52 @@ class SyntheticGalaxy {
   static double _gauss(math.Random rng, double sd) =>
       (rng.nextDouble() + rng.nextDouble() + rng.nextDouble() - 1.5) / 1.5 * sd;
 
-  static int _blue(math.Random rng) {
-    const pool = <int>[0xFFBFD4FF, 0xFFD6E4FF, 0xFFA9C4FF, 0xFFEAF0FF];
-    return pool[rng.nextInt(pool.length)];
-  }
+  /// The arm colour of a "blue" galaxy: pale blue-white, the colour of a young
+  /// population. Its four entries span about 3° of hue.
+  static const List<int> bluePool = <int>[
+    0xFFBFD4FF,
+    0xFFD6E4FF,
+    0xFFA9C4FF,
+    0xFFEAF0FF,
+  ];
 
-  static int _pink(math.Random rng) {
-    const pool = <int>[0xFFFFB3C1, 0xFFFFC2A0, 0xFFF2A0B5, 0xFFFFD0C0];
-    return pool[rng.nextInt(pool.length)];
-  }
+  /// The arm colour of a "reddish" galaxy (SG-2). Pink straddles 350°, so these
+  /// sit only ~50° from [warmPool] — the whole galaxy lands in one narrow band
+  /// of hue, which is the most literal form of "it renders as a single colour".
+  static const List<int> pinkPool = <int>[
+    0xFFFFB3C1,
+    0xFFFFC2A0,
+    0xFFF2A0B5,
+    0xFFFFD0C0,
+  ];
 
-  static int _warm(math.Random rng) {
-    const pool = <int>[0xFFFFD9A0, 0xFFFFC87A, 0xFFF2C879, 0xFFFFE6B5];
-    return pool[rng.nextInt(pool.length)];
-  }
+  /// The old population: the bulge, and the stars between the arms.
+  static const List<int> warmPool = <int>[
+    0xFFFFD9A0,
+    0xFFFFC87A,
+    0xFFF2C879,
+    0xFFFFE6B5,
+  ];
+
+  /// Star-forming knots — OB associations, the bright blue clumps that trace a
+  /// spiral's arms.
+  ///
+  /// Deliberately far more saturated than [bluePool] rather than a new hue: a
+  /// knot has to stand out *inside* a pale blue arm, and saturation is what
+  /// does that. Against SG-2 it does double duty, because 217° is 133° away
+  /// from its pink arms and so is the only hue variety that galaxy has.
+  static const List<int> knotPool = <int>[
+    0xFF8FB8FF,
+    0xFF6FA0FF,
+    0xFFA8D0FF,
+    0xFF7FB0FF,
+  ];
+
+  static int _blue(math.Random rng) => bluePool[rng.nextInt(bluePool.length)];
+
+  static int _pink(math.Random rng) => pinkPool[rng.nextInt(pinkPool.length)];
+
+  static int _warm(math.Random rng) => warmPool[rng.nextInt(warmPool.length)];
+
+  static int _knot(math.Random rng) => knotPool[rng.nextInt(knotPool.length)];
 }

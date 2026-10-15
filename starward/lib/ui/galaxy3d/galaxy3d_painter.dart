@@ -76,6 +76,7 @@ class Galaxy3DPainter extends CustomPainter {
         worldScale: scene.worldScale,
         maxDraw: kGalaxyMaxDraw,
         distanceScaled: true,
+        style: StarFieldStyle.galaxy,
       );
     }
     if (host != null && hostScreen != null) {
